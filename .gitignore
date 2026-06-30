@@ -1,0 +1,12 @@
+venv/
+.venv/
+.env
+__pycache__/
+.pytest_cache/
+*.db
+*.sqlite
+instance/
+.idea/
+.vscode/
+.coverage
+htmlcov/

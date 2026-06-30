@@ -1,0 +1,41 @@
+[project]
+name = "opsforge"
+version = "0.1.0"
+description = "A portfolio-quality DevSecOps Threat Intelligence Management Platform"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "OpsForge Team"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "Flask>=3.0.0,<4.0.0",
+    "Flask-SQLAlchemy>=3.1.0,<4.0.0",
+    "Flask-Migrate>=4.0.0,<5.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "psycopg2-binary>=2.9.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "black>=24.0.0",
+    "ruff>=0.3.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
