@@ -172,41 +172,98 @@ class ThreatService:
     def get_statistics() -> dict:
         """Compiles global aggregation metrics from all indicators."""
         try:
-            total = ThreatRepository.count()
+            total_threats = ThreatRepository.count()
 
-            critical_stmt = db.select(db.func.count(Threat.id)).filter(
-                Threat.threat_level == "critical"
+            critical = (
+                db.session.scalar(
+                    db.select(db.func.count(Threat.id)).filter(
+                        Threat.threat_level == "critical"
+                    )
+                )
+                or 0
             )
-            critical = db.session.scalar(critical_stmt) or 0
+            high = (
+                db.session.scalar(
+                    db.select(db.func.count(Threat.id)).filter(
+                        Threat.threat_level == "high"
+                    )
+                )
+                or 0
+            )
+            medium = (
+                db.session.scalar(
+                    db.select(db.func.count(Threat.id)).filter(
+                        Threat.threat_level == "medium"
+                    )
+                )
+                or 0
+            )
+            low = (
+                db.session.scalar(
+                    db.select(db.func.count(Threat.id)).filter(
+                        Threat.threat_level == "low"
+                    )
+                )
+                or 0
+            )
 
-            high_stmt = db.select(db.func.count(Threat.id)).filter(
-                Threat.threat_level == "high"
+            open_count = (
+                db.session.scalar(
+                    db.select(db.func.count(Threat.id)).filter(Threat.status == "Open")
+                )
+                or 0
             )
-            high = db.session.scalar(high_stmt) or 0
-
-            open_count_stmt = db.select(db.func.count(Threat.id)).filter(
-                Threat.status == "Open"
+            investigating = (
+                db.session.scalar(
+                    db.select(db.func.count(Threat.id)).filter(
+                        Threat.status == "Investigating"
+                    )
+                )
+                or 0
             )
-            open_count = db.session.scalar(open_count_stmt) or 0
-
-            closed_stmt = db.select(db.func.count(Threat.id)).filter(
-                Threat.status == "Closed"
+            contained = (
+                db.session.scalar(
+                    db.select(db.func.count(Threat.id)).filter(
+                        Threat.status == "Contained"
+                    )
+                )
+                or 0
             )
-            closed = db.session.scalar(closed_stmt) or 0
+            closed = (
+                db.session.scalar(
+                    db.select(db.func.count(Threat.id)).filter(
+                        Threat.status == "Closed"
+                    )
+                )
+                or 0
+            )
+            false_positive = (
+                db.session.scalar(
+                    db.select(db.func.count(Threat.id)).filter(
+                        Threat.status == "False Positive"
+                    )
+                )
+                or 0
+            )
 
             # Count indicator types
             indicator_type_counts = {}
             from app.constants import INDICATOR_TYPES
 
             for ind_type in INDICATOR_TYPES:
-                type_stmt = db.select(db.func.count(Threat.id)).filter(
-                    Threat.indicator_type == ind_type
+                indicator_type_counts[ind_type] = (
+                    db.session.scalar(
+                        db.select(db.func.count(Threat.id)).filter(
+                            Threat.indicator_type == ind_type
+                        )
+                    )
+                    or 0
                 )
-                indicator_type_counts[ind_type] = db.session.scalar(type_stmt) or 0
 
             # Get last updated timestamp
-            last_updated_stmt = db.select(db.func.max(Threat.updated_at))
-            last_updated_dt = db.session.scalar(last_updated_stmt)
+            last_updated_dt = db.session.scalar(
+                db.select(db.func.max(Threat.updated_at))
+            )
             last_updated_str = None
             if last_updated_dt:
                 if last_updated_dt.tzinfo is None:
@@ -214,13 +271,18 @@ class ThreatService:
                 last_updated_str = last_updated_dt.isoformat()
 
             return {
-                "total": total,
+                "total_threats": total_threats,
                 "critical": critical,
                 "high": high,
+                "medium": medium,
+                "low": low,
                 "open": open_count,
+                "investigating": investigating,
+                "contained": contained,
                 "closed": closed,
+                "false_positive": false_positive,
+                "indicator_type_counts": indicator_type_counts,
                 "last_updated": last_updated_str,
-                "indicator_types": indicator_type_counts,
             }
         except Exception as e:
             logger.error(f"Database error during statistics compilation: {str(e)}")

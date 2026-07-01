@@ -109,6 +109,23 @@ The Service Layer coordinates all domain-level and transactional activities:
 - **Transaction Management**: The service layer owns database commits and rollbacks. In case of database operations failure, it automatically rolls back active session transactions and raises `DatabaseOperationException`.
 - **Workflow State Machine**: Controls status state transitions strictly according to the defined lifecycle: `Open ──> Investigating ──> Contained/False Positive ──> Closed`.
 
+## REST API Layer & Swagger Overview
+The API layer exposes the services via clean HTTP endpoints using **Flask-RESTX**:
+- **Swagger Documentation**: Self-documenting API accessible at `/docs` when running the application.
+- **Unified JSON Format**:
+  - Success Envelope: `{"success": true, "message": "...", "data": {...}}`
+  - Failure Envelope: `{"success": false, "message": "...", "errors": [...]}`
+- **Exposed Endpoints**:
+  - `POST /threats` — Create a new validated threat indicator.
+  - `GET /threats` — Retrieve a filtered, sorted, paginated list of indicators.
+  - `GET /threats/search` — Search threat indicators by partial match on indicator or source.
+  - `GET /threats/<id>` — Retrieve details of a specific indicator.
+  - `PUT /threats/<id>` — Overwrite all fields of a threat indicator.
+  - `PATCH /threats/<id>/status` — Trigger status lifecycle changes and analyst assignments.
+  - `DELETE /threats/<id>` — Delete a threat record.
+  - `GET /stats` — Compile operational telemetry dashboard statistics.
+  - `GET /health` — Get vitality metrics checking system uptime and database connectivity.
+
 ## Future Enhancements
 - User and role authentication (RBAC).
 - Security logging and SIEM integration.

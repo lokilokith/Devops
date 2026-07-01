@@ -119,12 +119,12 @@ def test_get_stats_calculation(app, db_session):
     )
 
     stats = ThreatService.get_statistics()
-    assert stats["total"] == 2
+    assert stats["total_threats"] == 2
     assert stats["critical"] == 1
     assert stats["high"] == 1
     assert stats["open"] == 2
     assert stats["closed"] == 0
-    assert stats["indicator_types"]["ip"] == 2
+    assert stats["indicator_type_counts"]["ip"] == 2
 
 
 def test_transactional_rollback_on_database_error(app, db_session):
