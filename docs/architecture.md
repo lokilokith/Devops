@@ -1,6 +1,6 @@
-# Architecture Blueprint - OpsForge Persistence Layer
+# Architecture Blueprint - OpsForge System Architecture
 
-This document describes the architectural layout, entity specifications, and repository design for the persistence layer in OpsForge.
+This document describes the architectural layout, entity specifications, repository design, and business layer workflows in OpsForge.
 
 ---
 
@@ -71,3 +71,23 @@ The repository is defined in [app/repositories/threat_repository.py](file:///l:/
 - **`delete(threat: Threat) -> None`**: Marks a threat record for deletion.
 - **`count() -> int`**: Counts total threat records.
 - **`paginate(filters: dict, page: int, limit: int, sort: str, order: str) -> Pagination`**: Handles filtered, sorted, windowed offsets.
+
+---
+
+## 3. Business Layer & Service Orchestration
+
+The service layer is defined in [app/services/threat_service.py](file:///l:/DOWNLOADS/Devops/opsforge/app/services/threat_service.py).
+
+### Core Responsibilities
+- **Business Logic & Validations**: Enforces domain validations (e.g. confidence ratings bounded to 0-100, indicator type checks) before records are sent to the persistence layer.
+- **Workflow State Control**: Enforces the **Threat Status State Machine**, validating transition paths. Illegal paths are rejected with custom exceptions.
+- **Transaction Management**: Owns transaction boundaries (`db.session.commit()` and `db.session.rollback()`). If an operation fails, the transaction is rolled back and a `DatabaseOperationException` is raised.
+- **Metrics Assembly**: Orchestrates query counts to compute operational dashboard statistics.
+
+### Workflow State Transitions
+The system enforces a strict state machine path:
+- **`Open ──> Investigating`**
+- **`Investigating ──> Contained`** or **`False Positive`**
+- **`Contained ──> Closed`**
+- **`False Positive ──> Closed`**
+- *All other paths (including re-opening a Closed threat) are rejected with an `InvalidStatusTransition` error.*

@@ -102,6 +102,13 @@ OpsForge decouples data storage definitions from data access logic using the Rep
 - **Repository Interface**: Located in `app/repositories/threat_repository.py`. It communicates with SQLAlchemy to execute CRUD operations (e.g. `create()`, `find_by_id()`, `update()`, `delete()`, `paginate()`).
 - **Transaction Isolation**: The repository layer does NOT commit or rollback transactions (leaving boundary management to the service layer).
 
+## Business Layer & Service Overview
+The Service Layer coordinates all domain-level and transactional activities:
+- **Service Interface**: Located in `app/services/threat_service.py` (`ThreatService`). It orchestrates business workflows and validates indicator values.
+- **Validations & Exceptions**: Custom business logic in `app/utils/validators.py` and domain exception classes in `app/utils/exceptions.py` reject invalid inputs (e.g. out-of-bounds confidence rating, invalid threat enums).
+- **Transaction Management**: The service layer owns database commits and rollbacks. In case of database operations failure, it automatically rolls back active session transactions and raises `DatabaseOperationException`.
+- **Workflow State Machine**: Controls status state transitions strictly according to the defined lifecycle: `Open ──> Investigating ──> Contained/False Positive ──> Closed`.
+
 ## Future Enhancements
 - User and role authentication (RBAC).
 - Security logging and SIEM integration.
