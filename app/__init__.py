@@ -32,6 +32,9 @@ def create_app() -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
 
+    # Import models to register them on metadata
+    from app import models
+
     # Register error handlers
     register_error_handlers(app)
 

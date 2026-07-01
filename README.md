@@ -85,6 +85,23 @@ export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/opsforge"
 python run.py
 ```
 
+### 5. Database Migrations
+Migrations are managed via Flask-Migrate and Alembic:
+```bash
+# Generate a new migration script (e.g. after schema changes)
+export APP_ENV="development"
+flask db migrate -m "Description of change"
+
+# Apply migrations to database
+flask db upgrade
+```
+
+## Persistence Layer & Repository Overview
+OpsForge decouples data storage definitions from data access logic using the Repository Pattern:
+- **Models**: Located in `app/models/threat.py`, defining the core `Threat` table schema, index optimizations, and portable JSON tags column.
+- **Repository Interface**: Located in `app/repositories/threat_repository.py`. It communicates with SQLAlchemy to execute CRUD operations (e.g. `create()`, `find_by_id()`, `update()`, `delete()`, `paginate()`).
+- **Transaction Isolation**: The repository layer does NOT commit or rollback transactions (leaving boundary management to the service layer).
+
 ## Future Enhancements
 - User and role authentication (RBAC).
 - Security logging and SIEM integration.
