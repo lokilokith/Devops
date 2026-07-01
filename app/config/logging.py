@@ -1,6 +1,6 @@
 """OpsForge Logging Configuration.
 
-Establishes system-wide console logging with a uniform format.
+Establishes system-wide console logging for the application-scoped logger.
 """
 
 import logging
@@ -8,12 +8,16 @@ import sys
 
 
 def init_logging(debug: bool = False) -> None:
-    """Initializes structured console logging once for the application."""
-    # Clear any existing root handlers to prevent duplicated logs
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
+    """Initializes structured console logging once for the 'opsforge' logger."""
+    logger = logging.getLogger("opsforge")
+    logger.propagate = False  # Prevent log messages from bubbling up to the root logger
+
+    # Clear any existing handlers
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
 
     level = logging.DEBUG if debug else logging.INFO
+    logger.setLevel(level)
 
     formatter = logging.Formatter(
         "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
@@ -23,5 +27,4 @@ def init_logging(debug: bool = False) -> None:
     console_handler.setFormatter(formatter)
     console_handler.setLevel(level)
 
-    logging.root.setLevel(level)
-    logging.root.addHandler(console_handler)
+    logger.addHandler(console_handler)

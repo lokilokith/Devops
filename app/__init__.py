@@ -1,8 +1,9 @@
-"""OpsForge Application Factory.
+"""OpsForge Flask Application Factory.
 
 Initializes the Flask application instance and boot procedures.
 """
 
+import logging
 from flask import Flask
 from app.config import get_config
 from app.config.logging import init_logging
@@ -19,8 +20,13 @@ def create_app() -> Flask:
     config_class = get_config()
     app.config.from_object(config_class)
 
-    # Initialize structured console logging
+    # Initialize structured console logging for the application-scoped logger
     init_logging(debug=app.config.get("DEBUG", False))
+
+    # Direct Flask logger to use the same handlers and level as the 'opsforge' logger
+    opsforge_logger = logging.getLogger("opsforge")
+    app.logger.handlers = opsforge_logger.handlers
+    app.logger.setLevel(opsforge_logger.level)
 
     # Initialize extensions
     db.init_app(app)

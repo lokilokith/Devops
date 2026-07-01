@@ -1,19 +1,12 @@
 """OpsForge Global JSON Error Handlers."""
 
 from flask import Flask, jsonify
-from werkzeug.exceptions import (
-    BadRequest,
-    NotFound,
-    MethodNotAllowed,
-    InternalServerError,
-)
 
 
 def register_error_handlers(app: Flask) -> None:
     """Registers global JSON error handlers on the Flask application."""
 
     @app.errorhandler(400)
-    @app.errorhandler(BadRequest)
     def handle_bad_request(error):
         description = getattr(
             error, "description", "The server could not understand the request."
@@ -26,7 +19,6 @@ def register_error_handlers(app: Flask) -> None:
         )
 
     @app.errorhandler(404)
-    @app.errorhandler(NotFound)
     def handle_not_found(error):
         description = getattr(
             error, "description", "The requested URL was not found on the server."
@@ -43,7 +35,6 @@ def register_error_handlers(app: Flask) -> None:
         )
 
     @app.errorhandler(405)
-    @app.errorhandler(MethodNotAllowed)
     def handle_method_not_allowed(error):
         description = getattr(
             error, "description", "The method is not allowed for the requested URL."
@@ -60,7 +51,6 @@ def register_error_handlers(app: Flask) -> None:
         )
 
     @app.errorhandler(500)
-    @app.errorhandler(InternalServerError)
     def handle_internal_server_error(error):
         description = getattr(
             error, "description", "An unexpected system error occurred."

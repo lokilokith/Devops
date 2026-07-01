@@ -20,3 +20,10 @@ if os.environ.get("APP_ENV", "development").lower() == "production":
             "Configuration Error: DATABASE_URL environment variable is missing. "
             "A valid PostgreSQL connection URL is required for production."
         )
+
+    secret_key = os.environ.get("SECRET_KEY")
+    if not secret_key:
+        raise ValueError(
+            "Configuration Error: SECRET_KEY environment variable is missing. "
+            "A valid secret key is required for production."
+        )
