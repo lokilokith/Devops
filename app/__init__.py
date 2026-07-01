@@ -32,6 +32,16 @@ def create_app() -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
 
+    # Initialize CORS
+    from flask_cors import CORS
+
+    CORS(app, resources=app.config.get("CORS_RESOURCES"))
+
+    # Register logging and Request ID middleware
+    from app.middleware import register_middleware
+
+    register_middleware(app)
+
     # Import models to register them on metadata
     from app import models
 

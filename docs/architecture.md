@@ -91,3 +91,24 @@ The system enforces a strict state machine path:
 - **`Contained ──> Closed`**
 - **`False Positive ──> Closed`**
 - *All other paths (including re-opening a Closed threat) are rejected with an `InvalidStatusTransition` error.*
+
+---
+
+## 4. Production Hardening & Operational Readiness
+
+OpsForge implements several critical layers to prepare the application for secure, containerized production deployments:
+
+### Middleware & Logging Pipeline
+- **Request Tracking**: The middleware dynamically generates a UUID `X-Request-ID` (unless supplied by an upstream reverse proxy) and binds it to the Flask global request lifecycle `g.request_id`.
+- **Response Headers**: The request ID is automatically attached to the `X-Request-ID` response header. Additionally, `X-OpsForge-Version` is injected into every response, read from the root `VERSION` file.
+- **Request/Response Logging**: Middleware captures incoming client IPs, HTTP verbs, paths, response codes, and elapsed execution times in milliseconds. These details are written to the application-scoped `opsforge` logger, including the Request ID in every log entry for tracing.
+
+### Configuration Hardening
+- **Strict Startup Validation**: Environment variables (`DATABASE_URL`, `SECRET_KEY`, and `APP_ENV`) are validated upon bootstrap. Missing keys or unsupported environments trigger a `ConfigurationException` and halt startup.
+
+### Security and CORS
+- **Flask-CORS**: Integrates environment-driven Cross-Origin Resource Sharing. In development, localhost origins are allowed; in production, wildcard origins are disabled, and origins must match the comma-separated `CORS_ALLOWED_ORIGINS` whitelist.
+
+### WSGI & Gunicorn
+- **wsgi.py Entrypoint**: Decouples the application creation from development servers, loading settings and returning the Flask `app` instance.
+- **gunicorn.conf.py**: Standardizes production server worker processes (calculated dynamically as `multiprocessing.cpu_count() * 2 + 1`), graceful shutdown timeouts (30 seconds), and unified logs.

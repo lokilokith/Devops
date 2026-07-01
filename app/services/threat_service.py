@@ -174,77 +174,16 @@ class ThreatService:
         try:
             total_threats = ThreatRepository.count()
 
-            critical = (
-                db.session.scalar(
-                    db.select(db.func.count(Threat.id)).filter(
-                        Threat.threat_level == "critical"
-                    )
-                )
-                or 0
-            )
-            high = (
-                db.session.scalar(
-                    db.select(db.func.count(Threat.id)).filter(
-                        Threat.threat_level == "high"
-                    )
-                )
-                or 0
-            )
-            medium = (
-                db.session.scalar(
-                    db.select(db.func.count(Threat.id)).filter(
-                        Threat.threat_level == "medium"
-                    )
-                )
-                or 0
-            )
-            low = (
-                db.session.scalar(
-                    db.select(db.func.count(Threat.id)).filter(
-                        Threat.threat_level == "low"
-                    )
-                )
-                or 0
-            )
+            critical = ThreatRepository.count_by_level("critical")
+            high = ThreatRepository.count_by_level("high")
+            medium = ThreatRepository.count_by_level("medium")
+            low = ThreatRepository.count_by_level("low")
 
-            open_count = (
-                db.session.scalar(
-                    db.select(db.func.count(Threat.id)).filter(Threat.status == "Open")
-                )
-                or 0
-            )
-            investigating = (
-                db.session.scalar(
-                    db.select(db.func.count(Threat.id)).filter(
-                        Threat.status == "Investigating"
-                    )
-                )
-                or 0
-            )
-            contained = (
-                db.session.scalar(
-                    db.select(db.func.count(Threat.id)).filter(
-                        Threat.status == "Contained"
-                    )
-                )
-                or 0
-            )
-            closed = (
-                db.session.scalar(
-                    db.select(db.func.count(Threat.id)).filter(
-                        Threat.status == "Closed"
-                    )
-                )
-                or 0
-            )
-            false_positive = (
-                db.session.scalar(
-                    db.select(db.func.count(Threat.id)).filter(
-                        Threat.status == "False Positive"
-                    )
-                )
-                or 0
-            )
+            open_count = ThreatRepository.count_by_status("Open")
+            investigating = ThreatRepository.count_by_status("Investigating")
+            contained = ThreatRepository.count_by_status("Contained")
+            closed = ThreatRepository.count_by_status("Closed")
+            false_positive = ThreatRepository.count_by_status("False Positive")
 
             # Count indicator types
             indicator_type_counts = {}
@@ -252,18 +191,11 @@ class ThreatService:
 
             for ind_type in INDICATOR_TYPES:
                 indicator_type_counts[ind_type] = (
-                    db.session.scalar(
-                        db.select(db.func.count(Threat.id)).filter(
-                            Threat.indicator_type == ind_type
-                        )
-                    )
-                    or 0
+                    ThreatRepository.count_by_indicator_type(ind_type)
                 )
 
             # Get last updated timestamp
-            last_updated_dt = db.session.scalar(
-                db.select(db.func.max(Threat.updated_at))
-            )
+            last_updated_dt = ThreatRepository.latest_updated()
             last_updated_str = None
             if last_updated_dt:
                 if last_updated_dt.tzinfo is None:

@@ -126,6 +126,31 @@ The API layer exposes the services via clean HTTP endpoints using **Flask-RESTX*
   - `GET /stats` — Compile operational telemetry dashboard statistics.
   - `GET /health` — Get vitality metrics checking system uptime and database connectivity.
 
+## Production Deployment & Operational Readiness
+
+OpsForge includes production-hardened configurations for secure and scalable deployments:
+
+### 1. Request Logging & Correlation
+- **Request IDs**: Middleware generates a unique UUID `X-Request-ID` for every incoming request and appends it to the Flask context `g`.
+- **Response Headers**: Automatically attaches `X-Request-ID` and `X-OpsForge-Version` to every outgoing response.
+- **Trace Logs**: All request paths, verbs, IPs, response statuses, and execution times (ms) are logged on the application-scoped `opsforge` logger, including the Request ID for easy log aggregation and tracing.
+
+### 2. Cross-Origin Resource Sharing (CORS)
+CORS rules are environment-driven:
+- **Development**: Allows localhost origins (`http://localhost:3000`, etc.).
+- **Production**: Wildcards are disabled. Origins are restricted to a whitelist defined in the `CORS_ALLOWED_ORIGINS` environment variable.
+
+### 3. Production WSGI Server (Gunicorn)
+- **WSGI Entrypoint**: Mounts the app factory via `wsgi.py`.
+- **Gunicorn configuration**: Standardized in `gunicorn.conf.py` setting worker counts (adjusted to CPU cores), timeout, binding (`0.0.0.0:8000`), logging, and graceful shutdown (30 seconds).
+- **Startup**:
+  ```bash
+  export APP_ENV="production"
+  export SECRET_KEY="your-secure-secret-key"
+  export DATABASE_URL="postgresql://user:pass@host:port/db"
+  gunicorn -c gunicorn.conf.py wsgi:app
+  ```
+
 ## Future Enhancements
 - User and role authentication (RBAC).
 - Security logging and SIEM integration.

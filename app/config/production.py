@@ -11,19 +11,10 @@ class ProductionConfig(BaseConfig):
     TESTING = False
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
 
-
-# Validate configuration only if it is the active environment config
-if os.environ.get("APP_ENV", "development").lower() == "production":
-    db_url = os.environ.get("DATABASE_URL")
-    if not db_url:
-        raise ValueError(
-            "Configuration Error: DATABASE_URL environment variable is missing. "
-            "A valid PostgreSQL connection URL is required for production."
-        )
-
-    secret_key = os.environ.get("SECRET_KEY")
-    if not secret_key:
-        raise ValueError(
-            "Configuration Error: SECRET_KEY environment variable is missing. "
-            "A valid secret key is required for production."
-        )
+    # Restrict wildcard and configure specific whitelisted origins in production
+    allowed_origins = os.environ.get(
+        "CORS_ALLOWED_ORIGINS", "https://opsforge.internal"
+    ).split(",")
+    CORS_RESOURCES = {
+        r"/*": {"origins": [orig.strip() for orig in allowed_origins if orig.strip()]}
+    }
