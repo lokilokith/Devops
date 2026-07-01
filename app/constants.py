@@ -1,11 +1,17 @@
 """OpsForge Constants.
 
-Centralizes all system-wide enum values, pagination defaults, and configurations.
+Defines system-wide constants, enums, and pagination limits.
 """
 
-THREAT_LEVELS = ["low", "medium", "high", "critical"]
-THREAT_STATUSES = ["Open", "Investigating", "Contained", "Closed", "False Positive"]
+# Indicator Types
 INDICATOR_TYPES = ["ip", "domain", "hash", "url"]
 
-DEFAULT_PAGE = 1
-DEFAULT_LIMIT = 20
+# Threat Levels
+THREAT_LEVELS = ["low", "medium", "high", "critical"]
+
+# Threat Status Values
+THREAT_STATUSES = ["Open", "Investigating", "Contained", "Closed", "False Positive"]
+
+# Pagination Configurations
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 100

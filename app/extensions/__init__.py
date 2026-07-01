@@ -1,6 +1,6 @@
 """OpsForge Flask Extensions.
 
-Instantiates database and migration extensions to be registered by the application factory.
+Instantiates SQLAlchemy and Migrate extensions to be initialized in create_app.
 """
 
 from flask_sqlalchemy import SQLAlchemy

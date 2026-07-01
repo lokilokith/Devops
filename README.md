@@ -65,35 +65,24 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Environment Variables
+### 3. Configuration & Environment Variables
 Copy `.env.example` to `.env` (which is gitignored) and configure variables:
 - `APP_ENV`: Set to `development`, `testing`, or `production`.
-- `DATABASE_URL`: Connection string (e.g. `postgresql://user:password@localhost:5432/opsforge`).
+- `DATABASE_URL`: Connection string (required for `development` and `production`, e.g. `postgresql://user:password@localhost:5432/opsforge`).
 - `SECRET_KEY`: Security secret string.
 
-### 4. Database Migrations
-Initialize and run migrations (requires active PostgreSQL DB):
+### 4. Application Startup
+Start the application using the main entry point:
 ```bash
+# On Windows PowerShell:
+$env:APP_ENV="development"
+$env:DATABASE_URL="postgresql://postgres:postgres@localhost:5432/opsforge"
+python run.py
+
+# On Unix:
 export APP_ENV="development"
-flask db init
-flask db migrate -m "Initial migration"
-flask db upgrade
-```
-
-### 5. Running the Application
-```bash
-export APP_ENV="development"
-flask run
-```
-
-### 6. Accessing Swagger UI
-When the server is running, navigate to:
-[http://127.0.0.1:5000/docs](http://127.0.0.1:5000/docs) to access Swagger UI documentation.
-
-### 7. Running Tests
-Run tests using pytest (uses an in-memory database context, no local DB required):
-```bash
-pytest -v
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/opsforge"
+python run.py
 ```
 
 ## Future Enhancements

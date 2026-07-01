@@ -7,9 +7,9 @@ import logging
 import sys
 
 
-def setup_logging(debug: bool = False) -> None:
-    """Configures system-wide console logging with custom format."""
-    # Remove existing handlers to avoid duplicate logs
+def init_logging(debug: bool = False) -> None:
+    """Initializes structured console logging once for the application."""
+    # Clear any existing root handlers to prevent duplicated logs
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
 

@@ -1,7 +1,4 @@
-"""OpsForge Configuration Loader.
-
-Loads the environment config class dynamically to prevent side-effects from inactive environments.
-"""
+"""OpsForge Configuration Loader."""
 
 import os
 
