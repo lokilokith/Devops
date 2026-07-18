@@ -1,0 +1,1 @@
+"""Resources feature service placeholder."""

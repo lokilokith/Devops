@@ -1,0 +1,1 @@
+"""Identity feature routes placeholder."""

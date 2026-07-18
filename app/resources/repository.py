@@ -1,0 +1,1 @@
+"""Resources feature repository placeholder."""

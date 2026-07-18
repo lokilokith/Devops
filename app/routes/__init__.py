@@ -8,7 +8,7 @@ from flask_restx import Api
 from app.routes.threat_routes import ns as threat_ns
 from app.routes.stats_routes import ns as stats_ns
 from app.routes.health_routes import ns as health_ns
-from app.utils.exceptions import (
+from app.shared.exceptions import (
     ValidationException,
     ThreatNotFoundException,
     InvalidStatusTransition,
@@ -100,9 +100,9 @@ class CustomApi(Api):
 
 api = CustomApi(
     blueprint,
-    title="OpsForge Threat Intelligence Management API",
+    title="OpsForge Platform API",
     version="0.1.0",
-    description="A portfolio-quality DevSecOps Threat Intelligence Management Platform API",
+    description="A portfolio-quality DevSecOps backend foundation for OpsForge.",
     doc="/docs",
     add_specs=True,
 )

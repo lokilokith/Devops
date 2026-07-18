@@ -1,114 +1,59 @@
-# Architecture Blueprint - OpsForge System Architecture
+# Architecture Blueprint - OpsForge
 
-This document describes the architectural layout, entity specifications, repository design, and business layer workflows in OpsForge.
+This document captures the frozen architectural model for OpsForge. The codebase is intentionally split into infrastructure, shared utilities, domain concepts, and isolated feature packages.
 
----
-
-## Data Access Architecture Flow
-
-The persistence architecture follows the **Repository Pattern** to separate data access logic from core business services:
+## Layering Model
 
 ```text
-Service Layer (Manages Transactions & Transitions)
-       ↓
-Repository Layer (Encapsulates SQLAlchemy queries)
-       ↓
-Model Layer (Defines database schema, indices, enums)
-       ↓
-PostgreSQL / SQLite Database
+Routes -> Services -> Repositories -> Models -> Database
 ```
 
----
+Infrastructure, shared helpers, and domain concepts may be imported by features. Feature packages must not import one another’s internal implementation.
 
-## 1. Threat Entity Specification
+## Package Responsibilities
 
-The `Threat` database model is declared in [app/models/threat.py](file:///l:/DOWNLOADS/Devops/opsforge/app/models/threat.py) and maps to the `threats` table.
+### `platform/`
+Infrastructure only. This package owns configuration, extension initialization, logging, middleware, lifecycle hooks, and security scaffolding.
 
-### Fields and Schema Definition
+### `shared/`
+Reusable cross-cutting helpers, including database access, exceptions, validators, schemas, responses, decorators, helpers, and utilities.
 
-* **`id`**: `Integer` (Primary Key, Auto-increment).
-* **`indicator`**: `String(255)` (Indexed, Not Null) — The IP address, domain name, file hash, or URL identifier.
-* **`indicator_type`**: `Enum` (Not Null) — Must be one of: `ip`, `domain`, `hash`, `url`.
-* **`threat_level`**: `Enum` (Indexed, Not Null) — Must be one of: `low`, `medium`, `high`, `critical`.
-* **`confidence`**: `Integer` (Not Null) — Numeric score between `0` and `100`.
-* **`mitre_attack`**: `String(50)` (Nullable) — MITRE ATT&CK technique reference ID (e.g. `T1078`).
-* **`source`**: `String(100)` (Not Null) — Source feed or analyst team reporting the indicator.
-* **`analyst_notes`**: `Text` (Nullable) — Diagnostic commentary or analyst findings.
-* **`assigned_analyst`**: `String(100)` (Nullable) — Username of the assigned responder.
-* **`status`**: `Enum` (Indexed, Not Null, Default: `Open`) — Must be one of: `Open`, `Investigating`, `Contained`, `Closed`, `False Positive`.
-* **`tags`**: `JSON` (Nullable) — Array of tags for categorization (e.g., `["apt", "ransomware"]`).
-* **`first_seen`**: `DateTime(timezone=True)` (Nullable) — Earliest time indicator was logged.
-* **`last_seen`**: `DateTime(timezone=True)` (Nullable) — Most recent activity timestamp.
-* **`created_at`**: `DateTime(timezone=True)` (Indexed, Not Null) — Timestamp of creation, populated automatically.
-* **`updated_at`**: `DateTime(timezone=True)` (Not Null) — Timestamp of last modification, updated automatically.
+### `domain/`
+Business concepts only. This package is reserved for constants, enums, events, interfaces, and policies with no Flask or SQLAlchemy dependency.
 
-### Database Indexing Strategy
-To optimize search performance and range queries for dashboards, indices are placed on:
-- `indicator` (Frequent lookup index)
-- `status` (Queue filtering)
-- `threat_level` (Triage sorting)
-- `created_at` (Timeline queries)
+### Feature Packages
+`identity/`, `roles/`, `resources/`, `access/`, `approval/`, and `audit/` are symmetrical feature boundaries. Each feature is expected to expose the same internal structure:
 
----
+```text
+feature/
+    __init__.py
+    models.py
+    repository.py
+    service.py
+    routes.py
+    schemas.py
+    validators.py
+    exceptions.py
+```
 
-## 2. Repository Layer Design
+## Dependency Rules
 
-The repository is defined in [app/repositories/threat_repository.py](file:///l:/DOWNLOADS/Devops/opsforge/app/repositories/threat_repository.py).
+Allowed dependency path:
 
-### Core Responsibilities
-- **Data Access Encapsulation**: Translates high-level query needs into database-specific SQLAlchemy query commands.
-- **Strict Separation of Concerns**: The repository performs queries and CRUD operations but does not manage transactions (no `db.session.commit()` or `db.session.rollback()`) and implements zero business validations.
-- **Unification**: All domain-specific data operations flow through this interface.
+```text
+Routes -> Services -> Repositories -> Models -> Database
+```
 
-### Method Signatures
-- **`create(threat: Threat) -> Threat`**: Adds a new threat to the database context.
-- **`find_by_id(threat_id: int) -> Threat`**: Fetches a single record by primary key.
-- **`find_all() -> list[Threat]`**: Fetches all threat records.
-- **`find_by_status(status: str) -> list[Threat]`**: Filters threats by status.
-- **`find_by_indicator_type(indicator_type: str) -> list[Threat]`**: Filters threats by indicator type.
-- **`search(query_str: str) -> list[Threat]`**: Partial match text search on indicators or sources.
-- **`update(threat: Threat) -> Threat`**: Adds an updated threat object to the current session.
-- **`delete(threat: Threat) -> None`**: Marks a threat record for deletion.
-- **`count() -> int`**: Counts total threat records.
-- **`paginate(filters: dict, page: int, limit: int, sort: str, order: str) -> Pagination`**: Handles filtered, sorted, windowed offsets.
+Also allowed:
+- Feature code -> `shared/`
+- Feature code -> `platform/`
+- Feature code -> `domain/`
 
----
+Not allowed:
+- Feature-to-feature imports
+- Reverse layer dependencies
+- Flask or SQLAlchemy code inside `domain/`
 
-## 3. Business Layer & Service Orchestration
+## Validation Expectations
 
-The service layer is defined in [app/services/threat_service.py](file:///l:/DOWNLOADS/Devops/opsforge/app/services/threat_service.py).
-
-### Core Responsibilities
-- **Business Logic & Validations**: Enforces domain validations (e.g. confidence ratings bounded to 0-100, indicator type checks) before records are sent to the persistence layer.
-- **Workflow State Control**: Enforces the **Threat Status State Machine**, validating transition paths. Illegal paths are rejected with custom exceptions.
-- **Transaction Management**: Owns transaction boundaries (`db.session.commit()` and `db.session.rollback()`). If an operation fails, the transaction is rolled back and a `DatabaseOperationException` is raised.
-- **Metrics Assembly**: Orchestrates query counts to compute operational dashboard statistics.
-
-### Workflow State Transitions
-The system enforces a strict state machine path:
-- **`Open ──> Investigating`**
-- **`Investigating ──> Contained`** or **`False Positive`**
-- **`Contained ──> Closed`**
-- **`False Positive ──> Closed`**
-- *All other paths (including re-opening a Closed threat) are rejected with an `InvalidStatusTransition` error.*
-
----
-
-## 4. Production Hardening & Operational Readiness
-
-OpsForge implements several critical layers to prepare the application for secure, containerized production deployments:
-
-### Middleware & Logging Pipeline
-- **Request Tracking**: The middleware dynamically generates a UUID `X-Request-ID` (unless supplied by an upstream reverse proxy) and binds it to the Flask global request lifecycle `g.request_id`.
-- **Response Headers**: The request ID is automatically attached to the `X-Request-ID` response header. Additionally, `X-OpsForge-Version` is injected into every response, read from the root `VERSION` file.
-- **Request/Response Logging**: Middleware captures incoming client IPs, HTTP verbs, paths, response codes, and elapsed execution times in milliseconds. These details are written to the application-scoped `opsforge` logger, including the Request ID in every log entry for tracing.
-
-### Configuration Hardening
-- **Strict Startup Validation**: Environment variables (`DATABASE_URL`, `SECRET_KEY`, and `APP_ENV`) are validated upon bootstrap. Missing keys or unsupported environments trigger a `ConfigurationException` and halt startup.
-
-### Security and CORS
-- **Flask-CORS**: Integrates environment-driven Cross-Origin Resource Sharing. In development, localhost origins are allowed; in production, wildcard origins are disabled, and origins must match the comma-separated `CORS_ALLOWED_ORIGINS` whitelist.
-
-### WSGI & Gunicorn
-- **wsgi.py Entrypoint**: Decouples the application creation from development servers, loading settings and returning the Flask `app` instance.
-- **gunicorn.conf.py**: Standardizes production server worker processes (calculated dynamically as `multiprocessing.cpu_count() * 2 + 1`), graceful shutdown timeouts (30 seconds), and unified logs.
+Each architecture change should be validated with the full test suite, application startup under `APP_ENV=testing`, and import resolution checks. The repository currently passes the full suite and boots successfully under the testing environment.

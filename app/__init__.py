@@ -5,9 +5,9 @@ Initializes the Flask application instance and boot procedures.
 
 import logging
 from flask import Flask
-from app.config import get_config
-from app.config.logging import init_logging
-from app.extensions import db, migrate
+from app.platform.config import get_config
+from app.platform.logging import init_logging
+from app.platform.extensions import db, migrate
 from app.routes import blueprint as api_bp
 from app.utils.errors import register_error_handlers
 
@@ -38,7 +38,7 @@ def create_app() -> Flask:
     CORS(app, resources=app.config.get("CORS_RESOURCES"))
 
     # Register logging and Request ID middleware
-    from app.middleware import register_middleware
+    from app.platform.middleware import register_middleware
 
     register_middleware(app)
 

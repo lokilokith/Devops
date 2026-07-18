@@ -1,160 +1,70 @@
 # OpsForge
 
-## Project Overview
-OpsForge is a portfolio-quality DevSecOps platform demonstrating how a secure Threat Intelligence Management API is built, containerized, and managed using clean software architecture patterns and modern DevOps workflows.
+OpsForge is a production-quality Flask backend foundation for future enterprise feature work. The repository is intentionally architecture-first: it preserves a clean route -> service -> repository -> model -> database flow while keeping infrastructure, shared utilities, and business concepts separated.
 
-## Problem Statement
-Traditional threat intelligence sharing is often chaotic, unstandardized, and lacking secure workflow controls. OpsForge addresses this by delivering a production-grade api featuring rigorous state-transition rules, comprehensive schemas, database abstraction, and fully integrated API documentation.
+## Architecture Overview
 
-## Architecture
-The API enforces a unidirectional data flow separating concerns into:
-`Client ──> Flask-RESTX Route ──> Service Layer ──> Repository Layer ──> SQLAlchemy Model ──> Database`
+The frozen package layout is:
 
-## Features
-- **Threat Intel CRUD**: Standardized lifecycle management for threat indicators (IP, domain, hash, URL).
-- **State Transition Machine**: Enforces secure transitions (Open -> Investigating -> Contained -> Closed). Re-opening ticket states is blocked by business logic.
-- **Metrics Intelligence**: Endpoint yielding aggregate metrics for high-level triage insights.
-- **Health Telemetry**: Returns service and database status alongside live uptime statistics.
-- **Self-Documenting API**: Live Swagger UI exposing endpoint specifications.
-
-## Technology Stack
-- **Web Framework**: Flask 3.x
-- **API Documentation & Routing**: Flask-RESTX 1.3.x
-- **ORM & Database**: SQLAlchemy & PostgreSQL
-- **Migrations**: Flask-Migrate & Alembic
-- **Formatting & Testing**: Black, Ruff, and Pytest
-
-## Folder Structure
 ```text
-opsforge/
-├── app/                  # Application core
-│   ├── config/           # Environment configuration loaders
-│   ├── models/           # SQLAlchemy schemas & structures
-│   ├── routes/           # RESTX namespaces & blueprints
-│   ├── schemas/          # Input/output serialization layers
-│   ├── services/         # Business logic & Repository implementation
-│   ├── utils/            # Global errors & exceptions
-│   └── constants.py      # Enums and configuration defaults
-├── docs/                 # System documentation blueprints
-├── tests/                # Domain-isolated test suites
-├── Makefile              # Scaffolding operations
-├── pyproject.toml        # Ruff/Black config & packaging metadata
-└── requirements.txt      # Core application requirements
+app/
+core/ or platform/   # Infrastructure only: config, extensions, logging, middleware, security, lifecycle
+shared/              # Reusable helpers, database access, exceptions, validators, schemas, responses
+domain/              # Business concepts only: constants, enums, events, interfaces, policies
+identity/            # Feature boundary
+roles/               # Feature boundary
+resources/           # Feature boundary
+access/              # Feature boundary
+approval/            # Feature boundary
+
+tests/
+docs/
 ```
 
-## Roadmap
-- **Phase 1**: Working Python Flask API Scaffold (Current)
-- **Phase 2**: Docker containerization & Docker Compose setup
-- **Phase 3**: Telemetry exporters (Prometheus & Grafana)
-- **Phase 4**: Security scanners (Trivy, Bandit, Gitleaks)
-- **Phase 5**: GitHub Actions CI/CD workflows
+`platform/` is the canonical name in this repository. `core/` is documented as an acceptable synonym, but renaming would add churn without improving runtime behavior.
 
-## Local Development
+## Folder Responsibilities
 
-### 1. Setup Virtual Environment
-```bash
-python -m venv venv
-# On Windows PowerShell:
-.\venv\Scripts\Activate.ps1
-# On Unix:
-source venv/bin/activate
+- `app/`: application bootstrap and API assembly.
+- `platform/`: infrastructure only, including configuration, extension setup, logging, middleware, lifecycle hooks, and security scaffolding.
+- `shared/`: reusable cross-cutting code shared across features.
+- `domain/`: pure business concepts with no Flask, SQLAlchemy, or RESTX dependencies.
+- `identity/`, `roles/`, `resources/`, `access/`, `approval/`, `audit/`: isolated feature packages.
+- `tests/`: integration and unit tests for the current architecture.
+- `docs/`: architecture and development documentation.
+
+## Dependency Rules
+
+Allowed flow:
+
+Routes -> Services -> Repositories -> Models -> Database
+
+Feature packages may depend on `shared/`, `platform/`, and `domain/`, but never on another feature package’s internal implementation.
+
+## Development Guidelines
+
+- Keep one responsibility per package.
+- Prefer singular file names such as `service.py`, `repository.py`, `routes.py`, `schemas.py`, `validators.py`, and `exceptions.py` inside each feature.
+- Centralize reusable logic in `shared/`.
+- Keep infrastructure code in `platform/`.
+- Keep business concepts in `domain/`.
+- Preserve the existing layered flow and avoid feature-to-feature imports.
+
+## Feature Module Template
+
+```text
+feature_name/
+    __init__.py
+    models.py
+    repository.py
+    service.py
+    routes.py
+    schemas.py
+    validators.py
+    exceptions.py
 ```
 
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+## Validation
 
-### 3. Configuration & Environment Variables
-Copy `.env.example` to `.env` (which is gitignored) and configure variables:
+The repository is validated through the full pytest suite and startup checks under `APP_ENV=testing`. Any architecture change should be followed by the same validation sequence before further edits.
 - `APP_ENV`: Set to `development`, `testing`, or `production`.
-- `DATABASE_URL`: Connection string (required for `development` and `production`, e.g. `postgresql://user:password@localhost:5432/opsforge`).
-- `SECRET_KEY`: Security secret string.
-
-### 4. Application Startup
-Start the application using the main entry point:
-```bash
-# On Windows PowerShell:
-$env:APP_ENV="development"
-$env:DATABASE_URL="postgresql://postgres:postgres@localhost:5432/opsforge"
-python run.py
-
-# On Unix:
-export APP_ENV="development"
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/opsforge"
-python run.py
-```
-
-### 5. Database Migrations
-Migrations are managed via Flask-Migrate and Alembic:
-```bash
-# Generate a new migration script (e.g. after schema changes)
-export APP_ENV="development"
-flask db migrate -m "Description of change"
-
-# Apply migrations to database
-flask db upgrade
-```
-
-## Persistence Layer & Repository Overview
-OpsForge decouples data storage definitions from data access logic using the Repository Pattern:
-- **Models**: Located in `app/models/threat.py`, defining the core `Threat` table schema, index optimizations, and portable JSON tags column.
-- **Repository Interface**: Located in `app/repositories/threat_repository.py`. It communicates with SQLAlchemy to execute CRUD operations (e.g. `create()`, `find_by_id()`, `update()`, `delete()`, `paginate()`).
-- **Transaction Isolation**: The repository layer does NOT commit or rollback transactions (leaving boundary management to the service layer).
-
-## Business Layer & Service Overview
-The Service Layer coordinates all domain-level and transactional activities:
-- **Service Interface**: Located in `app/services/threat_service.py` (`ThreatService`). It orchestrates business workflows and validates indicator values.
-- **Validations & Exceptions**: Custom business logic in `app/utils/validators.py` and domain exception classes in `app/utils/exceptions.py` reject invalid inputs (e.g. out-of-bounds confidence rating, invalid threat enums).
-- **Transaction Management**: The service layer owns database commits and rollbacks. In case of database operations failure, it automatically rolls back active session transactions and raises `DatabaseOperationException`.
-- **Workflow State Machine**: Controls status state transitions strictly according to the defined lifecycle: `Open ──> Investigating ──> Contained/False Positive ──> Closed`.
-
-## REST API Layer & Swagger Overview
-The API layer exposes the services via clean HTTP endpoints using **Flask-RESTX**:
-- **Swagger Documentation**: Self-documenting API accessible at `/docs` when running the application.
-- **Unified JSON Format**:
-  - Success Envelope: `{"success": true, "message": "...", "data": {...}}`
-  - Failure Envelope: `{"success": false, "message": "...", "errors": [...]}`
-- **Exposed Endpoints**:
-  - `POST /threats` — Create a new validated threat indicator.
-  - `GET /threats` — Retrieve a filtered, sorted, paginated list of indicators.
-  - `GET /threats/search` — Search threat indicators by partial match on indicator or source.
-  - `GET /threats/<id>` — Retrieve details of a specific indicator.
-  - `PUT /threats/<id>` — Overwrite all fields of a threat indicator.
-  - `PATCH /threats/<id>/status` — Trigger status lifecycle changes and analyst assignments.
-  - `DELETE /threats/<id>` — Delete a threat record.
-  - `GET /stats` — Compile operational telemetry dashboard statistics.
-  - `GET /health` — Get vitality metrics checking system uptime and database connectivity.
-
-## Production Deployment & Operational Readiness
-
-OpsForge includes production-hardened configurations for secure and scalable deployments:
-
-### 1. Request Logging & Correlation
-- **Request IDs**: Middleware generates a unique UUID `X-Request-ID` for every incoming request and appends it to the Flask context `g`.
-- **Response Headers**: Automatically attaches `X-Request-ID` and `X-OpsForge-Version` to every outgoing response.
-- **Trace Logs**: All request paths, verbs, IPs, response statuses, and execution times (ms) are logged on the application-scoped `opsforge` logger, including the Request ID for easy log aggregation and tracing.
-
-### 2. Cross-Origin Resource Sharing (CORS)
-CORS rules are environment-driven:
-- **Development**: Allows localhost origins (`http://localhost:3000`, etc.).
-- **Production**: Wildcards are disabled. Origins are restricted to a whitelist defined in the `CORS_ALLOWED_ORIGINS` environment variable.
-
-### 3. Production WSGI Server (Gunicorn)
-- **WSGI Entrypoint**: Mounts the app factory via `wsgi.py`.
-- **Gunicorn configuration**: Standardized in `gunicorn.conf.py` setting worker counts (adjusted to CPU cores), timeout, binding (`0.0.0.0:8000`), logging, and graceful shutdown (30 seconds).
-- **Startup**:
-  ```bash
-  export APP_ENV="production"
-  export SECRET_KEY="your-secure-secret-key"
-  export DATABASE_URL="postgresql://user:pass@host:port/db"
-  gunicorn -c gunicorn.conf.py wsgi:app
-  ```
-
-## Future Enhancements
-- User and role authentication (RBAC).
-- Security logging and SIEM integration.
-- Automated pipeline deployment.
-
-## License
-MIT License - see `LICENSE` for details.

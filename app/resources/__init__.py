@@ -1,0 +1,1 @@
+"""Resources feature package."""

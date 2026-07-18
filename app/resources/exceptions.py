@@ -1,0 +1,1 @@
+"""Resources feature exceptions placeholder."""
