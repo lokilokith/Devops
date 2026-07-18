@@ -6,11 +6,14 @@ This module defines the Role entity for the local authorization domain.
 from __future__ import annotations
 
 import enum
+from datetime import datetime
+from uuid import UUID
 
-from sqlalchemy import Enum, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, Enum, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import Uuid
 
-from app.shared.database import BaseModel
+from app.shared.database import Base, BaseModel, utcnow
 
 
 class RoleType(str, enum.Enum):
@@ -69,4 +72,51 @@ class Role(BaseModel):
     )
 
 
-__all__ = ["Role", "RoleStatus", "RoleType"]
+class UserRole(Base):
+    """Membership association between a User and a Role.
+    
+    This is the authoritative many-to-many bridge that grants a specific role
+    to a specific user.
+    """
+
+    __tablename__ = "user_roles"
+
+    user_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    role_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("roles.id", ondelete="RESTRICT"),
+        primary_key=True,
+        index=True,
+    )
+    assigned_by_user_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+        index=True,
+    )
+
+    user: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[user_id],
+    )
+    role: Mapped["Role"] = relationship(
+        "Role",
+        foreign_keys=[role_id],
+    )
+    assigned_by_user: Mapped["User | None"] = relationship(
+        "User",
+        foreign_keys=[assigned_by_user_id],
+    )
+
+
+__all__ = ["Role", "RoleStatus", "RoleType", "UserRole"]
