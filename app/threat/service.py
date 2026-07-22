@@ -1,20 +1,20 @@
 """OpsForge Threat Service.
 
-Orchestrates business workflows, validates data parameters, and manages database transactions.
+Orchestrates business workflows, validates data
+parameters, and manages database transactions.
 """
 
 import logging
-from datetime import datetime, timezone
-from app.models.threat import Threat
-from app.repositories.threat_repository import ThreatRepository
+from datetime import timezone
+
 from app.extensions import db
-from app.utils.exceptions import (
-    ValidationException,
-    ThreatNotFoundException,
-    InvalidStatusTransition,
-    DatabaseOperationException,
-)
-from app.utils.validators import validate_threat_data, validate_create_threat_data
+from app.threat.models import Threat
+from app.threat.repository import ThreatRepository
+from app.utils.exceptions import (DatabaseOperationException,
+                                  InvalidStatusTransition,
+                                  ThreatNotFoundException)
+from app.utils.validators import (validate_create_threat_data,
+                                  validate_threat_data)
 
 logger = logging.getLogger("opsforge")
 
@@ -144,7 +144,8 @@ class ThreatService:
         valid_destinations = allowed_transitions.get(current_status, [])
         if new_status not in valid_destinations:
             raise InvalidStatusTransition(
-                f"Illegal transition pathway: cannot change status from '{current_status}' to '{new_status}'."
+                f"Illegal transition pathway: cannot change status"
+                f" from '{current_status}' to '{new_status}'."
             )
 
         # Apply update
@@ -221,3 +222,4 @@ class ThreatService:
             raise DatabaseOperationException(
                 f"Failed to compile threat metrics: {str(e)}"
             )
+

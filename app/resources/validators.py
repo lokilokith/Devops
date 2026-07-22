@@ -1,1 +1,2 @@
 """Resources feature validators placeholder."""
+

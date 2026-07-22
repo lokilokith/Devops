@@ -1,6 +1,7 @@
 """OpsForge Production Configuration."""
 
 import os
+
 from app.config.base import BaseConfig
 
 
@@ -18,3 +19,4 @@ class ProductionConfig(BaseConfig):
     CORS_RESOURCES = {
         r"/*": {"origins": [orig.strip() for orig in allowed_origins if orig.strip()]}
     }
+

@@ -3,11 +3,12 @@
 Implements request logging, Request ID generation, and header injection.
 """
 
-import time
-import uuid
 import logging
 import os
-from flask import Flask, request, g
+import time
+import uuid
+
+from flask import Flask, g, request
 
 logger = logging.getLogger("opsforge")
 
@@ -43,9 +44,12 @@ def register_middleware(app: Flask) -> None:
         req_id = getattr(g, "request_id", "unknown-id")
 
         # Log HTTP request details
+        protocol = request.environ.get("SERVER_PROTOCOL")
         logger.info(
-            f"[{req_id}] {request.remote_addr} - \"{request.method} {request.path} {request.environ.get('SERVER_PROTOCOL')}\" "
-            f"{response.status_code} ({duration_ms:.2f}ms)"
+            f"[{req_id}] {request.remote_addr}"
+            f' - "{request.method} {request.path}'
+            f' {protocol}"'
+            f" {response.status_code} ({duration_ms:.2f}ms)"
         )
 
         # Attach custom headers
@@ -53,3 +57,4 @@ def register_middleware(app: Flask) -> None:
         response.headers["X-OpsForge-Version"] = version
 
         return response
+

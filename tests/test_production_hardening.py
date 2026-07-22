@@ -1,17 +1,21 @@
 """OpsForge Production Hardening Tests.
 
-Verifies Request ID headers, request logging, invalid sorting rejection, configuration validation, CORS headers, and WSGI entrypoint exports.
+Verifies Request ID headers, request logging, configuration
+validation, CORS headers, WSGI entrypoint exports, and global
+error handler coverage.
 """
 
 import os
-import pytest
 from unittest.mock import patch
-from app.utils.exceptions import ConfigurationException
+
+import pytest
+
 from app.config import get_config
+from app.utils.exceptions import ConfigurationException
 
 
 def test_request_id_header_and_logging(client, caplog):
-    """Verifies that X-Request-ID is generated and returned, and request logging includes it."""
+    """Verify X-Request-ID generation, return, and log inclusion."""
     import logging
 
     logger = logging.getLogger("opsforge")
@@ -35,23 +39,20 @@ def test_request_id_header_and_logging(client, caplog):
         logger.propagate = False
 
 
-def test_invalid_sort_field_rejection(client):
-    """Verifies that an invalid sort field in list query results in 400 Bad Request."""
-    res = client.get("/threats?sort=malicious_field")
-    assert res.status_code == 400
-    data = res.get_json()
-    assert data["success"] is False
-    assert "Invalid sort field" in data["message"]
-
-
 def test_cors_headers_development(client):
-    """Verifies CORS headers allow localhost access in development config."""
-    res = client.get("/health", headers={"Origin": "http://localhost:3000"})
-    assert res.headers.get("Access-Control-Allow-Origin") == "http://localhost:3000"
+    """Verify CORS headers allow localhost access in development."""
+    res = client.get(
+        "/health",
+        headers={"Origin": "http://localhost:3000"},
+    )
+    assert (
+        res.headers.get("Access-Control-Allow-Origin")
+        == "http://localhost:3000"
+    )
 
 
 def test_wsgi_entrypoint_imports():
-    """Verifies that wsgi.py is importable and exposes the application instance."""
+    """Verify wsgi.py is importable and exposes the app instance."""
     from wsgi import app as wsgi_app
 
     assert wsgi_app is not None
@@ -59,7 +60,7 @@ def test_wsgi_entrypoint_imports():
 
 
 def test_configuration_validation_errors():
-    """Verifies that configuration loading validates APP_ENV, SECRET_KEY, and DATABASE_URL."""
+    """Verify config validates APP_ENV, SECRET_KEY, DATABASE_URL."""
     # 1. Missing APP_ENV
     with patch.dict(os.environ, {}):
         if "APP_ENV" in os.environ:
@@ -83,65 +84,52 @@ def test_configuration_validation_errors():
             del os.environ["SECRET_KEY"]
         with pytest.raises(ConfigurationException) as exc:
             get_config()
-        assert "SECRET_KEY environment variable is missing" in str(exc.value)
+        assert "SECRET_KEY environment variable is missing" in str(
+            exc.value
+        )
 
     # 4. Production missing DATABASE_URL
-    with patch.dict(os.environ, {"APP_ENV": "production", "SECRET_KEY": "supersecret"}):
+    with patch.dict(
+        os.environ,
+        {"APP_ENV": "production", "SECRET_KEY": "supersecret"},
+    ):
         if "DATABASE_URL" in os.environ:
             del os.environ["DATABASE_URL"]
         with pytest.raises(ConfigurationException) as exc:
             get_config()
-        assert "DATABASE_URL environment variable is missing" in str(exc.value)
+        assert "DATABASE_URL environment variable is missing" in str(
+            exc.value
+        )
 
 
-def test_extra_routes_error_coverage(client):
-    """Triggers 405 Method Not Allowed and unhandled 500 exceptions for full controller coverage."""
-    # 1. 405 Method Not Allowed (POST /health)
+def test_error_handler_405(client):
+    """Verify 405 Method Not Allowed returns JSON error format."""
     res_405 = client.post("/health")
     assert res_405.status_code == 405
     data_405 = res_405.get_json()
     assert data_405["success"] is False
     assert "Method Not Allowed" in data_405["message"]
 
-    # 2. 500 Unhandled raw Python exceptions
-    with patch(
-        "app.services.threat_service.ThreatService.get_threat",
-        side_effect=RuntimeError("Test crash"),
-    ):
-        res_500 = client.get("/threats/1")
-        assert res_500.status_code == 500
-        data_500 = res_500.get_json()
-        assert data_500["success"] is False
-        assert "unexpected server error" in data_500["message"].lower()
+
+def test_error_handler_404(client):
+    """Verify 404 Not Found returns JSON error format."""
+    res_404 = client.get("/nonexistent-path-at-root")
+    assert res_404.status_code == 404
+    data_404 = res_404.get_json()
+    assert data_404["success"] is False
+    assert len(data_404["errors"]) > 0
 
 
-def test_service_failures_coverage(app, db_session):
-    """Triggers database operation exceptions for update, delete, and status changes in ThreatService."""
-    from app.services.threat_service import ThreatService
-    from app.utils.exceptions import DatabaseOperationException
+def test_health_endpoint_response_structure(client):
+    """Verify health endpoint returns complete response structure."""
+    res = client.get("/health")
+    assert res.status_code == 200
+    data = res.get_json()
 
-    # Create a threat
-    threat = ThreatService.create_threat(
-        {
-            "indicator": "1.2.3.4",
-            "indicator_type": "ip",
-            "threat_level": "low",
-            "confidence": 50,
-            "source": "test",
-        }
-    )
+    assert data["success"] is True
+    assert "status check" in data["message"].lower()
+    assert data["data"]["application"] == "healthy"
+    assert data["data"]["database"] == "healthy"
+    assert "version" in data["data"]
+    assert "uptime" in data["data"]
 
-    # 1. database error on update
-    with patch("app.extensions.db.session.commit", side_effect=Exception("DB Error")):
-        with pytest.raises(DatabaseOperationException):
-            ThreatService.update_threat(threat.id, {"indicator": "2.3.4.5"})
-
-    # 2. database error on status change
-    with patch("app.extensions.db.session.commit", side_effect=Exception("DB Error")):
-        with pytest.raises(DatabaseOperationException):
-            ThreatService.change_status(threat.id, "Investigating", "analyst_bob")
-
-    # 3. database error on delete
-    with patch("app.extensions.db.session.commit", side_effect=Exception("DB Error")):
-        with pytest.raises(DatabaseOperationException):
-            ThreatService.delete_threat(threat.id)

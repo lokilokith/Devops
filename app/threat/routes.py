@@ -5,8 +5,9 @@ Exposes CRUD, search, pagination, and status changes for threat indicators.
 
 from flask import request
 from flask_restx import Namespace, Resource, fields, reqparse
-from app.services.threat_service import ThreatService
+
 from app.constants import INDICATOR_TYPES, THREAT_LEVELS, THREAT_STATUSES
+from app.threat.service import ThreatService
 
 ns = Namespace("threats", description="Threat intelligence indicator management")
 
@@ -260,7 +261,7 @@ class ThreatSearchResource(Resource):
 @ns.route("/<int:threat_id>")
 @ns.param("threat_id", "Unique database primary key identifier")
 class ThreatDetailResource(Resource):
-    """Resource managing read, update, and delete actions for specific threat instances."""
+    """Manage read, update, and delete for specific threats."""
 
     @ns.doc(
         "get_threat",
@@ -330,3 +331,4 @@ class ThreatStatusResource(Resource):
             "message": "Threat status updated successfully",
             "data": threat.to_dict(),
         }
+

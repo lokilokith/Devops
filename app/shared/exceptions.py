@@ -1,15 +1,10 @@
 """Shared exception entrypoints."""
 
-from app.utils.exceptions import (
-    ConfigurationException,
-    DatabaseException,
-    DatabaseOperationException,
-    InvalidStatusTransition,
-    OpsForgeException,
-    ResourceNotFoundException,
-    ThreatNotFoundException,
-    ValidationException,
-)
+from app.utils.exceptions import (ConfigurationException, DatabaseException,
+                                  DatabaseOperationException,
+                                  InvalidStatusTransition, OpsForgeException,
+                                  ResourceNotFoundException,
+                                  ThreatNotFoundException, ValidationException)
 
 __all__ = [
     "OpsForgeException",
@@ -23,16 +18,6 @@ __all__ = [
 ]
 """Shared exception entrypoints."""
 
-from app.utils.exceptions import (
-    ConfigurationException,
-    DatabaseException,
-    DatabaseOperationException,
-    InvalidStatusTransition,
-    OpsForgeException,
-    ResourceNotFoundException,
-    ThreatNotFoundException,
-    ValidationException,
-)
 
 __all__ = [
     "OpsForgeException",
@@ -44,3 +29,4 @@ __all__ = [
     "DatabaseException",
     "ConfigurationException",
 ]
+

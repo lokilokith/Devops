@@ -4,11 +4,12 @@ Defines the SQLAlchemy structure and schema for threat intelligence records.
 """
 
 from datetime import datetime, timezone
-from app.extensions import db
+
 from app.constants import INDICATOR_TYPES, THREAT_LEVELS, THREAT_STATUSES
+from app.extensions import db
 
 
-class Threat(db.Model):
+class Threat(db.Model):  # type: ignore[name-defined]
     """Threat model encapsulating indicator metadata, severity, and workflow state."""
 
     __tablename__ = "threats"
@@ -85,3 +86,4 @@ class Threat(db.Model):
     def __repr__(self) -> str:
         """String representation of the Threat model instance."""
         return f"<Threat {self.id}: {self.indicator_type} - {self.indicator}>"
+

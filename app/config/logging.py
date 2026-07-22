@@ -28,3 +28,4 @@ def init_logging(debug: bool = False) -> None:
     console_handler.setLevel(level)
 
     logger.addHandler(console_handler)
+

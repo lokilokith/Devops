@@ -6,8 +6,8 @@ Create Date: 2026-07-01 15:36:51.471321
 
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "8fbc37b7aa74"
@@ -106,3 +106,4 @@ def downgrade():
         sa.Enum(name="threat_level_enum").drop(connection, checkfirst=True)
         sa.Enum(name="threat_status_enum").drop(connection, checkfirst=True)
     # ### end Alembic commands ###
+

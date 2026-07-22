@@ -18,7 +18,8 @@ def validate_threat_data(data: dict) -> None:
                 raise ValueError()
         except (ValueError, TypeError):
             raise ValidationException(
-                f"Validation Error: Confidence '{confidence}' must be an integer between 0 and 100."
+                f"Validation Error: Confidence '{confidence}'"
+                f" must be an integer between 0 and 100."
             )
 
     # Indicator Type Check
@@ -47,7 +48,10 @@ def validate_threat_data(data: dict) -> None:
 
 
 def validate_create_threat_data(data: dict) -> None:
-    """Validates required properties are present and match domain constraints on creation."""
+    """Validate required properties and domain constraints.
+
+    Ensures all mandatory fields are present on creation.
+    """
     required_fields = [
         "indicator",
         "indicator_type",
@@ -62,3 +66,4 @@ def validate_create_threat_data(data: dict) -> None:
             )
 
     validate_threat_data(data)
+

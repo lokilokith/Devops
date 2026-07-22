@@ -34,9 +34,15 @@ class User(BaseModel):
         ),
     )
 
-    employee_id: Mapped[str] = mapped_column(String(50), nullable=False, unique=True, index=True)
-    username: Mapped[str] = mapped_column(String(80), nullable=False, unique=True, index=True)
-    email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True, index=True)
+    employee_id: Mapped[str] = mapped_column(
+        String(50), nullable=False, unique=True, index=True
+    )
+    username: Mapped[str] = mapped_column(
+        String(80), nullable=False, unique=True, index=True
+    )
+    email: Mapped[str] = mapped_column(
+        String(254), nullable=False, unique=True, index=True
+    )
     full_name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     title: Mapped[str | None] = mapped_column(String(120), nullable=True)
     manager_user_id: Mapped[UUID | None] = mapped_column(
@@ -71,3 +77,4 @@ class User(BaseModel):
 
 
 __all__ = ["User", "UserStatus"]
+

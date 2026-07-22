@@ -3,11 +3,13 @@
 Defines the health check namespace and database connectivity validation.
 """
 
-import time
 import os
+import time
+
 from flask import current_app
 from flask_restx import Namespace, Resource, fields
 from sqlalchemy import text
+
 from app.extensions import db
 
 # Namespace definition
@@ -94,3 +96,4 @@ class HealthResource(Resource):
                 "uptime": round(uptime, 2),
             },
         }
+

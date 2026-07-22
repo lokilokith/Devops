@@ -4,7 +4,8 @@ Defines the statistics telemetry endpoints using ThreatService.
 """
 
 from flask_restx import Namespace, Resource, fields
-from app.services.threat_service import ThreatService
+
+from app.threat.service import ThreatService
 
 ns = Namespace("stats", description="Threat intelligence aggregates and tallies")
 
@@ -76,3 +77,4 @@ class StatsResource(Resource):
             "message": "Global metrics calculated successfully",
             "data": stats,
         }
+

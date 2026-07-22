@@ -4,11 +4,12 @@ Loads the environment config class dynamically after strict environment validati
 """
 
 import os
+
 from app.utils.exceptions import ConfigurationException
 
 
 def get_config():
-    """Gets the configuration class associated with the active APP_ENV after strict validation."""
+    """Get config class for active APP_ENV after validation."""
     env = os.environ.get("APP_ENV")
     if not env:
         raise ConfigurationException(
@@ -29,7 +30,8 @@ def get_config():
     if env_lower in ["development", "production"] and not secret_key:
         raise ConfigurationException(
             "Configuration Error: SECRET_KEY environment variable is missing. "
-            "A secure secret key is required for execution in development and production environments."
+            "A secure secret key is required for execution"
+            " in development and production environments."
         )
 
     # Validate database URL for development and production
@@ -37,7 +39,9 @@ def get_config():
     if env_lower in ["development", "production"] and not db_url:
         raise ConfigurationException(
             "Configuration Error: DATABASE_URL environment variable is missing. "
-            "A valid database connection URL is required for execution in development and production environments."
+            "A valid database connection URL is required"
+            " for execution in development and production"
+            " environments."
         )
 
     if env_lower == "testing":
@@ -52,3 +56,4 @@ def get_config():
         from app.config.development import DevelopmentConfig
 
         return DevelopmentConfig
+

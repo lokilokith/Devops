@@ -15,4 +15,10 @@ graceful_timeout = 30
 loglevel = "info"
 accesslog = "-"
 errorlog = "-"
-access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" (Request-ID: %({X-Request-ID}i)s, duration: %(M)sms)'
+access_log_format = (
+    '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s'
+    ' "%(f)s" "%(a)s"'
+    " (Request-ID: %({X-Request-ID}i)s,"
+    " duration: %(M)sms)"
+)
+

@@ -3,11 +3,13 @@
 Encapsulates data access and persistence operations for the Threat model.
 """
 
-from app.models.threat import Threat
-from app.extensions import db
-from sqlalchemy import or_
-from app.utils.exceptions import ValidationException
 from datetime import datetime
+
+from sqlalchemy import or_
+
+from app.extensions import db
+from app.threat.models import Threat
+from app.utils.exceptions import ValidationException
 
 
 class ThreatRepository:
@@ -26,25 +28,25 @@ class ThreatRepository:
 
     @staticmethod
     def find_all() -> list[Threat]:
-        """Fetches all threat intelligence records from the database using SQLAlchemy 2.0 select."""
+        """Fetch all threat records using SQLAlchemy 2.0 select."""
         stmt = db.select(Threat)
         return list(db.session.execute(stmt).scalars().all())
 
     @staticmethod
     def find_by_status(status: str) -> list[Threat]:
-        """Queries threat records matching a specific status using SQLAlchemy 2.0 select."""
+        """Query threats matching a specific status."""
         stmt = db.select(Threat).filter(Threat.status == status)
         return list(db.session.execute(stmt).scalars().all())
 
     @staticmethod
     def find_by_indicator_type(indicator_type: str) -> list[Threat]:
-        """Queries threat records matching a specific indicator type using SQLAlchemy 2.0 select."""
+        """Query threats matching a specific indicator type."""
         stmt = db.select(Threat).filter(Threat.indicator_type == indicator_type)
         return list(db.session.execute(stmt).scalars().all())
 
     @staticmethod
     def search(query_str: str) -> list[Threat]:
-        """Performs a partial match search on indicator or source fields using SQLAlchemy 2.0 select."""
+        """Partial match search on indicator or source fields."""
         if not query_str:
             return []
         stmt = db.select(Threat).filter(
@@ -68,7 +70,7 @@ class ThreatRepository:
 
     @staticmethod
     def count() -> int:
-        """Returns the total number of threat intelligence records using SQLAlchemy 2.0 scalar count query."""
+        """Return total threat count via scalar count query."""
         stmt = db.select(db.func.count(Threat.id))
         return db.session.scalar(stmt) or 0
 
@@ -82,7 +84,7 @@ class ThreatRepository:
 
     @classmethod
     def paginate(cls, filters: dict, page: int, limit: int, sort: str, order: str):
-        """Queries threats with filtering, sorting, and windowed offset pagination using db.paginate."""
+        """Query threats with filtering, sorting, and pagination."""
         stmt = db.select(Threat)
 
         # Apply optional filters
@@ -94,7 +96,9 @@ class ThreatRepository:
         # Determine column to sort by using whitelist
         if sort not in cls.ALLOWED_SORT_FIELDS:
             raise ValidationException(
-                f"Invalid sort field '{sort}'. Allowed fields are: {', '.join(cls.ALLOWED_SORT_FIELDS.keys())}."
+                f"Invalid sort field '{sort}'."
+                f" Allowed fields are:"
+                f" {', '.join(cls.ALLOWED_SORT_FIELDS.keys())}."
             )
 
         sort_col = cls.ALLOWED_SORT_FIELDS[sort]
@@ -133,3 +137,4 @@ class ThreatRepository:
         """Returns the maximum updated_at timestamp across all indicators."""
         stmt = db.select(db.func.max(Threat.updated_at))
         return db.session.scalar(stmt)
+

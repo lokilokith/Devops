@@ -36,7 +36,7 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class Base(db.Model):
+class Base(db.Model):  # type: ignore[name-defined]
     """Declarative ORM base for OpsForge models.
 
     Inherit from this class to ensure every model shares the same Flask-
@@ -114,3 +114,4 @@ __all__ = [
     "UUIDMixin",
     "utcnow",
 ]
+

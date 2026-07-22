@@ -2,6 +2,7 @@
 
 Defines domain-specific business, validation, configuration, and database exceptions.
 """
+from typing import Any
 
 
 class OpsForgeException(Exception):
@@ -13,7 +14,7 @@ class OpsForgeException(Exception):
 class ValidationException(OpsForgeException):
     """Raised when input validation rules are violated (HTTP 400)."""
 
-    def __init__(self, message: str, errors: list = None):
+    def __init__(self,message: str,errors: list[Any] | None = None,):
         super().__init__(message)
         self.message = message
         self.errors = errors or [message]
@@ -28,7 +29,10 @@ class ThreatNotFoundException(OpsForgeException):
 
 
 class ResourceNotFoundException(ThreatNotFoundException):
-    """Legacy alias or subclass raised when a requested resource is not found (HTTP 404)."""
+    """Legacy alias raised when a requested resource is not found.
+
+    Returns HTTP 404.
+    """
 
     pass
 
@@ -44,7 +48,7 @@ class InvalidStatusTransition(OpsForgeException):
 class DatabaseOperationException(OpsForgeException):
     """Raised when database commit, rollback, or query operations fail (HTTP 500)."""
 
-    def __init__(self, message: str, errors: list = None):
+    def __init__(self,message: str,errors: list[Any] | None = None,):
         super().__init__(message)
         self.message = message
         self.errors = errors or [message]
@@ -62,3 +66,4 @@ class ConfigurationException(OpsForgeException):
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
+

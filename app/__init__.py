@@ -4,12 +4,16 @@ Initializes the Flask application instance and boot procedures.
 """
 
 import logging
+
 from flask import Flask
+
 from app.platform.config import get_config
-from app.platform.logging import init_logging
 from app.platform.extensions import db, migrate
+from app.platform.logging import init_logging
 from app.routes import blueprint as api_bp
 from app.utils.errors import register_error_handlers
+
+__all__ = ["create_app"]
 
 
 def create_app() -> Flask:
@@ -42,8 +46,7 @@ def create_app() -> Flask:
 
     register_middleware(app)
 
-    # Import models to register them on metadata
-    from app import models
+    # Models are imported at module level and exported via __all__ to register metadata
 
     # Register error handlers
     register_error_handlers(app)
@@ -52,3 +55,4 @@ def create_app() -> Flask:
     app.register_blueprint(api_bp)
 
     return app
+

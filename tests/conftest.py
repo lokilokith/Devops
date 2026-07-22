@@ -1,7 +1,9 @@
 """OpsForge Pytest Configurations & Fixtures."""
 
 import os
+
 import pytest
+
 from app import create_app
 from app.extensions import db
 
@@ -34,3 +36,4 @@ def db_session(app):
     yield db.session
     db.session.rollback()
     db.session.remove()
+
