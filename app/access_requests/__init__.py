@@ -1,2 +1,1 @@
-"""Access requests feature package."""
-
+"""Access requests module."""
