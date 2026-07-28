@@ -1,2 +1,1 @@
-"""Resources feature service placeholder."""
-
+"""Service layer for resources."""

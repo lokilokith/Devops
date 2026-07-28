@@ -1,2 +1,1 @@
-"""Resources feature routes placeholder."""
-
+"""Routes for resources."""

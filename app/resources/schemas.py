@@ -1,2 +1,1 @@
-"""Resources feature schemas placeholder."""
-
+"""Schemas for resources."""
