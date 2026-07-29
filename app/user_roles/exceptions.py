@@ -11,3 +11,9 @@ class UserRoleNotFoundError(UserRolesRepositoryError):
 
 class UserRoleAlreadyExistsError(UserRolesRepositoryError):
     """Raised when the role is already assigned to the user."""
+
+class UserRolesServiceError(UserRolesError):
+    """Base exception for service errors."""
+
+class ValidationError(UserRolesServiceError):
+    """Raised for general service validation errors."""

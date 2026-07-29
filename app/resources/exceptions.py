@@ -8,3 +8,12 @@ class ResourcesRepositoryError(ResourcesError):
 
 class ResourceNotFoundError(ResourcesRepositoryError):
     """Raised when the requested resource cannot be found."""
+
+class ResourcesServiceError(ResourcesError):
+    """Base exception for service errors."""
+
+class DuplicateResourceError(ResourcesServiceError):
+    """Raised when a duplicate resource is detected."""
+
+class ValidationError(ResourcesServiceError):
+    """Raised for general service validation errors."""

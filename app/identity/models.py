@@ -69,6 +69,7 @@ class User(BaseModel):
         nullable=True,
         index=True,
     )
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     manager: Mapped["User | None"] = relationship(
         "User",

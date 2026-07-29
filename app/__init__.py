@@ -54,5 +54,9 @@ def create_app() -> Flask:
     # Register API blueprint
     app.register_blueprint(api_bp)
 
+    # Register CLI commands
+    from app.cli.seed_commands import register_commands
+    register_commands(app)
+
     return app
 

@@ -1,2 +1,1 @@
-"""Audit feature package."""
-
+"""Audit module."""

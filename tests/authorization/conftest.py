@@ -43,8 +43,8 @@ def populated_db(db_session):
     r2 = Role(role_code="ROL2", role_name="R2", role_type=RoleType.SYSTEM, status=RoleStatus.ACTIVE)
     db_session.add_all([r1, r2])
     
-    p1 = Permission(permission_code="RES1", permission_name="P1", action=PermissionAction.READ, status=PermissionStatus.ACTIVE)
-    p2 = Permission(permission_code="RES2", permission_name="P2", action=PermissionAction.DELETE, status=PermissionStatus.ACTIVE)
+    p1 = Permission(permission_code="PERM_RES1_READ", permission_name="P1", action=PermissionAction.READ, status=PermissionStatus.ACTIVE)
+    p2 = Permission(permission_code="PERM_RES2_DELETE", permission_name="P2", action=PermissionAction.DELETE, status=PermissionStatus.ACTIVE)
     db_session.add_all([p1, p2])
     
     res1 = Resource(resource_code="RES1", resource_name="Res1", resource_type=ResourceType.SERVER, status=ResourceStatus.ACTIVE)

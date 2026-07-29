@@ -8,6 +8,14 @@ from flask import Blueprint
 from flask_restx import Api
 
 from app.routes.health_routes import ns as health_ns
+from app.identity.routes import identity_ns
+from app.roles.routes import roles_ns
+from app.resources.routes import resources_ns
+from app.permissions.routes import permissions_ns
+from app.role_permissions.routes import role_permissions_ns
+from app.user_roles.routes import user_roles_ns
+from app.auth.routes import auth_ns
+
 from app.shared.exceptions import (DatabaseOperationException,
                                    InvalidStatusTransition,
                                    ResourceNotFoundException,
@@ -121,15 +129,33 @@ class CustomApi(Api):
         )
 
 
+authorizations = {
+    "Bearer": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Enter your JWT token in the format: Bearer <token>"
+    }
+}
+
 api = CustomApi(
     blueprint,
     title="OpsForge Platform API",
     version="0.1.0",
     description="Enterprise Privileged Access Management API.",
     doc="/docs",
+    authorizations=authorizations,
+    security="Bearer",
     add_specs=True,
 )
 
 # Register namespaces with explicit routing prefix paths
 api.add_namespace(health_ns, path="/health")
+api.add_namespace(auth_ns, path="/auth")
+api.add_namespace(identity_ns, path="/users")
+api.add_namespace(roles_ns, path="/roles")
+api.add_namespace(resources_ns, path="/resources")
+api.add_namespace(permissions_ns, path="/permissions")
+api.add_namespace(role_permissions_ns, path="/")
+api.add_namespace(user_roles_ns, path="/")
 

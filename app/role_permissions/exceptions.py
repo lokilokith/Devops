@@ -6,6 +6,12 @@ class RolePermissionsError(Exception):
 class RolePermissionsRepositoryError(RolePermissionsError):
     """Raised when a repository operation fails."""
 
+class RolePermissionsServiceError(RolePermissionsError):
+    """Base exception for service errors."""
+
+class ValidationError(RolePermissionsServiceError):
+    """Raised for general service validation errors."""
+
 class RolePermissionNotFoundError(RolePermissionsRepositoryError):
     """Raised when the requested role-permission association cannot be found."""
 

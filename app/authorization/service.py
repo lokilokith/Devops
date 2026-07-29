@@ -26,6 +26,7 @@ class AuthorizationService:
 
     def has_permission(self, user_id: UUID, resource_code: str, action: PermissionAction) -> bool:
         """Check if user has permission to perform action on resource."""
+        perm_code = f"PERM_{resource_code.upper()}_{action.value.upper()}"
         try:
             stmt = (
                 select(Permission.id)
@@ -33,7 +34,7 @@ class AuthorizationService:
                 .join(UserRole, UserRole.role_id == RolePermission.role_id)
                 .where(
                     UserRole.user_id == user_id,
-                    Permission.permission_code == resource_code,
+                    Permission.permission_code == perm_code,
                     Permission.action == action,
                 )
             )
@@ -79,9 +80,10 @@ class AuthorizationService:
     def get_accessible_resources(self, user_id: UUID) -> Sequence[Resource]:
         """Get all resources a user can access."""
         try:
+            from sqlalchemy import func
             stmt = (
                 select(Resource)
-                .join(Permission, Permission.permission_code == Resource.resource_code)
+                .join(Permission, Permission.permission_code.like("PERM_" + func.upper(Resource.resource_code) + "_%"))
                 .join(RolePermission, RolePermission.permission_id == Permission.id)
                 .join(UserRole, UserRole.role_id == RolePermission.role_id)
                 .where(UserRole.user_id == user_id)

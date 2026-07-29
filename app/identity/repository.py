@@ -155,7 +155,7 @@ class IdentityRepository:
             bounded_limit = min(max(1, limit), 1000)
             stmt = select(User)
             if not include_deleted:
-                stmt = stmt.where(User.is_deleted.is_(False))
+                stmt = stmt.where(User.status != UserStatus.ARCHIVED)
             stmt = stmt.order_by(User.username.asc()).offset(skip).limit(bounded_limit)
             return self._session.scalars(stmt).all()
         except SQLAlchemyError as err:
@@ -196,10 +196,10 @@ class IdentityRepository:
         """
         try:
             user = self.get_by_id(user_id)
-            if not user or user.is_deleted:
+            if not user or user.status == UserStatus.ARCHIVED:
                 return False
 
-            user.is_deleted = True
+            user.status = UserStatus.ARCHIVED
             self._commit_and_refresh(user)
             return True
         except SQLAlchemyError as err:
@@ -257,7 +257,6 @@ class IdentityRepository:
         """
         try:
             user = self._get_user_or_raise(user_id)
-            user.is_active = True
             user.status = UserStatus.ACTIVE
             return self._commit_and_refresh(user)
         except SQLAlchemyError as err:
@@ -279,7 +278,6 @@ class IdentityRepository:
         """
         try:
             user = self._get_user_or_raise(user_id)
-            user.is_active = False
             user.status = UserStatus.DISABLED
             return self._commit_and_refresh(user)
         except SQLAlchemyError as err:
@@ -301,7 +299,6 @@ class IdentityRepository:
         """
         try:
             user = self._get_user_or_raise(user_id)
-            user.is_locked = True
             user.status = UserStatus.LOCKED
             return self._commit_and_refresh(user)
         except SQLAlchemyError as err:
@@ -323,7 +320,6 @@ class IdentityRepository:
         """
         try:
             user = self._get_user_or_raise(user_id)
-            user.is_locked = False
             user.status = UserStatus.ACTIVE
             return self._commit_and_refresh(user)
         except SQLAlchemyError as err:
