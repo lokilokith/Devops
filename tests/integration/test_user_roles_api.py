@@ -13,19 +13,13 @@ def setup_admin_user(db_session, app):
     r = Role(role_code="ADMIN_UR_INT", role_name="Admin UR Int", role_type=RoleType.SYSTEM, status=RoleStatus.ACTIVE)
     db_session.add(r)
     
-    p1 = Permission(permission_code="PERM_USER_ROLES_READ", permission_name="user_roles.read", action=PermissionAction.READ)
-    p2 = Permission(permission_code="PERM_USER_ROLES_CREATE", permission_name="user_roles.create", action=PermissionAction.CREATE)
-    p3 = Permission(permission_code="PERM_USER_ROLES_DELETE", permission_name="user_roles.delete", action=PermissionAction.DELETE)
-    p4 = Permission(permission_code="PERM_USER_ROLES_MANAGE", permission_name="user_roles.manage", action=PermissionAction.CREATE)
-    db_session.add_all([p1, p2, p3, p4])
+    p1 = Permission(permission_code="PERM_USER_ROLES_MANAGE", permission_name="user_roles.manage", action=PermissionAction.MANAGE)
+    db_session.add_all([p1])
     
     db_session.commit()
     
     db_session.add(UserRole(user_id=u.id, role_id=r.id))
     db_session.add(RolePermission(role_id=r.id, permission_id=p1.id))
-    db_session.add(RolePermission(role_id=r.id, permission_id=p2.id))
-    db_session.add(RolePermission(role_id=r.id, permission_id=p3.id))
-    db_session.add(RolePermission(role_id=r.id, permission_id=p4.id))
     db_session.commit()
     
     from tests.api.test_decorators import create_mock_token
