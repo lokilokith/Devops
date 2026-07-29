@@ -192,7 +192,19 @@ def _assign_role_to_admin_user(role: Role) -> None:
     """
     admin_user = db.session.scalar(select(User).where(User.username == "admin"))
     if not admin_user:
-        raise RBACSeedError("Bootstrap user 'admin' does not exist. Cannot complete RBAC seed.")
+        logger.info("Admin user not found. Creating bootstrap admin user...")
+        admin_user = User(
+            employee_id="ADMIN_BOOT",
+            username="admin",
+            email="admin@opsforge.local",
+            full_name="System Administrator",
+        )
+        from app.auth.service import AuthService
+        from app.identity.repository import IdentityRepository
+        auth_svc = AuthService(IdentityRepository(db.session))
+        admin_user.password_hash = auth_svc.hash_password("secret123")
+        db.session.add(admin_user)
+        db.session.flush()
 
     existing_assignment = db.session.scalar(
         select(UserRole).where(

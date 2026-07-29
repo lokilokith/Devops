@@ -15,6 +15,7 @@ from app.permissions.routes import permissions_ns
 from app.role_permissions.routes import role_permissions_ns
 from app.user_roles.routes import user_roles_ns
 from app.auth.routes import auth_ns
+from app.access_requests.routes import access_requests_ns
 
 from app.shared.exceptions import (DatabaseOperationException,
                                    InvalidStatusTransition,
@@ -158,4 +159,4 @@ api.add_namespace(resources_ns, path="/resources")
 api.add_namespace(permissions_ns, path="/permissions")
 api.add_namespace(role_permissions_ns, path="/")
 api.add_namespace(user_roles_ns, path="/")
-
+api.add_namespace(access_requests_ns, path="/access-requests")

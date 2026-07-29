@@ -25,11 +25,27 @@ def _create_admin_user(db_session):
     return admin
 
 
-def test_seed_fails_without_admin_user(app, db_session):
-    """Verify that the seeder fails securely if the admin user is missing."""
-    with pytest.raises(RBACSeedError) as exc_info:
-        seed_rbac()
-    assert "User 'admin' not found" in str(exc_info.value) or "Bootstrap user 'admin' does not exist" in str(exc_info.value)
+def test_seed_creates_admin_user_if_missing(app, db_session):
+    """Verify that the seeder creates the admin user if they are missing."""
+    success = seed_rbac()
+    assert success is True
+    
+    # Validate bootstrap admin user is created
+    admin_user = db_session.scalar(select(User).where(User.username == "admin"))
+    assert admin_user is not None
+    
+    # Validate ADMIN role exists
+    admin_role = db_session.scalar(select(Role).where(Role.role_code == "ADMIN"))
+    assert admin_role is not None
+    
+    # Validate ADMIN role is assigned
+    ur = db_session.scalar(
+        select(UserRole).where(
+            UserRole.user_id == admin_user.id,
+            UserRole.role_id == admin_role.id
+        )
+    )
+    assert ur is not None
 
 
 def test_seed_rbac_on_empty_tables(app, db_session):

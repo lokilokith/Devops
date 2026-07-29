@@ -21,7 +21,7 @@ def upgrade():
     op.create_table('permissions',
     sa.Column('permission_code', sa.String(length=60), nullable=False),
     sa.Column('permission_name', sa.String(length=120), nullable=False),
-    sa.Column('action', sa.Enum('create', 'read', 'update', 'delete', 'execute', 'manage', name='permission_action_enum', native_enum=False, create_constraint=True), nullable=False),
+    sa.Column('action', sa.Enum('create', 'read', 'update', 'delete', 'execute', 'manage', 'approve', 'reject', 'cancel', name='permission_action_enum', native_enum=False, create_constraint=True), nullable=False),
     sa.Column('description', sa.String(length=500), nullable=True),
     sa.Column('status', sa.Enum('active', 'inactive', 'retired', name='permission_status_enum', native_enum=False, create_constraint=True), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),

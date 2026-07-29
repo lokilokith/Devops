@@ -26,11 +26,13 @@ class AccessRequestService:
         user_repo: IdentityRepository,
         role_repo: RolesRepository,
         resource_repo: ResourcesRepository,
+        user_roles_repo: Any = None, # Avoid circular imports if needed, but we can type it properly if imported
     ) -> None:
         self._repo = access_request_repo
         self._user_repo = user_repo
         self._role_repo = role_repo
         self._resource_repo = resource_repo
+        self._user_roles_repo = user_roles_repo
 
     def submit_request(
         self,
@@ -91,6 +93,15 @@ class AccessRequestService:
             raise AccessRequestValidationError("Access request not found.")
         if req.status != AccessRequestStatus.PENDING:
             raise AccessRequestInvalidStateError("Only pending requests can be approved.")
+        
+        # Provision the requested access first
+        if req.requested_role_id and self._user_roles_repo:
+            from app.user_roles.exceptions import UserRoleAlreadyExistsError
+            try:
+                self._user_roles_repo.assign_role_to_user(req.requester_id, req.requested_role_id, approver_id)
+            except UserRoleAlreadyExistsError:
+                pass # If they already have it, just mark request approved
+        
         return self._repo.approve(request_id, approver_id)
 
     def reject_request(self, request_id: UUID, reason: str, rejecter_id: UUID | None = None) -> AccessRequest:

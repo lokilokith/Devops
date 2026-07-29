@@ -20,6 +20,9 @@ class PermissionAction(str, enum.Enum):
     DELETE = "delete"
     EXECUTE = "execute"
     MANAGE = "manage"
+    APPROVE = "approve"
+    REJECT = "reject"
+    CANCEL = "cancel"
 
 class PermissionStatus(str, enum.Enum):
     """Approved lifecycle state for permissions."""

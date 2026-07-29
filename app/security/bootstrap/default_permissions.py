@@ -28,4 +28,11 @@ DEFAULT_PERMISSIONS = [
     # Management associations
     ("user_roles", "manage"),
     ("role_permissions", "manage"),
+
+    # Access Requests
+    ("access_requests", "create"),
+    ("access_requests", "read"),
+    ("access_requests", "approve"),
+    ("access_requests", "reject"),
+    ("access_requests", "cancel"),
 ]
