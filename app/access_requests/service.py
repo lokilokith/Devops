@@ -12,6 +12,12 @@ from app.access_requests.exceptions import (
     AccessRequestDuplicateError,
     AccessRequestValidationError,
 )
+from app.notifications.events import (
+    access_request_created,
+    request_approved,
+    request_rejected,
+    request_cancelled,
+)
 from app.identity.repository import IdentityRepository
 from app.roles.repository import RolesRepository
 from app.resources.repository import ResourcesRepository
@@ -85,7 +91,23 @@ class AccessRequestService:
             requested_end=requested_end,
             status=AccessRequestStatus.PENDING,
         )
-        return self._repo.create_request(req)
+        created = self._repo.create_request(req)
+        
+        access_request_created.send(
+            self,
+            payload={
+                "event": "access_request_created",
+                "request_id": str(created.id),
+                "actor_id": str(requester_id),
+                "recipient_id": str(requester_id), # Usually we notify the requester, but wait, who should be notified?
+                # The prompt says: "Automatically generate notifications for: Access Request Created -> User receives notification"
+                "title": "Access Request Created",
+                "message": f"Your access request {request_number} has been submitted.",
+                "type": "access_request_created",
+                "priority": "normal",
+            }
+        )
+        return created
 
     def approve_request(self, request_id: UUID, approver_id: UUID) -> AccessRequest:
         req = self._repo.get_by_id(request_id)
@@ -102,7 +124,22 @@ class AccessRequestService:
             except UserRoleAlreadyExistsError:
                 pass # If they already have it, just mark request approved
         
-        return self._repo.approve(request_id, approver_id)
+        approved_req = self._repo.approve(request_id, approver_id)
+        
+        request_approved.send(
+            self,
+            payload={
+                "event": "request_approved",
+                "request_id": str(approved_req.id),
+                "actor_id": str(approver_id),
+                "recipient_id": str(approved_req.requester_id),
+                "title": "Access Request Approved",
+                "message": f"Your access request {approved_req.request_number} has been approved.",
+                "type": "request_approved",
+                "priority": "high",
+            }
+        )
+        return approved_req
 
     def reject_request(self, request_id: UUID, reason: str, rejecter_id: UUID | None = None) -> AccessRequest:
         req = self._repo.get_by_id(request_id)
@@ -110,7 +147,22 @@ class AccessRequestService:
             raise AccessRequestValidationError("Access request not found.")
         if req.status != AccessRequestStatus.PENDING:
             raise AccessRequestInvalidStateError("Only pending requests can be rejected.")
-        return self._repo.reject(request_id, reason, rejecter_id)
+        rejected_req = self._repo.reject(request_id, reason, rejecter_id)
+        
+        request_rejected.send(
+            self,
+            payload={
+                "event": "request_rejected",
+                "request_id": str(rejected_req.id),
+                "actor_id": str(rejecter_id) if rejecter_id else "system",
+                "recipient_id": str(rejected_req.requester_id),
+                "title": "Access Request Rejected",
+                "message": f"Your access request {rejected_req.request_number} has been rejected.",
+                "type": "request_rejected",
+                "priority": "high",
+            }
+        )
+        return rejected_req
 
     def cancel_request(self, request_id: UUID) -> AccessRequest:
         req = self._repo.get_by_id(request_id)
@@ -118,6 +170,20 @@ class AccessRequestService:
             raise AccessRequestValidationError("Access request not found.")
         if req.status not in (AccessRequestStatus.PENDING, AccessRequestStatus.APPROVED):
             raise AccessRequestInvalidStateError("Request cannot be cancelled.")
-        return self._repo.cancel(request_id)
+        cancelled_req = self._repo.cancel(request_id)
+        
+        request_cancelled.send(
+            self,
+            payload={
+                "event": "request_cancelled",
+                "request_id": str(cancelled_req.id),
+                "recipient_id": str(cancelled_req.requester_id),
+                "title": "Access Request Cancelled",
+                "message": f"Your access request {cancelled_req.request_number} has been cancelled.",
+                "type": "request_cancelled",
+                "priority": "normal",
+            }
+        )
+        return cancelled_req
 
 __all__ = ["AccessRequestService"]

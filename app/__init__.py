@@ -57,6 +57,10 @@ def create_app() -> Flask:
     # Register CLI commands
     from app.cli.seed_commands import register_commands
     register_commands(app)
+    
+    # Register notification handlers
+    from app.notifications.bootstrap import register_notification_handlers
+    register_notification_handlers(app)
 
     return app
 

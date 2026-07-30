@@ -1,0 +1,26 @@
+# docker-compose.dev.yml
+# Use this file to override production settings for local development.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+
+services:
+  db:
+    ports:
+      - "5432:5432" # Expose DB for direct connection in development
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-opsforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opsforge}
+      POSTGRES_DB: ${POSTGRES_DB:-opsforge_dev}
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Override entrypoint to use Flask development server
+    command: ["flask", "run", "--host=0.0.0.0", "--port=8000", "--debug"]
+    environment:
+      - APP_ENV=development
+      - FLASK_DEBUG=1
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opsforge}:${POSTGRES_PASSWORD:-opsforge}@db:5432/${POSTGRES_DB:-opsforge_dev}
+      - POSTGRES_USER=${POSTGRES_USER:-opsforge}
+    volumes:
+      - ./:/app

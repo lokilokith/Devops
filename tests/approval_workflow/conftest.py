@@ -50,8 +50,14 @@ def ur_repo(db_session):
     return UserRolesRepository(db_session)
 
 @pytest.fixture
-def approval_service(db_session, approval_repo, ar_repo, ur_repo):
-    return ApprovalWorkflowService(approval_repo, ar_repo, ur_repo)
+def audit_service():
+    from app.audit.service import AuditService
+    from unittest.mock import MagicMock
+    return MagicMock(spec=AuditService)
+
+@pytest.fixture
+def approval_service(db_session, approval_repo, ar_repo, ur_repo, audit_service):
+    return ApprovalWorkflowService(approval_repo, ar_repo, ur_repo, audit_service, db_session)
 
 @pytest.fixture
 def sample_users(db_session):

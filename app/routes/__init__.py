@@ -16,6 +16,7 @@ from app.role_permissions.routes import role_permissions_ns
 from app.user_roles.routes import user_roles_ns
 from app.auth.routes import auth_ns
 from app.access_requests.routes import access_requests_ns
+from app.approval_workflow.routes import approval_workflows_ns
 
 from app.shared.exceptions import (DatabaseOperationException,
                                    InvalidStatusTransition,
@@ -119,15 +120,9 @@ class CustomApi(Api):
                 e.code,
             )
 
-        # 4. Fallback for unhandled raw Python exceptions
-        return self.make_response(
-            {
-                "success": False,
-                "message": "An unexpected server error occurred.",
-                "errors": [str(e)],
-            },
-            500,
-        )
+        import traceback
+        traceback.print_exc()
+        raise e
 
 
 authorizations = {
@@ -160,3 +155,9 @@ api.add_namespace(permissions_ns, path="/permissions")
 api.add_namespace(role_permissions_ns, path="/")
 api.add_namespace(user_roles_ns, path="/")
 api.add_namespace(access_requests_ns, path="/access-requests")
+api.add_namespace(approval_workflows_ns, path="/approval-workflows")
+from app.notifications.routes import notifications_ns
+api.add_namespace(notifications_ns, path="/notifications")
+
+from app.routes.version_routes import ns as version_ns
+api.add_namespace(version_ns, path="/version")

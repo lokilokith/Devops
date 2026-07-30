@@ -28,30 +28,18 @@ def test_create_and_get(approval_repo, sample_users, sample_request):
     assert len(req_wfs) == 1
     assert req_wfs[0].id == created.id
 
-def test_approve_reject_cancel(approval_repo, sample_users, sample_request):
+def test_update_workflow(approval_repo, sample_users, sample_request):
     u1, u2 = sample_users
     
     wf1 = approval_repo.create_workflow(ApprovalWorkflow(
         access_request_id=sample_request.id, approver_id=u2.id, approval_level=ApprovalLevel.MANAGER
     ))
-    approved = approval_repo.approve(wf1.id, "Looks good")
+    wf1.status = ApprovalStatus.APPROVED
+    wf1.comments = "Looks good"
+    approved = approval_repo.update_workflow(wf1)
+    
     assert approved.status == ApprovalStatus.APPROVED
     assert approved.comments == "Looks good"
-    assert approved.approved_at is not None
-
-    wf2 = approval_repo.create_workflow(ApprovalWorkflow(
-        access_request_id=sample_request.id, approver_id=u2.id, approval_level=ApprovalLevel.MANAGER
-    ))
-    rejected = approval_repo.reject(wf2.id, "No")
-    assert rejected.status == ApprovalStatus.REJECTED
-    assert rejected.comments == "No"
-
-    wf3 = approval_repo.create_workflow(ApprovalWorkflow(
-        access_request_id=sample_request.id, approver_id=u2.id, approval_level=ApprovalLevel.MANAGER
-    ))
-    cancelled = approval_repo.cancel(wf3.id, "Cancelled")
-    assert cancelled.status == ApprovalStatus.CANCELLED
-    assert cancelled.comments == "Cancelled"
 
 def test_list_and_count(approval_repo, sample_users, sample_request):
     u1, u2 = sample_users
@@ -62,17 +50,6 @@ def test_list_and_count(approval_repo, sample_users, sample_request):
     assert approval_repo.count() >= 1
     lst = approval_repo.list()
     assert len(lst) >= 1
-    
-    pending = approval_repo.list_pending()
-    assert len(pending) >= 1
-
-def test_not_found(approval_repo):
-    with pytest.raises(ApprovalWorkflowNotFoundError):
-        approval_repo.approve(uuid4(), "test")
-    with pytest.raises(ApprovalWorkflowNotFoundError):
-        approval_repo.reject(uuid4(), "test")
-    with pytest.raises(ApprovalWorkflowNotFoundError):
-        approval_repo.cancel(uuid4(), "test")
 
 def test_sqlalchemy_errors(approval_repo, sample_users, sample_request):
     u1, u2 = sample_users
@@ -96,28 +73,8 @@ def test_sqlalchemy_errors(approval_repo, sample_users, sample_request):
 
     with patch.object(approval_repo._session, 'execute', side_effect=SQLAlchemyError("mocked error")):
         with pytest.raises(ApprovalWorkflowRepositoryError):
-            approval_repo.list_pending()
-
-    with patch.object(approval_repo._session, 'execute', side_effect=SQLAlchemyError("mocked error")):
-        with pytest.raises(ApprovalWorkflowRepositoryError):
             approval_repo.list()
 
     with patch.object(approval_repo._session, 'execute', side_effect=SQLAlchemyError("mocked error")):
         with pytest.raises(ApprovalWorkflowRepositoryError):
             approval_repo.count()
-
-    wf2 = approval_repo.create_workflow(ApprovalWorkflow(
-        access_request_id=sample_request.id, approver_id=u2.id, approval_level=ApprovalLevel.MANAGER
-    ))
-
-    with patch.object(approval_repo._session, 'commit', side_effect=SQLAlchemyError("mocked error")):
-        with pytest.raises(ApprovalWorkflowRepositoryError):
-            approval_repo.approve(wf2.id)
-
-    with patch.object(approval_repo._session, 'commit', side_effect=SQLAlchemyError("mocked error")):
-        with pytest.raises(ApprovalWorkflowRepositoryError):
-            approval_repo.reject(wf2.id)
-
-    with patch.object(approval_repo._session, 'commit', side_effect=SQLAlchemyError("mocked error")):
-        with pytest.raises(ApprovalWorkflowRepositoryError):
-            approval_repo.cancel(wf2.id)

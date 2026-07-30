@@ -27,16 +27,17 @@ class ApprovalWorkflowRepository:
     def create_workflow(self, workflow: ApprovalWorkflow) -> ApprovalWorkflow:
         try:
             self._session.add(workflow)
-            self._session.commit()
-            self._session.refresh(workflow)
+            self._session.flush()
             return workflow
         except SQLAlchemyError as err:
             self._session.rollback()
             raise ApprovalWorkflowRepositoryError("Failed to create workflow.") from err
 
-    def get_by_id(self, workflow_id: UUID) -> ApprovalWorkflow | None:
+    def get_by_id(self, workflow_id: UUID, for_update: bool = False) -> ApprovalWorkflow | None:
         try:
             stmt = select(ApprovalWorkflow).where(ApprovalWorkflow.id == workflow_id)
+            if for_update:
+                stmt = stmt.with_for_update()
             return self._session.execute(stmt).scalar_one_or_none()
         except SQLAlchemyError as err:
             self._session.rollback()
@@ -50,73 +51,65 @@ class ApprovalWorkflowRepository:
             self._session.rollback()
             raise ApprovalWorkflowRepositoryError("Failed to get workflows by request.") from err
 
-    def list_pending(self) -> Sequence[ApprovalWorkflow]:
+    def update_workflow(self, workflow: ApprovalWorkflow) -> ApprovalWorkflow:
         try:
-            stmt = select(ApprovalWorkflow).where(ApprovalWorkflow.status == ApprovalStatus.PENDING)
-            return self._session.execute(stmt).scalars().all()
+            workflow.updated_at = datetime.now(timezone.utc)
+            self._session.flush()
+            return workflow
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise ApprovalWorkflowRepositoryError("Failed to list pending workflows.") from err
+            raise ApprovalWorkflowRepositoryError("Failed to update workflow.") from err
 
-    def approve(self, workflow_id: UUID, comments: str | None = None) -> ApprovalWorkflow:
-        wf = self.get_by_id(workflow_id)
-        if not wf:
-            raise ApprovalWorkflowNotFoundError("Approval workflow not found.")
-        try:
-            wf.status = ApprovalStatus.APPROVED
-            wf.comments = comments
-            now = datetime.now(timezone.utc)
-            wf.approved_at = now
-            wf.updated_at = now
-            self._session.commit()
-            self._session.refresh(wf)
-            return wf
-        except SQLAlchemyError as err:
-            self._session.rollback()
-            raise ApprovalWorkflowRepositoryError("Failed to approve workflow.") from err
-
-    def reject(self, workflow_id: UUID, comments: str | None = None) -> ApprovalWorkflow:
-        wf = self.get_by_id(workflow_id)
-        if not wf:
-            raise ApprovalWorkflowNotFoundError("Approval workflow not found.")
-        try:
-            wf.status = ApprovalStatus.REJECTED
-            wf.comments = comments
-            wf.updated_at = datetime.now(timezone.utc)
-            self._session.commit()
-            self._session.refresh(wf)
-            return wf
-        except SQLAlchemyError as err:
-            self._session.rollback()
-            raise ApprovalWorkflowRepositoryError("Failed to reject workflow.") from err
-
-    def cancel(self, workflow_id: UUID, comments: str | None = None) -> ApprovalWorkflow:
-        wf = self.get_by_id(workflow_id)
-        if not wf:
-            raise ApprovalWorkflowNotFoundError("Approval workflow not found.")
-        try:
-            wf.status = ApprovalStatus.CANCELLED
-            wf.comments = comments
-            wf.updated_at = datetime.now(timezone.utc)
-            self._session.commit()
-            self._session.refresh(wf)
-            return wf
-        except SQLAlchemyError as err:
-            self._session.rollback()
-            raise ApprovalWorkflowRepositoryError("Failed to cancel workflow.") from err
-
-    def list(self, page: int = 1, page_size: int = 50) -> Sequence[ApprovalWorkflow]:
+    def list(
+        self, 
+        page: int = 1, 
+        page_size: int = 50,
+        status: str | None = None,
+        request_id: UUID | None = None,
+        approver_id: UUID | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> Sequence[ApprovalWorkflow]:
         p, s = _normalize_pagination(page, page_size)
         try:
-            stmt = select(ApprovalWorkflow).order_by(ApprovalWorkflow.created_at.desc()).offset((p - 1) * s).limit(s)
+            stmt = select(ApprovalWorkflow)
+            if status:
+                stmt = stmt.where(ApprovalWorkflow.status == ApprovalStatus(status))
+            if request_id:
+                stmt = stmt.where(ApprovalWorkflow.access_request_id == request_id)
+            if approver_id:
+                stmt = stmt.where(ApprovalWorkflow.approver_id == approver_id)
+            if created_after:
+                stmt = stmt.where(ApprovalWorkflow.created_at >= created_after)
+            if created_before:
+                stmt = stmt.where(ApprovalWorkflow.created_at <= created_before)
+                
+            stmt = stmt.order_by(ApprovalWorkflow.created_at.desc()).offset((p - 1) * s).limit(s)
             return self._session.execute(stmt).scalars().all()
         except SQLAlchemyError as err:
             self._session.rollback()
             raise ApprovalWorkflowRepositoryError("Failed to list workflows.") from err
 
-    def count(self) -> int:
+    def count(
+        self,
+        status: str | None = None,
+        request_id: UUID | None = None,
+        approver_id: UUID | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+    ) -> int:
         try:
             stmt = select(func.count(ApprovalWorkflow.id))
+            if status:
+                stmt = stmt.where(ApprovalWorkflow.status == ApprovalStatus(status))
+            if request_id:
+                stmt = stmt.where(ApprovalWorkflow.access_request_id == request_id)
+            if approver_id:
+                stmt = stmt.where(ApprovalWorkflow.approver_id == approver_id)
+            if created_after:
+                stmt = stmt.where(ApprovalWorkflow.created_at >= created_after)
+            if created_before:
+                stmt = stmt.where(ApprovalWorkflow.created_at <= created_before)
             return self._session.execute(stmt).scalar_one()
         except SQLAlchemyError as err:
             self._session.rollback()

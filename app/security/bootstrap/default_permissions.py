@@ -35,4 +35,17 @@ DEFAULT_PERMISSIONS = [
     ("access_requests", "approve"),
     ("access_requests", "reject"),
     ("access_requests", "cancel"),
+
+    # Approval Workflows
+    ("approval_workflows", "read"),
+    ("approval_workflows", "approve"),
+    ("approval_workflows", "reject"),
+    ("approval_workflows", "cancel"),
+    ("approval_workflows", "override"),
+    ("approval_workflows", "escalate"),
+
+    # Notifications
+    ("notifications", "read"),
+    ("notifications", "update"),
+    ("notifications", "delete"),
 ]

@@ -128,6 +128,49 @@ class AccessRequestDetail(Resource):
             "data": req
         }
 
+@access_requests_ns.route("/<uuid:request_id>/approval-workflow")
+class AccessRequestApprovalWorkflow(Resource):
+    @access_requests_ns.doc("get_access_request_workflow")
+    @login_required
+    def get(self, request_id):
+        """Get the approval workflows for an access request."""
+        # Ensure they have permission to see it
+        service = get_service()
+        req = service._repo.get_by_id(request_id)
+        if not req:
+            raise NotFound("Access request not found")
+            
+        authz = AuthorizationService(db.session)
+        is_admin_or_auditor = authz.has_permission(UUID(g.user_id), "access_requests", PermissionAction.READ)
+        if not is_admin_or_auditor and req.requester_id != UUID(g.user_id):
+            raise NotFound("Access request not found")
+            
+        from app.approval_workflow.service import ApprovalWorkflowService
+        from app.approval_workflow.repository import ApprovalWorkflowRepository
+        from app.user_roles.repository import UserRolesRepository
+        from app.audit.service import AuditService
+        from app.audit.repository import AuditRepository
+        
+        wf_svc = ApprovalWorkflowService(
+            ApprovalWorkflowRepository(db.session),
+            service._repo,  # AccessRequestRepository is already inside service
+            UserRolesRepository(db.session),
+            AuditService(AuditRepository(db.session)),
+            db.session
+        )
+        
+        workflows = wf_svc._repo.get_by_request(request_id)
+        
+        from app.approval_workflow.schemas import approval_workflow_list_response_model
+        # Use marshal to format? We can just return the dict but it's cleaner to marshal
+        from flask_restx import marshal
+        return {
+            "success": True,
+            "message": "Approval workflows retrieved",
+            "data": marshal(workflows, approval_workflow_list_response_model.get("data").container.nested),
+            "meta": {}
+        }
+
 @access_requests_ns.route("/<uuid:request_id>/approve")
 class AccessRequestApprove(Resource):
     @access_requests_ns.doc("approve_access_request")

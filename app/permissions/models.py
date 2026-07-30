@@ -23,6 +23,8 @@ class PermissionAction(str, enum.Enum):
     APPROVE = "approve"
     REJECT = "reject"
     CANCEL = "cancel"
+    OVERRIDE = "override"
+    ESCALATE = "escalate"
 
 class PermissionStatus(str, enum.Enum):
     """Approved lifecycle state for permissions."""

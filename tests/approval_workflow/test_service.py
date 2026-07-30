@@ -47,7 +47,7 @@ def test_approve_workflow(approval_service, approval_repo, ar_repo, ur_repo, sam
     with pytest.raises(ApprovalWorkflowValidationError, match="Approval workflow not found"):
         approval_service.approve(uuid4(), u2.id)
         
-    with pytest.raises(ApprovalWorkflowInvalidStateError, match="Only pending workflows can be approved"):
+    with pytest.raises(ApprovalWorkflowInvalidStateError, match="Invalid transition from"):
         approval_service.approve(wf.id, u2.id)
         
     wf3 = approval_service.create_initial_workflow(sample_request.id, u2.id)
@@ -75,7 +75,7 @@ def test_reject_workflow(approval_service, ar_repo, sample_users, sample_request
     with pytest.raises(ApprovalWorkflowValidationError, match="Approval workflow not found"):
         approval_service.reject(uuid4(), u2.id)
         
-    with pytest.raises(ApprovalWorkflowInvalidStateError, match="Only pending workflows can be rejected"):
+    with pytest.raises(ApprovalWorkflowInvalidStateError, match="Invalid transition from"):
         approval_service.reject(wf.id, u2.id)
         
     wf3 = approval_service.create_initial_workflow(sample_request.id, u2.id)

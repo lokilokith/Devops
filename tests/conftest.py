@@ -19,6 +19,7 @@ def app():
     """Initializes the Flask application under a testing context."""
     app = create_app()
     app.config["JWT_SECRET_KEY"] = "this-is-a-very-long-test-secret-key-that-is-at-least-32-bytes"
+    app.config["PROPAGATE_EXCEPTIONS"] = True
     with app.app_context():
         db.create_all()
         yield app

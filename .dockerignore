@@ -1,0 +1,49 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Testing & Linting cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Version control
+.git/
+.gitignore
+.github/
+
+# Local databases
+*.sqlite
+*.db
+
+# Environment variables
+.env
+.env.production
+.env.local
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker
+docker-compose.yml
+docker-compose.dev.yml
+Dockerfile
+.dockerignore
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

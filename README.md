@@ -68,3 +68,31 @@ feature_name/
 
 The repository is validated through the full pytest suite and startup checks under `APP_ENV=testing`. Any architecture change should be followed by the same validation sequence before further edits.
 - `APP_ENV`: Set to `development`, `testing`, or `production`.
+
+## Docker Deployment (v0.6.0)
+
+OpsForge is fully containerized for both development and production environments.
+
+### Prerequisites
+- Docker
+- Docker Compose
+
+### Local Development
+To run OpsForge with live-reloading and direct PostgreSQL access (port 5432):
+```bash
+cp .env.example .env
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+### Production Deployment
+To run OpsForge in a production-like environment (Gunicorn, internal DB, optimized image):
+```bash
+cp .env.production.example .env
+docker compose up -d --build
+```
+
+### Useful Commands
+- **View logs:** `docker compose logs -f api`
+- **Run tests:** `docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm api pytest`
+- **Check health:** `curl http://localhost:8000/health/ready`
+- **Check version metadata:** `curl http://localhost:8000/version`

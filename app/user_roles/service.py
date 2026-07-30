@@ -48,7 +48,23 @@ class UserRoleService:
             raise UserRolesServiceError("Error checking role.") from e
 
         try:
-            return self._repository.assign_role_to_user(user_id, role_id, assigned_by_user_id)
+            from app.notifications.events import role_provisioned
+            
+            ur = self._repository.assign_role_to_user(user_id, role_id, assigned_by_user_id)
+            
+            role_provisioned.send(
+                self,
+                payload={
+                    "event": "role_provisioned",
+                    "actor_id": str(assigned_by_user_id) if assigned_by_user_id else "system",
+                    "recipient_id": str(user_id),
+                    "title": "Role Provisioned",
+                    "message": f"You have been assigned the role {role.role_name}.",
+                    "type": "role_provisioned",
+                    "priority": "normal",
+                }
+            )
+            return ur
         except UserRoleAlreadyExistsError as e:
             raise ValidationError(str(e)) from e
         except UserRolesRepositoryError as e:

@@ -37,7 +37,7 @@ def test_assign_role_success(service, mock_repo, mock_roles_repo, mock_users_rep
     assigner_id = uuid4()
     
     mock_users_repo.get_by_id.return_value = "user"
-    mock_roles_repo.get_by_id.return_value = "role"
+    mock_roles_repo.get_by_id.return_value = MagicMock(role_name="Admin")
     mock_repo.assign_role_to_user.return_value = "ur"
     
     res = service.assign_role(user_id, role_id, assigner_id)
