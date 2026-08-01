@@ -14,9 +14,9 @@ from app.approval_workflow.exceptions import (
     ApprovalWorkflowNotFoundError,
     ApprovalWorkflowValidationError,
 )
-from app.approval_workflow.models import (
+from app.approval_workflow.models import (  # noqa: F401 — registers table in db.metadata for Alembic
     ApprovalWorkflow,
-)  # noqa: F401 — registers table in db.metadata for Alembic
+)
 from app.approval_workflow.schemas import (
     approval_action_model,
     approval_workflow_list_response_model,
