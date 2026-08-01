@@ -41,6 +41,10 @@ dev = [
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
 [tool.isort]
 profile = "black"
 line_length = 88
@@ -48,10 +52,7 @@ known_first_party = ["app"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"[tool.isort]
-profile = "black"
-line_length = 88
-known_first_party = ["app"]
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
