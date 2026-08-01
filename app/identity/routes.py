@@ -1,4 +1,5 @@
 """Identity REST API Routes."""
+
 from uuid import UUID
 from flask import request
 from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
@@ -9,11 +10,18 @@ from app.api.responses import success_response
 from app.api.decorators import login_required, requires_permission
 from werkzeug.exceptions import Conflict
 from app.identity.schemas import (
-    identity_ns, user_create_model, user_update_model, user_patch_model,
-    user_response_model, user_list_response_model
+    identity_ns,
+    user_create_model,
+    user_update_model,
+    user_patch_model,
+    user_response_model,
+    user_list_response_model,
 )
 from app.identity.validators import (
-    validate_user_create, validate_user_update, validate_user_patch, validate_uuid
+    validate_user_create,
+    validate_user_update,
+    validate_user_patch,
+    validate_uuid,
 )
 from app.identity.service import IdentityService
 from app.identity.exceptions import DuplicateUserError
@@ -22,22 +30,31 @@ from app.extensions import db
 from app.identity.repository import IdentityRepository
 from app.auth.service import AuthService
 
+
 def get_service():
     repo = IdentityRepository(db.session)
     return IdentityService(repo, AuthService(repo))
 
+
 @identity_ns.route("")
 class UserCollection(Resource):
-    @identity_ns.doc(summary="List users", description="Retrieve a paginated list of users.")
+    @identity_ns.doc(
+        summary="List users", description="Retrieve a paginated list of users."
+    )
     @identity_ns.marshal_with(user_list_response_model)
     @login_required
     @requires_permission("users", "read")
     def get(self):
-        
-        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE))
+
+        skip, limit = validate_pagination(
+            request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE)
+        )
+        search = request.args.get("search", "")
         service = get_service()
-        users = service.list_users(skip=skip, limit=limit)
-        return success_response(data=users)
+        users, total = service.list_users(skip=skip, limit=limit, search=search)
+        return success_response(
+            data=users, meta={"total": total, "skip": skip, "limit": limit}
+        )
 
     @identity_ns.doc(summary="Create user", description="Create a new user.")
     @identity_ns.expect(user_create_model)
@@ -50,9 +67,12 @@ class UserCollection(Resource):
         service = get_service()
         try:
             user = service.create_user(data)
-            return success_response(data=user, message="User created successfully", status_code=201)
+            return success_response(
+                data=user, message="User created successfully", status_code=201
+            )
         except DuplicateUserError as e:
             raise Conflict(str(e))
+
 
 @identity_ns.route("/<string:user_id>")
 class UserResource(Resource):
@@ -68,7 +88,9 @@ class UserResource(Resource):
             raise NotFound("User not found")
         return success_response(data=user)
 
-    @identity_ns.doc(summary="Update user", description="Completely update a user by UUID.")
+    @identity_ns.doc(
+        summary="Update user", description="Completely update a user by UUID."
+    )
     @identity_ns.expect(user_update_model)
     @identity_ns.marshal_with(user_response_model)
     @login_required
@@ -86,7 +108,9 @@ class UserResource(Resource):
         except DuplicateUserError as e:
             raise Conflict(str(e))
 
-    @identity_ns.doc(summary="Partial update user", description="Partially update a user by UUID.")
+    @identity_ns.doc(
+        summary="Partial update user", description="Partially update a user by UUID."
+    )
     @identity_ns.expect(user_patch_model)
     @identity_ns.marshal_with(user_response_model)
     @login_required
@@ -136,7 +160,9 @@ class UserLockResource(Resource):
 
 @identity_ns.route("/<string:user_id>/unlock")
 class UserUnlockResource(Resource):
-    @identity_ns.doc(summary="Unlock user", description="Unlock a user account by UUID.")
+    @identity_ns.doc(
+        summary="Unlock user", description="Unlock a user account by UUID."
+    )
     @identity_ns.marshal_with(user_response_model)
     @login_required
     @requires_permission("users", "update")

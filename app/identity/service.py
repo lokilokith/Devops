@@ -1,4 +1,5 @@
 """Identity feature service layer."""
+
 from __future__ import annotations
 
 from typing import Sequence
@@ -11,20 +12,25 @@ from app.identity.exceptions import (
     UserNotFoundError,
     IdentityServiceError,
     DuplicateUserError,
-    ValidationError
+    ValidationError,
 )
 from app.auth.service import AuthService
+
 
 class IdentityService:
     def __init__(self, repository: IdentityRepository, auth_service: AuthService):
         self._repository = repository
         self._auth_service = auth_service
-        
-    def _validate_duplicate_employee_id(self, employee_id: str, exclude_user_id: UUID | None = None) -> None:
+
+    def _validate_duplicate_employee_id(
+        self, employee_id: str, exclude_user_id: UUID | None = None
+    ) -> None:
         """Check for duplicate employee_id using repository."""
         try:
             if self._repository.exists_by_employee_id(employee_id, exclude_user_id):
-                raise DuplicateUserError(f"Employee ID '{employee_id}' is already in use.")
+                raise DuplicateUserError(
+                    f"Employee ID '{employee_id}' is already in use."
+                )
         except IdentityRepositoryError as e:
             raise IdentityServiceError(f"Failed to validate employee_id: {e}") from e
 
@@ -33,7 +39,7 @@ class IdentityService:
         email = data.get("email")
         employee_id = data.get("employee_id")
         password = data.get("password")
-        
+
         if not username or not email or not employee_id or not password:
             raise ValidationError("Missing required fields")
 
@@ -44,9 +50,9 @@ class IdentityService:
                 raise DuplicateUserError(f"Email '{email}' is already in use.")
         except IdentityRepositoryError as e:
             raise IdentityServiceError(f"Repository validation failed: {e}") from e
-            
+
         self._validate_duplicate_employee_id(employee_id)
-        
+
         try:
             user = User(
                 username=username,
@@ -54,11 +60,11 @@ class IdentityService:
                 employee_id=employee_id,
                 full_name=data.get("full_name", ""),
                 title=data.get("title"),
-                manager_user_id=data.get("manager_user_id")
+                manager_user_id=data.get("manager_user_id"),
             )
             # Hash password using auth service
             user.password_hash = self._auth_service.hash_password(password)
-            
+
             return self._repository.create_user(user)
         except IdentityRepositoryError as e:
             raise IdentityServiceError(f"Failed to create user: {e}") from e
@@ -74,15 +80,24 @@ class IdentityService:
                 raise
             raise IdentityServiceError(f"Failed to retrieve user: {e}") from e
 
-    def list_users(self, skip: int = 0, limit: int = 100) -> Sequence[User]:
+    def list_users(
+        self, skip: int = 0, limit: int = 100, search: str = ""
+    ) -> tuple[Sequence[User], int]:
         try:
-            return self._repository.list_users(skip=skip, limit=limit)
+            if search:
+                users = self._repository.search_users(search, skip=skip, limit=limit)
+                total = self._repository.count_search_users(search)
+                return users, total
+            else:
+                users = self._repository.list_users(skip=skip, limit=limit)
+                total = self._repository.count_users()
+                return users, total
         except IdentityRepositoryError as e:
             raise IdentityServiceError(f"Failed to list users: {e}") from e
 
     def update_user(self, user_id: UUID, data: dict) -> User:
         user = self.get_user(user_id)
-        
+
         # We can't update username, email, employee_id completely freely without checks
         # But wait, usually update replaces all fields.
         if "username" in data and data["username"] != user.username:
@@ -92,7 +107,7 @@ class IdentityService:
             except IdentityRepositoryError as e:
                 raise IdentityServiceError(f"Validation failed: {e}") from e
             user.username = data["username"]
-            
+
         if "email" in data and data["email"] != user.email:
             try:
                 if self._repository.exists_by_email(data["email"]):
@@ -100,11 +115,13 @@ class IdentityService:
             except IdentityRepositoryError as e:
                 raise IdentityServiceError(f"Validation failed: {e}") from e
             user.email = data["email"]
-            
+
         if "employee_id" in data and data["employee_id"] != user.employee_id:
-            self._validate_duplicate_employee_id(data["employee_id"], exclude_user_id=user_id)
+            self._validate_duplicate_employee_id(
+                data["employee_id"], exclude_user_id=user_id
+            )
             user.employee_id = data["employee_id"]
-            
+
         if "full_name" in data:
             user.full_name = data["full_name"]
         if "title" in data:
@@ -133,9 +150,9 @@ class IdentityService:
     def search_users(self, query: str) -> list[User]:
         if not query:
             return []
-            
+
         try:
-            # Note: For now, we return all matching records up to a sensible limit since the 
+            # Note: For now, we return all matching records up to a sensible limit since the
             # original method didn't take pagination args. In a real system we'd paginate.
             return list(self._repository.search_users(query, skip=0, limit=1000))
         except IdentityRepositoryError as e:

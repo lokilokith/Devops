@@ -65,4 +65,3 @@ def get_config():
         from app.config.development import DevelopmentConfig
 
         return DevelopmentConfig
-

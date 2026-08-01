@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.shared.database import BaseModel
 
+
 class ResourceType(str, enum.Enum):
     """Approved resource classification."""
 
@@ -23,12 +24,14 @@ class ResourceType(str, enum.Enum):
     API = "api"
     OTHER = "other"
 
+
 class ResourceStatus(str, enum.Enum):
     """Approved lifecycle state for resources."""
 
     ACTIVE = "active"
     INACTIVE = "inactive"
     RETIRED = "retired"
+
 
 class Resource(BaseModel):
     """Infrastructure or software asset tracked by OpsForge."""
@@ -81,5 +84,6 @@ class Resource(BaseModel):
             f"<Resource(resource_code={self.resource_code!r}, "
             f"resource_name={self.resource_name!r})>"
         )
+
 
 __all__ = ["Resource", "ResourceStatus", "ResourceType"]

@@ -5,6 +5,7 @@ from app.user_roles.repository import UserRolesRepository
 from app.roles.models import Role, RoleType, RoleStatus
 from app.identity.models import User, UserStatus
 
+
 @pytest.fixture
 def app():
     app = Flask(__name__)
@@ -15,11 +16,13 @@ def app():
     with app.app_context():
         import app.identity.models
         import app.roles.models
+
         db.create_all()
         yield app
         db.session.remove()
         db.drop_all()
         db.engine.dispose()
+
 
 @pytest.fixture
 def db_session(app):
@@ -27,9 +30,11 @@ def db_session(app):
     db.session.rollback()
     db.session.remove()
 
+
 @pytest.fixture
 def user_roles_repo(db_session):
     return UserRolesRepository(db_session)
+
 
 @pytest.fixture
 def sample_user(db_session):
@@ -38,12 +43,13 @@ def sample_user(db_session):
         username="testuser",
         email="testuser@example.com",
         full_name="Test User",
-        status=UserStatus.ACTIVE
+        status=UserStatus.ACTIVE,
     )
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
     return user
+
 
 @pytest.fixture
 def sample_role(db_session):
@@ -51,7 +57,7 @@ def sample_role(db_session):
         role_code="UR_ROLE",
         role_name="Role for UR",
         role_type=RoleType.SYSTEM,
-        status=RoleStatus.ACTIVE
+        status=RoleStatus.ACTIVE,
     )
     db_session.add(role)
     db_session.commit()

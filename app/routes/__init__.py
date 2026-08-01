@@ -18,10 +18,12 @@ from app.auth.routes import auth_ns
 from app.access_requests.routes import access_requests_ns
 from app.approval_workflow.routes import approval_workflows_ns
 
-from app.shared.exceptions import (DatabaseOperationException,
-                                   InvalidStatusTransition,
-                                   ResourceNotFoundException,
-                                   ValidationException)
+from app.shared.exceptions import (
+    DatabaseOperationException,
+    InvalidStatusTransition,
+    ResourceNotFoundException,
+    ValidationException,
+)
 
 blueprint = Blueprint("api", __name__, url_prefix="")
 
@@ -46,11 +48,7 @@ class CustomApi(Api):
             elif errors_data:
                 errors_list = [str(errors_data)]
             else:
-                errors_list = (
-                    [e.description]
-                    if hasattr(e, "description")
-                    else [str(e)]
-                )
+                errors_list = [e.description] if hasattr(e, "description") else [str(e)]
 
             e.data = {
                 "success": False,
@@ -107,10 +105,7 @@ class CustomApi(Api):
         from werkzeug.exceptions import HTTPException
 
         if isinstance(e, HTTPException):
-            description = (
-                e.description
-                or "An unexpected server error occurred."
-            )
+            description = e.description or "An unexpected server error occurred."
             return self.make_response(
                 {
                     "success": False,
@@ -121,6 +116,7 @@ class CustomApi(Api):
             )
 
         import traceback
+
         traceback.print_exc()
         raise e
 
@@ -130,7 +126,7 @@ authorizations = {
         "type": "apiKey",
         "in": "header",
         "name": "Authorization",
-        "description": "Enter your JWT token in the format: Bearer <token>"
+        "description": "Enter your JWT token in the format: Bearer <token>",
     }
 }
 
@@ -159,7 +155,9 @@ api.add_namespace(user_roles_ns, path="/")
 api.add_namespace(access_requests_ns, path="/access-requests")
 api.add_namespace(approval_workflows_ns, path="/approval-workflows")
 from app.notifications.routes import notifications_ns
+
 api.add_namespace(notifications_ns, path="/notifications")
 
 from app.routes.version_routes import ns as version_ns
+
 api.add_namespace(version_ns, path="/version")

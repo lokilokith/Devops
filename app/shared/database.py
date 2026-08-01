@@ -114,4 +114,3 @@ __all__ = [
     "UUIDMixin",
     "utcnow",
 ]
-

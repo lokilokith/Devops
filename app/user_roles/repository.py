@@ -21,6 +21,7 @@ from app.user_roles.exceptions import (
 from app.roles.models import Role, UserRole
 from app.identity.models import User
 
+
 class UserRolesRepository:
     """
     Repository managing persistence and retrieval
@@ -90,7 +91,7 @@ class UserRolesRepository:
             ur = self._session.execute(stmt).scalar_one_or_none()
             if not ur:
                 raise UserRoleNotFoundError("UserRole association not found.")
-            
+
             self._session.delete(ur)
             self._session.commit()
             return True
@@ -137,10 +138,12 @@ class UserRolesRepository:
             UserRolesRepositoryError: If database query fails.
         """
         try:
-            stmt = select(exists().where(
-                UserRole.user_id == user_id,
-                UserRole.role_id == role_id,
-            ))
+            stmt = select(
+                exists().where(
+                    UserRole.user_id == user_id,
+                    UserRole.role_id == role_id,
+                )
+            )
             return bool(self._session.execute(stmt).scalar())
         except SQLAlchemyError as err:
             self._session.rollback()
@@ -207,7 +210,9 @@ class UserRolesRepository:
             UserRolesRepositoryError: If database query fails.
         """
         try:
-            stmt = select(func.count(UserRole.role_id)).where(UserRole.user_id == user_id)
+            stmt = select(func.count(UserRole.role_id)).where(
+                UserRole.user_id == user_id
+            )
             return self._session.execute(stmt).scalar_one()
         except SQLAlchemyError as err:
             self._session.rollback()
@@ -226,10 +231,13 @@ class UserRolesRepository:
             UserRolesRepositoryError: If database query fails.
         """
         try:
-            stmt = select(func.count(UserRole.user_id)).where(UserRole.role_id == role_id)
+            stmt = select(func.count(UserRole.user_id)).where(
+                UserRole.role_id == role_id
+            )
             return self._session.execute(stmt).scalar_one()
         except SQLAlchemyError as err:
             self._session.rollback()
             raise UserRolesRepositoryError("Failed to count users for role.") from err
+
 
 __all__ = ["UserRolesRepository"]

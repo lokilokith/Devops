@@ -36,6 +36,7 @@ def create_app() -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
     from app.extensions import limiter
+
     limiter.init_app(app)
 
     # Initialize CORS
@@ -59,12 +60,13 @@ def create_app() -> Flask:
     # Register CLI commands
     from app.cli.seed_commands import register_commands as register_seed
     from app.cli.token_commands import register_commands as register_tokens
+
     register_seed(app)
     register_tokens(app)
-    
+
     # Register notification handlers
     from app.notifications.bootstrap import register_notification_handlers
+
     register_notification_handlers(app)
 
     return app
-

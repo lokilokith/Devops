@@ -28,12 +28,13 @@ logger = logging.getLogger("opsforge.security.bootstrap")
 
 class RBACSeedError(Exception):
     """Exception raised for errors during RBAC seed."""
+
     pass
 
 
 def seed_rbac() -> bool:
     """Idempotently seed the RBAC tables.
-    
+
     Returns:
         bool: True if successful, raises an exception otherwise.
     """
@@ -60,10 +61,10 @@ def seed_rbac() -> bool:
         db.session.commit()
 
         logger.info("OK - RBAC bootstrap completed successfully")
-        
+
         # 6. Validate the outcome after commit
         _validate_bootstrap()
-        
+
         print("RBAC Bootstrap Successful")
         return True
 
@@ -77,13 +78,15 @@ def _seed_resources() -> None:
     """Seed default resources into the database."""
     for res_def in DEFAULT_RESOURCES:
         res_code = res_def["resource_code"]
-        existing = db.session.scalar(select(Resource).where(Resource.resource_code == res_code))
+        existing = db.session.scalar(
+            select(Resource).where(Resource.resource_code == res_code)
+        )
         if not existing:
             new_res = Resource(
                 resource_code=res_code,
                 resource_name=res_def["resource_name"],
                 description=res_def["description"],
-                resource_type=ResourceType.APPLICATION
+                resource_type=ResourceType.APPLICATION,
             )
             db.session.add(new_res)
             logger.info(f"OK - Created resource {res_code}")
@@ -93,7 +96,7 @@ def _seed_resources() -> None:
 
 def _seed_roles() -> Dict[str, Role]:
     """Seed default roles into the database.
-    
+
     Returns:
         Dict[str, Role]: A mapping of role code to Role instance.
     """
@@ -106,7 +109,7 @@ def _seed_roles() -> Dict[str, Role]:
                 role_code=role_code,
                 role_name=role_def["role_name"],
                 description=role_def["description"],
-                role_type=RoleType.SYSTEM
+                role_type=RoleType.SYSTEM,
             )
             db.session.add(new_role)
             logger.info(f"OK - Created role {role_code}")
@@ -114,16 +117,16 @@ def _seed_roles() -> Dict[str, Role]:
         else:
             logger.debug(f"OK - Role {role_code} already exists")
             roles_map[role_code] = existing
-                
+
     if "ADMIN" not in roles_map:
         raise RBACSeedError("Failed to find or create the ADMIN role.")
-        
+
     return roles_map
 
 
 def _seed_permissions() -> List[Permission]:
     """Seed default permissions into the database.
-    
+
     Returns:
         List[Permission]: A list of all default permissions created or found.
     """
@@ -131,7 +134,7 @@ def _seed_permissions() -> List[Permission]:
     for resource, action_str in DEFAULT_PERMISSIONS:
         perm_code = f"PERM_{resource.upper()}_{action_str.upper()}"
         perm_name = f"{resource}.{action_str}"
-        
+
         # Map string action to enum safely
         try:
             action_enum = PermissionAction(action_str.lower())
@@ -142,13 +145,15 @@ def _seed_permissions() -> List[Permission]:
             else:
                 action_enum = PermissionAction.READ
 
-        existing = db.session.scalar(select(Permission).where(Permission.permission_code == perm_code))
+        existing = db.session.scalar(
+            select(Permission).where(Permission.permission_code == perm_code)
+        )
         if not existing:
             new_perm = Permission(
                 permission_code=perm_code,
                 permission_name=perm_name,
                 action=action_enum,
-                description=f"Allows {action_str} on {resource}"
+                description=f"Allows {action_str} on {resource}",
             )
             db.session.add(new_perm)
             permissions.append(new_perm)
@@ -156,37 +161,42 @@ def _seed_permissions() -> List[Permission]:
         else:
             permissions.append(existing)
             logger.debug(f"OK - Permission {perm_code} already exists")
-            
+
     return permissions
 
 
-def _assign_permissions_to_role(roles_map: Dict[str, Role], permissions: List[Permission]) -> None:
+def _assign_permissions_to_role(
+    roles_map: Dict[str, Role], permissions: List[Permission]
+) -> None:
     """Assign permissions to roles based on ROLE_PERMISSION_MAP."""
     from app.security.bootstrap.default_permissions import ROLE_PERMISSION_MAP
+
     db.session.flush()
 
     for role_code, mapped_perms in ROLE_PERMISSION_MAP.items():
         role = roles_map.get(role_code)
         if not role:
             continue
-            
+
         for perm in permissions:
             if "*" in mapped_perms or perm.permission_code in mapped_perms:
                 existing = db.session.scalar(
                     select(RolePermission).where(
                         RolePermission.role_id == role.id,
-                        RolePermission.permission_id == perm.id
+                        RolePermission.permission_id == perm.id,
                     )
                 )
                 if not existing:
                     rp = RolePermission(role_id=role.id, permission_id=perm.id)
                     db.session.add(rp)
-                    logger.info(f"OK - Assigned permission {perm.permission_code} to role {role_code}")
+                    logger.info(
+                        f"OK - Assigned permission {perm.permission_code} to role {role_code}"
+                    )
 
 
 def _assign_role_to_admin_user(role: Role) -> None:
     """Assign the Administrator role to the bootstrap admin user.
-    
+
     Args:
         role (Role): The Administrator role.
     """
@@ -201,22 +211,25 @@ def _assign_role_to_admin_user(role: Role) -> None:
         )
         from app.auth.service import AuthService
         from app.identity.repository import IdentityRepository
+
         auth_svc = AuthService(IdentityRepository(db.session))
         import os
+
         admin_pass = os.environ.get("ADMIN_DEFAULT_PASSWORD")
         if not admin_pass:
             if os.environ.get("APP_ENV") == "production":
-                raise RBACSeedError("ADMIN_DEFAULT_PASSWORD must be set in production environments.")
+                raise RBACSeedError(
+                    "ADMIN_DEFAULT_PASSWORD must be set in production environments."
+                )
             admin_pass = "secret123"
-            
+
         admin_user.password_hash = auth_svc.hash_password(admin_pass)
         db.session.add(admin_user)
         db.session.flush()
 
     existing_assignment = db.session.scalar(
         select(UserRole).where(
-            UserRole.user_id == admin_user.id,
-            UserRole.role_id == role.id
+            UserRole.user_id == admin_user.id, UserRole.role_id == role.id
         )
     )
     if not existing_assignment:
@@ -246,12 +259,13 @@ def _validate_bootstrap() -> None:
     # Validate Role Assigned
     ur = db.session.scalar(
         select(UserRole).where(
-            UserRole.user_id == admin_user.id,
-            UserRole.role_id == admin_role.id
+            UserRole.user_id == admin_user.id, UserRole.role_id == admin_role.id
         )
     )
     if not ur:
-        raise RBACSeedError("Validation failed: 'admin' user does not have 'ADMIN' role.")
+        raise RBACSeedError(
+            "Validation failed: 'admin' user does not have 'ADMIN' role."
+        )
     logger.info("OK - Role Assigned")
 
     # Validate Permissions Assigned
@@ -261,7 +275,7 @@ def _validate_bootstrap() -> None:
             RolePermission.role_id == admin_role.id
         )
     )
-    
+
     # Check if the role has at least the default permissions we specified
     if actual_perm_count < expected_perm_count:
         raise RBACSeedError(

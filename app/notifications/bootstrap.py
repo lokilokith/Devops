@@ -14,9 +14,10 @@ from app.notifications.models import NotificationType, NotificationPriority
 
 logger = logging.getLogger(__name__)
 
+
 def register_notification_handlers(app: Flask) -> None:
     """Register blinker signal handlers for the notification engine."""
-    
+
     def handle_event(sender, **kwargs):
         # We need the app context to use the db and services.
         # Since signals are emitted during a request, we are already in app context.
@@ -25,20 +26,24 @@ def register_notification_handlers(app: Flask) -> None:
         event_name = payload.get("event")
         recipient_id = payload.get("recipient_id")
         if not recipient_id:
-            logger.warning(f"Notification skipped for event '{event_name}': No recipient_id provided.")
+            logger.warning(
+                f"Notification skipped for event '{event_name}': No recipient_id provided."
+            )
             return
 
         title = payload.get("title", f"New {event_name.replace('_', ' ').title()}")
-        message = payload.get("message", f"You have a new notification regarding {event_name}.")
+        message = payload.get(
+            "message", f"You have a new notification regarding {event_name}."
+        )
         type_str = payload.get("type")
         priority_str = payload.get("priority", "normal")
         metadata = payload.get("metadata", {})
-        
+
         try:
             type_enum = NotificationType(type_str)
         except ValueError:
             type_enum = NotificationType.SYSTEM
-            
+
         try:
             priority_enum = NotificationPriority(priority_str)
         except ValueError:
@@ -55,7 +60,7 @@ def register_notification_handlers(app: Flask) -> None:
             repository=NotificationRepository(db.session),
             audit_service=AuditService(AuditRepository(db.session)),
             provider=ConsoleEmailProvider(),
-            session=db.session
+            session=db.session,
         )
 
         try:
@@ -79,5 +84,5 @@ def register_notification_handlers(app: Flask) -> None:
     workflow_failed.connect(handle_event, weak=False)
     role_provisioned.connect(handle_event, weak=False)
     audit_alert.connect(handle_event, weak=False)
-    
+
     logger.info("Notification handlers registered.")

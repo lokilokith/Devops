@@ -1,4 +1,5 @@
 """RolePermissions feature service layer."""
+
 from __future__ import annotations
 
 from typing import Sequence
@@ -15,21 +16,27 @@ from app.role_permissions.exceptions import (
     RolePermissionNotFoundError,
     RolePermissionAlreadyExistsError,
     RolePermissionsServiceError,
-    ValidationError
+    ValidationError,
 )
+
 
 class RolePermissionService:
     def __init__(
-        self, 
+        self,
         repository: RolePermissionsRepository,
         roles_repository: RolesRepository,
-        permissions_repository: PermissionsRepository
+        permissions_repository: PermissionsRepository,
     ):
         self._repository = repository
         self._roles_repository = roles_repository
         self._permissions_repository = permissions_repository
-        
-    def assign_permission(self, role_id: UUID, permission_id: UUID, assigned_by_user_id: UUID | None = None) -> RolePermission:
+
+    def assign_permission(
+        self,
+        role_id: UUID,
+        permission_id: UUID,
+        assigned_by_user_id: UUID | None = None,
+    ) -> RolePermission:
         try:
             role = self._roles_repository.get_by_id(role_id)
             if not role:
@@ -49,11 +56,15 @@ class RolePermissionService:
             raise RolePermissionsServiceError("Error checking permission.") from e
 
         try:
-            return self._repository.assign_permission_to_role(role_id, permission_id, assigned_by_user_id)
+            return self._repository.assign_permission_to_role(
+                role_id, permission_id, assigned_by_user_id
+            )
         except RolePermissionAlreadyExistsError as e:
             raise ValidationError(str(e)) from e
         except RolePermissionsRepositoryError as e:
-            raise RolePermissionsServiceError(f"Failed to assign permission: {e}") from e
+            raise RolePermissionsServiceError(
+                f"Failed to assign permission: {e}"
+            ) from e
 
     def remove_permission(self, role_id: UUID, permission_id: UUID) -> bool:
         try:
@@ -61,19 +72,25 @@ class RolePermissionService:
         except RolePermissionNotFoundError as e:
             raise ValidationError(str(e)) from e
         except RolePermissionsRepositoryError as e:
-            raise RolePermissionsServiceError(f"Failed to remove permission: {e}") from e
+            raise RolePermissionsServiceError(
+                f"Failed to remove permission: {e}"
+            ) from e
 
     def list_permissions_for_role(self, role_id: UUID) -> Sequence[Permission]:
         try:
             return self._repository.list_permissions_for_role(role_id)
         except RolePermissionsRepositoryError as e:
-            raise RolePermissionsServiceError(f"Failed to list permissions for role: {e}") from e
+            raise RolePermissionsServiceError(
+                f"Failed to list permissions for role: {e}"
+            ) from e
 
     def list_roles_for_permission(self, permission_id: UUID) -> Sequence[Role]:
         try:
             return self._repository.list_roles_for_permission(permission_id)
         except RolePermissionsRepositoryError as e:
-            raise RolePermissionsServiceError(f"Failed to list roles for permission: {e}") from e
+            raise RolePermissionsServiceError(
+                f"Failed to list roles for permission: {e}"
+            ) from e
 
     def exists(self, role_id: UUID, permission_id: UUID) -> bool:
         try:

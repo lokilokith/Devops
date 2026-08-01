@@ -1,4 +1,5 @@
 """Repository for ApprovalWorkflow"""
+
 from __future__ import annotations
 from typing import Sequence, Any
 from uuid import UUID
@@ -14,11 +15,13 @@ from app.approval_workflow.exceptions import (
 )
 from app.approval_workflow.models import ApprovalWorkflow, ApprovalStatus
 
+
 def _normalize_pagination(page: int | None, page_size: int | None) -> tuple[int, int]:
     """Normalize pagination parameters."""
     p = page if page is not None and page > 0 else 1
     s = page_size if page_size is not None and page_size > 0 else 50
     return p, min(s, 100)
+
 
 class ApprovalWorkflowRepository:
     def __init__(self, session: Session) -> None:
@@ -33,7 +36,9 @@ class ApprovalWorkflowRepository:
             self._session.rollback()
             raise ApprovalWorkflowRepositoryError("Failed to create workflow.") from err
 
-    def get_by_id(self, workflow_id: UUID, for_update: bool = False) -> ApprovalWorkflow | None:
+    def get_by_id(
+        self, workflow_id: UUID, for_update: bool = False
+    ) -> ApprovalWorkflow | None:
         try:
             stmt = select(ApprovalWorkflow).where(ApprovalWorkflow.id == workflow_id)
             if for_update:
@@ -45,11 +50,17 @@ class ApprovalWorkflowRepository:
 
     def get_by_request(self, access_request_id: UUID) -> Sequence[ApprovalWorkflow]:
         try:
-            stmt = select(ApprovalWorkflow).where(ApprovalWorkflow.access_request_id == access_request_id).order_by(ApprovalWorkflow.created_at.asc())
+            stmt = (
+                select(ApprovalWorkflow)
+                .where(ApprovalWorkflow.access_request_id == access_request_id)
+                .order_by(ApprovalWorkflow.created_at.asc())
+            )
             return self._session.execute(stmt).scalars().all()
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise ApprovalWorkflowRepositoryError("Failed to get workflows by request.") from err
+            raise ApprovalWorkflowRepositoryError(
+                "Failed to get workflows by request."
+            ) from err
 
     def update_workflow(self, workflow: ApprovalWorkflow) -> ApprovalWorkflow:
         try:
@@ -61,8 +72,8 @@ class ApprovalWorkflowRepository:
             raise ApprovalWorkflowRepositoryError("Failed to update workflow.") from err
 
     def list(
-        self, 
-        page: int = 1, 
+        self,
+        page: int = 1,
         page_size: int = 50,
         status: str | None = None,
         request_id: UUID | None = None,
@@ -83,8 +94,12 @@ class ApprovalWorkflowRepository:
                 stmt = stmt.where(ApprovalWorkflow.created_at >= created_after)
             if created_before:
                 stmt = stmt.where(ApprovalWorkflow.created_at <= created_before)
-                
-            stmt = stmt.order_by(ApprovalWorkflow.created_at.desc()).offset((p - 1) * s).limit(s)
+
+            stmt = (
+                stmt.order_by(ApprovalWorkflow.created_at.desc())
+                .offset((p - 1) * s)
+                .limit(s)
+            )
             return self._session.execute(stmt).scalars().all()
         except SQLAlchemyError as err:
             self._session.rollback()
@@ -114,5 +129,6 @@ class ApprovalWorkflowRepository:
         except SQLAlchemyError as err:
             self._session.rollback()
             raise ApprovalWorkflowRepositoryError("Failed to count workflows.") from err
+
 
 __all__ = ["ApprovalWorkflowRepository"]

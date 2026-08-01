@@ -102,9 +102,7 @@ class AccessRequest(BaseModel):
             native_enum=False,
             create_constraint=True,
             validate_strings=True,
-            values_callable=lambda enum_cls: [
-                member.value for member in enum_cls
-            ],
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
         ),
         nullable=False,
         index=True,
@@ -134,4 +132,3 @@ __all__ = [
     "AccessRequest",
     "AccessRequestStatus",
 ]
-

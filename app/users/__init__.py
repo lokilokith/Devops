@@ -1,2 +1,1 @@
 """Users feature package."""
-

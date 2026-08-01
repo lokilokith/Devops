@@ -1,2 +1,1 @@
 """Identity feature package."""
-

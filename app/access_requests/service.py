@@ -1,11 +1,16 @@
 """AccessRequest Service for OpsForge."""
+
 from __future__ import annotations
 from typing import Sequence, Any
 from uuid import UUID
 from datetime import datetime
 import uuid
 
-from app.access_requests.models import AccessRequest, AccessRequestStatus, AccessRequestPriority
+from app.access_requests.models import (
+    AccessRequest,
+    AccessRequestStatus,
+    AccessRequestPriority,
+)
 from app.access_requests.repository import AccessRequestRepository
 from app.access_requests.exceptions import (
     AccessRequestInvalidStateError,
@@ -25,6 +30,7 @@ from app.identity.exceptions import UserNotFoundError
 from app.roles.exceptions import RoleNotFoundError
 from app.resources.exceptions import ResourceNotFoundError
 
+
 class AccessRequestService:
     def __init__(
         self,
@@ -32,7 +38,7 @@ class AccessRequestService:
         user_repo: IdentityRepository,
         role_repo: RolesRepository,
         resource_repo: ResourcesRepository,
-        user_roles_repo: Any = None, # Avoid circular imports if needed, but we can type it properly if imported
+        user_roles_repo: Any = None,  # Avoid circular imports if needed, but we can type it properly if imported
     ) -> None:
         self._repo = access_request_repo
         self._user_repo = user_repo
@@ -50,20 +56,24 @@ class AccessRequestService:
         requested_start: datetime | None = None,
         requested_end: datetime | None = None,
     ) -> AccessRequest:
-        
+
         # Validation
         if not requested_role_id and not requested_resource_id:
-            raise AccessRequestValidationError("Must specify either a role or a resource.")
+            raise AccessRequestValidationError(
+                "Must specify either a role or a resource."
+            )
         if requested_start and requested_end and requested_start >= requested_end:
-            raise AccessRequestValidationError("Requested start must be before requested end.")
+            raise AccessRequestValidationError(
+                "Requested start must be before requested end."
+            )
 
         if not self._user_repo.get_by_id(requester_id):
             raise AccessRequestValidationError("Requester not found.")
-            
+
         if requested_role_id:
             if not self._role_repo.get_by_id(requested_role_id):
                 raise AccessRequestValidationError("Requested role not found.")
-                
+
         if requested_resource_id:
             if not self._resource_repo.get_by_id(requested_resource_id):
                 raise AccessRequestValidationError("Requested resource not found.")
@@ -79,7 +89,7 @@ class AccessRequestService:
             raise AccessRequestDuplicateError("An active request already exists.")
 
         request_number = f"REQ-{uuid.uuid4().hex[:8].upper()}"
-        
+
         req = AccessRequest(
             request_number=request_number,
             requester_id=requester_id,
@@ -92,20 +102,22 @@ class AccessRequestService:
             status=AccessRequestStatus.PENDING,
         )
         created = self._repo.create_request(req)
-        
+
         access_request_created.send(
             self,
             payload={
                 "event": "access_request_created",
                 "request_id": str(created.id),
                 "actor_id": str(requester_id),
-                "recipient_id": str(requester_id), # Usually we notify the requester, but wait, who should be notified?
+                "recipient_id": str(
+                    requester_id
+                ),  # Usually we notify the requester, but wait, who should be notified?
                 # The prompt says: "Automatically generate notifications for: Access Request Created -> User receives notification"
                 "title": "Access Request Created",
                 "message": f"Your access request {request_number} has been submitted.",
                 "type": "access_request_created",
                 "priority": "normal",
-            }
+            },
         )
         return created
 
@@ -114,18 +126,23 @@ class AccessRequestService:
         if not req:
             raise AccessRequestValidationError("Access request not found.")
         if req.status != AccessRequestStatus.PENDING:
-            raise AccessRequestInvalidStateError("Only pending requests can be approved.")
-        
+            raise AccessRequestInvalidStateError(
+                "Only pending requests can be approved."
+            )
+
         # Provision the requested access first
         if req.requested_role_id and self._user_roles_repo:
             from app.user_roles.exceptions import UserRoleAlreadyExistsError
+
             try:
-                self._user_roles_repo.assign_role_to_user(req.requester_id, req.requested_role_id, approver_id)
+                self._user_roles_repo.assign_role_to_user(
+                    req.requester_id, req.requested_role_id, approver_id
+                )
             except UserRoleAlreadyExistsError:
-                pass # If they already have it, just mark request approved
-        
+                pass  # If they already have it, just mark request approved
+
         approved_req = self._repo.approve(request_id, approver_id)
-        
+
         request_approved.send(
             self,
             payload={
@@ -137,18 +154,22 @@ class AccessRequestService:
                 "message": f"Your access request {approved_req.request_number} has been approved.",
                 "type": "request_approved",
                 "priority": "high",
-            }
+            },
         )
         return approved_req
 
-    def reject_request(self, request_id: UUID, reason: str, rejecter_id: UUID | None = None) -> AccessRequest:
+    def reject_request(
+        self, request_id: UUID, reason: str, rejecter_id: UUID | None = None
+    ) -> AccessRequest:
         req = self._repo.get_by_id(request_id)
         if not req:
             raise AccessRequestValidationError("Access request not found.")
         if req.status != AccessRequestStatus.PENDING:
-            raise AccessRequestInvalidStateError("Only pending requests can be rejected.")
+            raise AccessRequestInvalidStateError(
+                "Only pending requests can be rejected."
+            )
         rejected_req = self._repo.reject(request_id, reason, rejecter_id)
-        
+
         request_rejected.send(
             self,
             payload={
@@ -160,7 +181,7 @@ class AccessRequestService:
                 "message": f"Your access request {rejected_req.request_number} has been rejected.",
                 "type": "request_rejected",
                 "priority": "high",
-            }
+            },
         )
         return rejected_req
 
@@ -168,10 +189,13 @@ class AccessRequestService:
         req = self._repo.get_by_id(request_id)
         if not req:
             raise AccessRequestValidationError("Access request not found.")
-        if req.status not in (AccessRequestStatus.PENDING, AccessRequestStatus.APPROVED):
+        if req.status not in (
+            AccessRequestStatus.PENDING,
+            AccessRequestStatus.APPROVED,
+        ):
             raise AccessRequestInvalidStateError("Request cannot be cancelled.")
         cancelled_req = self._repo.cancel(request_id)
-        
+
         request_cancelled.send(
             self,
             payload={
@@ -182,8 +206,9 @@ class AccessRequestService:
                 "message": f"Your access request {cancelled_req.request_number} has been cancelled.",
                 "type": "request_cancelled",
                 "priority": "normal",
-            }
+            },
         )
         return cancelled_req
+
 
 __all__ = ["AccessRequestService"]

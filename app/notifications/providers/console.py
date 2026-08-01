@@ -4,6 +4,7 @@ from app.notifications.models import Notification
 
 logger = logging.getLogger(__name__)
 
+
 class ConsoleEmailProvider(NotificationProvider):
     def send(self, notification: Notification) -> bool:
         """Simulates sending an email by printing to the console/logger."""

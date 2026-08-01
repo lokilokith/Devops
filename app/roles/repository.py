@@ -188,9 +188,7 @@ class RolesRepository:
             return self._session.execute(stmt).scalar_one_or_none()
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolesRepositoryError(
-                "Failed to retrieve role by ID."
-            ) from err
+            raise RolesRepositoryError("Failed to retrieve role by ID.") from err
 
     def get_by_role_code(self, role_code: str) -> Role | None:
         """Fetch a Role entity by role code (exact match).
@@ -210,9 +208,7 @@ class RolesRepository:
             return self._session.execute(stmt).scalar_one_or_none()
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolesRepositoryError(
-                "Failed to retrieve role by role code."
-            ) from err
+            raise RolesRepositoryError("Failed to retrieve role by role code.") from err
 
     def get_by_role_name(self, role_name: str) -> Role | None:
         """Fetch a Role entity by role name (exact match).
@@ -232,9 +228,7 @@ class RolesRepository:
             return self._session.execute(stmt).scalar_one_or_none()
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolesRepositoryError(
-                "Failed to retrieve role by role name."
-            ) from err
+            raise RolesRepositoryError("Failed to retrieve role by role name.") from err
 
     def list(
         self,
@@ -261,9 +255,7 @@ class RolesRepository:
             RolesRepositoryError: If the database query fails.
         """
         try:
-            bounded_limit, normalized_offset = (
-                self._normalize_pagination(limit, offset)
-            )
+            bounded_limit, normalized_offset = self._normalize_pagination(limit, offset)
             stmt = select(Role)
             stmt = self._apply_filters(
                 stmt,
@@ -297,9 +289,7 @@ class RolesRepository:
             return self._commit_and_refresh(merged_role)
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolesRepositoryError(
-                "Failed to update role record."
-            ) from err
+            raise RolesRepositoryError("Failed to update role record.") from err
 
     def delete(self, role_id: UUID) -> bool:
         """Delete a Role entity by ID.
@@ -323,9 +313,7 @@ class RolesRepository:
             raise
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolesRepositoryError(
-                "Failed to delete role record."
-            ) from err
+            raise RolesRepositoryError("Failed to delete role record.") from err
 
     def activate(self, role_id: UUID) -> Role:
         """Activate a Role entity.
@@ -390,9 +378,7 @@ class RolesRepository:
             return bool(self._session.execute(stmt).scalar())
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolesRepositoryError(
-                "Failed to check role code existence."
-            ) from err
+            raise RolesRepositoryError("Failed to check role code existence.") from err
 
     def exists_by_role_name(self, role_name: str) -> bool:
         """Check if a role exists with the given role name.
@@ -412,9 +398,7 @@ class RolesRepository:
             return bool(self._session.execute(stmt).scalar())
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolesRepositoryError(
-                "Failed to check role name existence."
-            ) from err
+            raise RolesRepositoryError("Failed to check role name existence.") from err
 
     def count(
         self,
@@ -479,9 +463,7 @@ class RolesRepository:
             RolesRepositoryError: If the database query fails.
         """
         try:
-            bounded_limit, normalized_offset = (
-                self._normalize_pagination(limit, offset)
-            )
+            bounded_limit, normalized_offset = self._normalize_pagination(limit, offset)
             stmt = select(Role)
             stmt = self._apply_filters(
                 stmt,
@@ -492,6 +474,44 @@ class RolesRepository:
             )
             stmt = (
                 stmt.order_by(Role.created_at.desc())
+                .offset(normalized_offset)
+                .limit(bounded_limit)
+            )
+            return self._session.execute(stmt).scalars().all()
+        except SQLAlchemyError as err:
+            self._session.rollback()
+            raise RolesRepositoryError("Failed to search roles.") from err
+
+    def count_search_roles(self, query: str) -> int:
+        try:
+            from sqlalchemy import func, or_
+
+            pattern = f"%{query}%"
+            stmt = (
+                select(func.count())
+                .select_from(Role)
+                .where(
+                    or_(Role.role_code.ilike(pattern), Role.role_name.ilike(pattern))
+                )
+            )
+            return self._session.scalar(stmt) or 0
+        except SQLAlchemyError as err:
+            raise RolesRepositoryError("Failed to count searched roles.") from err
+
+    def search_roles(
+        self, query: str, offset: int = 0, limit: int = 100
+    ) -> Sequence[Role]:
+        try:
+            from sqlalchemy import or_
+
+            bounded_limit, normalized_offset = self._normalize_pagination(limit, offset)
+            pattern = f"%{query}%"
+            stmt = (
+                select(Role)
+                .where(
+                    or_(Role.role_code.ilike(pattern), Role.role_name.ilike(pattern))
+                )
+                .order_by(Role.created_at.desc())
                 .offset(normalized_offset)
                 .limit(bounded_limit)
             )

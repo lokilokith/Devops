@@ -13,11 +13,14 @@ from app.notifications.models import (
     NotificationPriority,
 )
 
+
 class NotificationRepositoryError(Exception):
     pass
 
+
 class NotificationNotFoundError(Exception):
     pass
+
 
 class NotificationRepository:
     def __init__(self, session: Session) -> None:
@@ -34,7 +37,9 @@ class NotificationRepository:
 
     def get_by_id(self, notification_id: UUID) -> Notification | None:
         try:
-            return self._session.query(Notification).filter_by(id=notification_id).first()
+            return (
+                self._session.query(Notification).filter_by(id=notification_id).first()
+            )
         except SQLAlchemyError as err:
             raise NotificationRepositoryError("Failed to fetch notification.") from err
 
@@ -59,17 +64,23 @@ class NotificationRepository:
 
     def count_unread(self, user_id: UUID) -> int:
         try:
-            return self._session.query(Notification).filter_by(
-                recipient_user_id=str(user_id), is_read=False
-            ).count()
+            return (
+                self._session.query(Notification)
+                .filter_by(recipient_user_id=str(user_id), is_read=False)
+                .count()
+            )
         except SQLAlchemyError as err:
-            raise NotificationRepositoryError("Failed to count unread notifications.") from err
+            raise NotificationRepositoryError(
+                "Failed to count unread notifications."
+            ) from err
 
     def mark_all_as_read(self, user_id: UUID) -> int:
         try:
-            notifs = self._session.query(Notification).filter_by(
-                recipient_user_id=str(user_id), is_read=False
-            ).all()
+            notifs = (
+                self._session.query(Notification)
+                .filter_by(recipient_user_id=str(user_id), is_read=False)
+                .all()
+            )
             count = len(notifs)
             for notif in notifs:
                 notif.is_read = True
@@ -79,7 +90,9 @@ class NotificationRepository:
             return count
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise NotificationRepositoryError("Failed to mark notifications as read.") from err
+            raise NotificationRepositoryError(
+                "Failed to mark notifications as read."
+            ) from err
 
     def list_notifications(
         self,
@@ -95,9 +108,11 @@ class NotificationRepository:
     ) -> Sequence[Notification]:
         try:
             query = self._session.query(Notification)
-            
+
             if recipient_id:
-                query = query.filter(Notification.recipient_user_id == str(recipient_id))
+                query = query.filter(
+                    Notification.recipient_user_id == str(recipient_id)
+                )
             if status:
                 query = query.filter(Notification.status == status)
             if type_:
@@ -110,16 +125,27 @@ class NotificationRepository:
                 query = query.filter(Notification.created_at >= created_after)
             if created_before:
                 query = query.filter(Notification.created_at <= created_before)
-                
-            return query.order_by(desc(Notification.created_at)).offset(offset).limit(limit).all()
+
+            return (
+                query.order_by(desc(Notification.created_at))
+                .offset(offset)
+                .limit(limit)
+                .all()
+            )
         except SQLAlchemyError as err:
             raise NotificationRepositoryError("Failed to list notifications.") from err
 
     def get_failed_notifications(self, max_attempts: int = 3) -> Sequence[Notification]:
         try:
-            return self._session.query(Notification).filter(
-                Notification.status == NotificationStatus.FAILED,
-                Notification.delivery_attempts < max_attempts
-            ).all()
+            return (
+                self._session.query(Notification)
+                .filter(
+                    Notification.status == NotificationStatus.FAILED,
+                    Notification.delivery_attempts < max_attempts,
+                )
+                .all()
+            )
         except SQLAlchemyError as err:
-            raise NotificationRepositoryError("Failed to fetch failed notifications.") from err
+            raise NotificationRepositoryError(
+                "Failed to fetch failed notifications."
+            ) from err

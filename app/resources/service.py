@@ -1,4 +1,5 @@
 """Resources feature service layer."""
+
 from __future__ import annotations
 
 from typing import Sequence
@@ -11,36 +12,43 @@ from app.resources.exceptions import (
     ResourceNotFoundError,
     ResourcesServiceError,
     DuplicateResourceError,
-    ValidationError
+    ValidationError,
 )
+
 
 class ResourcesService:
     def __init__(self, repository: ResourcesRepository):
         self._repository = repository
-        
+
     def create_resource(self, data: dict) -> Resource:
         resource_code = data.get("resource_code")
         resource_name = data.get("resource_name")
         description = data.get("description")
         resource_type = data.get("resource_type") or ResourceType.SERVER
-        
+
         if not resource_code or not resource_name:
-            raise ValidationError("Missing required fields: resource_code and resource_name")
+            raise ValidationError(
+                "Missing required fields: resource_code and resource_name"
+            )
 
         try:
             if self._repository.exists_by_resource_code(resource_code):
-                raise DuplicateResourceError(f"Resource code '{resource_code}' is already in use.")
+                raise DuplicateResourceError(
+                    f"Resource code '{resource_code}' is already in use."
+                )
             if self._repository.exists_by_resource_name(resource_name):
-                raise DuplicateResourceError(f"Resource name '{resource_name}' is already in use.")
+                raise DuplicateResourceError(
+                    f"Resource name '{resource_name}' is already in use."
+                )
         except ResourcesRepositoryError as e:
             raise ResourcesServiceError(f"Repository validation failed: {e}") from e
-            
+
         try:
             resource = Resource(
                 resource_code=resource_code,
                 resource_name=resource_name,
                 description=description,
-                resource_type=resource_type
+                resource_type=resource_type,
             )
             return self._repository.create(resource)
         except ResourcesRepositoryError as e:
@@ -65,7 +73,7 @@ class ResourcesService:
 
     def update_resource(self, resource_id: UUID, data: dict) -> Resource:
         resource = self.get_resource(resource_id)
-        
+
         if "resource_name" in data and data["resource_name"] != resource.resource_name:
             try:
                 if self._repository.exists_by_resource_name(data["resource_name"]):
@@ -73,10 +81,10 @@ class ResourcesService:
             except ResourcesRepositoryError as e:
                 raise ResourcesServiceError(f"Validation failed: {e}") from e
             resource.resource_name = data["resource_name"]
-            
+
         if "description" in data:
             resource.description = data["description"]
-            
+
         if "resource_type" in data:
             resource.resource_type = data["resource_type"]
 
@@ -93,7 +101,7 @@ class ResourcesService:
 
     def delete_resource(self, resource_id: UUID) -> bool:
         resource = self.get_resource(resource_id)
-            
+
         try:
             return self._repository.delete(resource_id)
         except ResourcesRepositoryError as e:

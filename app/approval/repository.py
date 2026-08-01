@@ -1,2 +1,1 @@
 """Approval feature repository placeholder."""
-

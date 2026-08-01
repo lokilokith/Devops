@@ -1,4 +1,5 @@
 """AccessRequest repository for OpsForge."""
+
 from __future__ import annotations
 from typing import Sequence, Any
 from uuid import UUID
@@ -14,11 +15,13 @@ from app.access_requests.exceptions import (
 )
 from app.access_requests.models import AccessRequest, AccessRequestStatus
 
+
 def _normalize_pagination(page: int | None, page_size: int | None) -> tuple[int, int]:
     """Normalize pagination parameters."""
     p = page if page is not None and page > 0 else 1
     s = page_size if page_size is not None and page_size > 0 else 50
     return p, min(s, 100)
+
 
 class AccessRequestRepository:
     def __init__(self, session: Session) -> None:
@@ -32,7 +35,9 @@ class AccessRequestRepository:
             return access_request
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise AccessRequestRepositoryError("Failed to create access request.") from err
+            raise AccessRequestRepositoryError(
+                "Failed to create access request."
+            ) from err
 
     def get_by_id(self, request_id: UUID) -> AccessRequest | None:
         try:
@@ -44,13 +49,19 @@ class AccessRequestRepository:
 
     def get_by_request_number(self, request_number: str) -> AccessRequest | None:
         try:
-            stmt = select(AccessRequest).where(AccessRequest.request_number == request_number)
+            stmt = select(AccessRequest).where(
+                AccessRequest.request_number == request_number
+            )
             return self._session.execute(stmt).scalar_one_or_none()
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise AccessRequestRepositoryError("Failed to get access request by number.") from err
+            raise AccessRequestRepositoryError(
+                "Failed to get access request by number."
+            ) from err
 
-    def update_status(self, request_id: UUID, status: AccessRequestStatus) -> AccessRequest:
+    def update_status(
+        self, request_id: UUID, status: AccessRequestStatus
+    ) -> AccessRequest:
         req = self.get_by_id(request_id)
         if not req:
             raise AccessRequestNotFoundError("Access request not found.")
@@ -81,7 +92,9 @@ class AccessRequestRepository:
             self._session.rollback()
             raise AccessRequestRepositoryError("Failed to approve request.") from err
 
-    def reject(self, request_id: UUID, reason: str, rejecter_id: UUID | None = None) -> AccessRequest:
+    def reject(
+        self, request_id: UUID, reason: str, rejecter_id: UUID | None = None
+    ) -> AccessRequest:
         req = self.get_by_id(request_id)
         if not req:
             raise AccessRequestNotFoundError("Access request not found.")
@@ -99,10 +112,17 @@ class AccessRequestRepository:
     def cancel(self, request_id: UUID) -> AccessRequest:
         return self.update_status(request_id, AccessRequestStatus.CANCELLED)
 
-    def list_requests(self, page: int = 1, page_size: int = 50) -> Sequence[AccessRequest]:
+    def list_requests(
+        self, page: int = 1, page_size: int = 50
+    ) -> Sequence[AccessRequest]:
         p, s = _normalize_pagination(page, page_size)
         try:
-            stmt = select(AccessRequest).order_by(AccessRequest.created_at.desc()).offset((p - 1) * s).limit(s)
+            stmt = (
+                select(AccessRequest)
+                .order_by(AccessRequest.created_at.desc())
+                .offset((p - 1) * s)
+                .limit(s)
+            )
             return self._session.execute(stmt).scalars().all()
         except SQLAlchemyError as err:
             self._session.rollback()
@@ -117,12 +137,18 @@ class AccessRequestRepository:
             self._session.rollback()
             raise AccessRequestRepositoryError("Failed to count requests.") from err
 
-    def search(self, page: int = 1, page_size: int = 50, **filters: Any) -> Sequence[AccessRequest]:
+    def search(
+        self, page: int = 1, page_size: int = 50, **filters: Any
+    ) -> Sequence[AccessRequest]:
         p, s = _normalize_pagination(page, page_size)
         try:
             stmt = select(AccessRequest)
             stmt = self._apply_filters(stmt, **filters)
-            stmt = stmt.order_by(AccessRequest.created_at.desc()).offset((p - 1) * s).limit(s)
+            stmt = (
+                stmt.order_by(AccessRequest.created_at.desc())
+                .offset((p - 1) * s)
+                .limit(s)
+            )
             return self._session.execute(stmt).scalars().all()
         except SQLAlchemyError as err:
             self._session.rollback()
@@ -134,9 +160,14 @@ class AccessRequestRepository:
         if "requester_id" in filters and filters["requester_id"]:
             stmt = stmt.where(AccessRequest.requester_id == filters["requester_id"])
         if "requested_role_id" in filters and filters["requested_role_id"]:
-            stmt = stmt.where(AccessRequest.requested_role_id == filters["requested_role_id"])
+            stmt = stmt.where(
+                AccessRequest.requested_role_id == filters["requested_role_id"]
+            )
         if "requested_resource_id" in filters and filters["requested_resource_id"]:
-            stmt = stmt.where(AccessRequest.requested_resource_id == filters["requested_resource_id"])
+            stmt = stmt.where(
+                AccessRequest.requested_resource_id == filters["requested_resource_id"]
+            )
         return stmt
+
 
 __all__ = ["AccessRequestRepository"]

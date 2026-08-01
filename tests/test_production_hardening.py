@@ -45,10 +45,7 @@ def test_cors_headers_development(client):
         "/health",
         headers={"Origin": "http://localhost:3000"},
     )
-    assert (
-        res.headers.get("Access-Control-Allow-Origin")
-        == "http://localhost:3000"
-    )
+    assert res.headers.get("Access-Control-Allow-Origin") == "http://localhost:3000"
 
 
 def test_wsgi_entrypoint_imports():
@@ -84,9 +81,7 @@ def test_configuration_validation_errors():
             del os.environ["SECRET_KEY"]
         with pytest.raises(ConfigurationException) as exc:
             get_config()
-        assert "SECRET_KEY environment variable is missing" in str(
-            exc.value
-        )
+        assert "SECRET_KEY environment variable is missing" in str(exc.value)
 
     # 4. Production missing DATABASE_URL
     with patch.dict(
@@ -97,9 +92,7 @@ def test_configuration_validation_errors():
             del os.environ["DATABASE_URL"]
         with pytest.raises(ConfigurationException) as exc:
             get_config()
-        assert "DATABASE_URL environment variable is missing" in str(
-            exc.value
-        )
+        assert "DATABASE_URL environment variable is missing" in str(exc.value)
 
 
 def test_error_handler_405(client):
@@ -132,4 +125,3 @@ def test_health_endpoint_response_structure(client):
     assert data["data"]["database"] == "healthy"
     assert "version" in data["data"]
     assert "uptime" in data["data"]
-

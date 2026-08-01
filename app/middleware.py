@@ -57,4 +57,3 @@ def register_middleware(app: Flask) -> None:
         response.headers["X-OpsForge-Version"] = version
 
         return response
-

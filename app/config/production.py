@@ -16,9 +16,12 @@ class ProductionConfig(BaseConfig):
     SECRET_KEY = os.environ.get("SECRET_KEY")
     if not SECRET_KEY or SECRET_KEY == "default-dev-key":
         raise RuntimeError("SECRET_KEY must be set securely in production.")
-        
+
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
-    if not JWT_SECRET_KEY or JWT_SECRET_KEY == "super-secret-default-key-at-least-32-bytes":
+    if (
+        not JWT_SECRET_KEY
+        or JWT_SECRET_KEY == "super-secret-default-key-at-least-32-bytes"
+    ):
         raise RuntimeError("JWT_SECRET_KEY must be set securely in production.")
 
     # Restrict wildcard and configure specific whitelisted origins in production
@@ -28,4 +31,3 @@ class ProductionConfig(BaseConfig):
     CORS_RESOURCES = {
         r"/*": {"origins": [orig.strip() for orig in allowed_origins if orig.strip()]}
     }
-

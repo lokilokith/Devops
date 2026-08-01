@@ -18,14 +18,16 @@ ns = Namespace("health", description="System health and telemetry check")
 # Record start time for uptime tracking
 start_time = time.time()
 
-health_live_model = ns.model("HealthLive", {
-    "status": fields.String(example="healthy")
-})
+health_live_model = ns.model("HealthLive", {"status": fields.String(example="healthy")})
 
-health_ready_model = ns.model("HealthReady", {
-    "status": fields.String(example="healthy"),
-    "database": fields.String(example="connected")
-})
+health_ready_model = ns.model(
+    "HealthReady",
+    {
+        "status": fields.String(example="healthy"),
+        "database": fields.String(example="connected"),
+    },
+)
+
 
 @ns.route("/live")
 class HealthLiveResource(Resource):
@@ -33,6 +35,7 @@ class HealthLiveResource(Resource):
     @ns.marshal_with(health_live_model, code=200)
     def get(self) -> dict:
         return {"status": "healthy"}
+
 
 @ns.route("/ready")
 class HealthReadyResource(Resource):
@@ -44,13 +47,14 @@ class HealthReadyResource(Resource):
             db.session.execute(text("SELECT 1"))
         except Exception:
             database_status = "disconnected"
-            
+
         status = "healthy" if database_status == "connected" else "unhealthy"
-        
+
         # We return a 503 if it's not ready so load balancers know
         response_code = 200 if status == "healthy" else 503
-        
+
         return {"status": status, "database": database_status}, response_code
+
 
 @ns.route("")
 class HealthLegacyResource(Resource):

@@ -1,4 +1,5 @@
 """Permissions REST API Routes."""
+
 from flask import request
 from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
@@ -8,34 +9,54 @@ from app.api.responses import success_response
 from app.api.decorators import login_required, requires_permission
 from werkzeug.exceptions import Conflict
 from app.permissions.schemas import (
-    permissions_ns, permission_create_model, permission_update_model, permission_patch_model,
-    permission_response_model, permission_list_response_model
+    permissions_ns,
+    permission_create_model,
+    permission_update_model,
+    permission_patch_model,
+    permission_response_model,
+    permission_list_response_model,
 )
 from app.permissions.validators import (
-    validate_permission_create, validate_permission_update, validate_permission_patch,
-    validate_uuid
+    validate_permission_create,
+    validate_permission_update,
+    validate_permission_patch,
+    validate_uuid,
 )
 from app.permissions.repository import PermissionsRepository
 from app.permissions.service import PermissionsService
 from app.permissions.exceptions import DuplicatePermissionError
 from app.extensions import db
 
+
 def get_service():
     return PermissionsService(PermissionsRepository(db.session))
 
+
 @permissions_ns.route("")
 class PermissionCollection(Resource):
-    @permissions_ns.doc(summary="List permissions", description="Retrieve a paginated list of permissions.")
+    @permissions_ns.doc(
+        summary="List permissions",
+        description="Retrieve a paginated list of permissions.",
+    )
     @permissions_ns.marshal_with(permission_list_response_model)
     @login_required
     @requires_permission("permissions", "read")
     def get(self):
-        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE))
+        skip, limit = validate_pagination(
+            request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE)
+        )
+        search = request.args.get("search", "")
         service = get_service()
-        permissions = service.list_permissions(skip=skip, limit=limit)
-        return success_response(data=permissions)
+        permissions, total = service.list_permissions(
+            skip=skip, limit=limit, search=search
+        )
+        return success_response(
+            data=permissions, meta={"total": total, "skip": skip, "limit": limit}
+        )
 
-    @permissions_ns.doc(summary="Create permission", description="Create a new permission.")
+    @permissions_ns.doc(
+        summary="Create permission", description="Create a new permission."
+    )
     @permissions_ns.expect(permission_create_model)
     @permissions_ns.marshal_with(permission_response_model, code=201)
     @login_required
@@ -46,13 +67,20 @@ class PermissionCollection(Resource):
         service = get_service()
         try:
             permission = service.create_permission(data)
-            return success_response(data=permission, message="Permission created successfully", status_code=201)
+            return success_response(
+                data=permission,
+                message="Permission created successfully",
+                status_code=201,
+            )
         except DuplicatePermissionError as e:
             raise Conflict(str(e))
 
+
 @permissions_ns.route("/<string:permission_id>")
 class PermissionResource(Resource):
-    @permissions_ns.doc(summary="Get permission", description="Retrieve a permission by UUID.")
+    @permissions_ns.doc(
+        summary="Get permission", description="Retrieve a permission by UUID."
+    )
     @permissions_ns.marshal_with(permission_response_model)
     @login_required
     @requires_permission("permissions", "read")
@@ -64,7 +92,10 @@ class PermissionResource(Resource):
             raise NotFound("Permission not found")
         return success_response(data=permission)
 
-    @permissions_ns.doc(summary="Update permission", description="Completely update a permission by UUID.")
+    @permissions_ns.doc(
+        summary="Update permission",
+        description="Completely update a permission by UUID.",
+    )
     @permissions_ns.expect(permission_update_model)
     @permissions_ns.marshal_with(permission_response_model)
     @login_required
@@ -78,11 +109,16 @@ class PermissionResource(Resource):
             permission = service.update_permission(uid, data)
             if not permission:
                 raise NotFound("Permission not found")
-            return success_response(data=permission, message="Permission updated successfully")
+            return success_response(
+                data=permission, message="Permission updated successfully"
+            )
         except DuplicatePermissionError as e:
             raise Conflict(str(e))
 
-    @permissions_ns.doc(summary="Partial update permission", description="Partially update a permission by UUID.")
+    @permissions_ns.doc(
+        summary="Partial update permission",
+        description="Partially update a permission by UUID.",
+    )
     @permissions_ns.expect(permission_patch_model)
     @permissions_ns.marshal_with(permission_response_model)
     @login_required
@@ -96,11 +132,15 @@ class PermissionResource(Resource):
             permission = service.patch_permission(uid, data)
             if not permission:
                 raise NotFound("Permission not found")
-            return success_response(data=permission, message="Permission updated successfully")
+            return success_response(
+                data=permission, message="Permission updated successfully"
+            )
         except DuplicatePermissionError as e:
             raise Conflict(str(e))
 
-    @permissions_ns.doc(summary="Delete permission", description="Delete a permission by UUID.")
+    @permissions_ns.doc(
+        summary="Delete permission", description="Delete a permission by UUID."
+    )
     @permissions_ns.marshal_with(permission_response_model)
     @login_required
     @requires_permission("permissions", "delete")

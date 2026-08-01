@@ -1,4 +1,5 @@
 """Resources REST API Routes."""
+
 from flask import request
 from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
@@ -8,29 +9,41 @@ from app.api.responses import success_response
 from app.api.decorators import login_required, requires_permission
 from werkzeug.exceptions import Conflict
 from app.resources.schemas import (
-    resources_ns, resource_create_model, resource_update_model, resource_patch_model,
-    resource_response_model, resource_list_response_model
+    resources_ns,
+    resource_create_model,
+    resource_update_model,
+    resource_patch_model,
+    resource_response_model,
+    resource_list_response_model,
 )
 from app.resources.validators import (
-    validate_resource_create, validate_resource_update, validate_resource_patch,
-    validate_uuid
+    validate_resource_create,
+    validate_resource_update,
+    validate_resource_patch,
+    validate_uuid,
 )
 from app.resources.repository import ResourcesRepository
 from app.resources.service import ResourcesService
 from app.resources.exceptions import DuplicateResourceError
 from app.extensions import db
 
+
 def get_service():
     return ResourcesService(ResourcesRepository(db.session))
 
+
 @resources_ns.route("")
 class ResourceCollection(Resource):
-    @resources_ns.doc(summary="List resources", description="Retrieve a paginated list of resources.")
+    @resources_ns.doc(
+        summary="List resources", description="Retrieve a paginated list of resources."
+    )
     @resources_ns.marshal_with(resource_list_response_model)
     @login_required
     @requires_permission("resources", "read")
     def get(self):
-        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE))
+        skip, limit = validate_pagination(
+            request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE)
+        )
         service = get_service()
         resources = service.list_resources(skip=skip, limit=limit)
         return success_response(data=resources)
@@ -46,13 +59,18 @@ class ResourceCollection(Resource):
         service = get_service()
         try:
             resource = service.create_resource(data)
-            return success_response(data=resource, message="Resource created successfully", status_code=201)
+            return success_response(
+                data=resource, message="Resource created successfully", status_code=201
+            )
         except DuplicateResourceError as e:
             raise Conflict(str(e))
 
+
 @resources_ns.route("/<string:resource_id>")
 class ResourceResource(Resource):
-    @resources_ns.doc(summary="Get resource", description="Retrieve a resource by UUID.")
+    @resources_ns.doc(
+        summary="Get resource", description="Retrieve a resource by UUID."
+    )
     @resources_ns.marshal_with(resource_response_model)
     @login_required
     @requires_permission("resources", "read")
@@ -63,7 +81,9 @@ class ResourceResource(Resource):
 
         return success_response(data=resource)
 
-    @resources_ns.doc(summary="Update resource", description="Completely update a resource by UUID.")
+    @resources_ns.doc(
+        summary="Update resource", description="Completely update a resource by UUID."
+    )
     @resources_ns.expect(resource_update_model)
     @resources_ns.marshal_with(resource_response_model)
     @login_required
@@ -76,11 +96,16 @@ class ResourceResource(Resource):
         try:
             resource = service.update_resource(uid, data)
 
-            return success_response(data=resource, message="Resource updated successfully")
+            return success_response(
+                data=resource, message="Resource updated successfully"
+            )
         except DuplicateResourceError as e:
             raise Conflict(str(e))
 
-    @resources_ns.doc(summary="Partial update resource", description="Partially update a resource by UUID.")
+    @resources_ns.doc(
+        summary="Partial update resource",
+        description="Partially update a resource by UUID.",
+    )
     @resources_ns.expect(resource_patch_model)
     @resources_ns.marshal_with(resource_response_model)
     @login_required
@@ -93,11 +118,15 @@ class ResourceResource(Resource):
         try:
             resource = service.patch_resource(uid, data)
 
-            return success_response(data=resource, message="Resource updated successfully")
+            return success_response(
+                data=resource, message="Resource updated successfully"
+            )
         except DuplicateResourceError as e:
             raise Conflict(str(e))
 
-    @resources_ns.doc(summary="Delete resource", description="Delete a resource by UUID.")
+    @resources_ns.doc(
+        summary="Delete resource", description="Delete a resource by UUID."
+    )
     @resources_ns.marshal_with(resource_response_model)
     @login_required
     @requires_permission("resources", "delete")

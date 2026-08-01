@@ -22,6 +22,7 @@ from app.role_permissions.models import RolePermission
 from app.roles.models import Role
 from app.permissions.models import Permission
 
+
 class RolePermissionsRepository:
     """
     Repository managing persistence and retrieval
@@ -37,7 +38,10 @@ class RolePermissionsRepository:
         self._session = session
 
     def assign_permission_to_role(
-        self, role_id: UUID, permission_id: UUID, assigned_by_user_id: UUID | None = None
+        self,
+        role_id: UUID,
+        permission_id: UUID,
+        assigned_by_user_id: UUID | None = None,
     ) -> RolePermission:
         """Assign a permission to a role.
 
@@ -54,7 +58,9 @@ class RolePermissionsRepository:
             RolePermissionsRepositoryError: If the database operation fails.
         """
         if self.exists(role_id, permission_id):
-            raise RolePermissionAlreadyExistsError("Permission is already assigned to the role.")
+            raise RolePermissionAlreadyExistsError(
+                "Permission is already assigned to the role."
+            )
         try:
             rp = RolePermission(
                 role_id=role_id,
@@ -67,7 +73,9 @@ class RolePermissionsRepository:
             return rp
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolePermissionsRepositoryError("Failed to assign permission to role.") from err
+            raise RolePermissionsRepositoryError(
+                "Failed to assign permission to role."
+            ) from err
 
     def remove_permission_from_role(self, role_id: UUID, permission_id: UUID) -> bool:
         """Remove a permission from a role.
@@ -90,8 +98,10 @@ class RolePermissionsRepository:
             )
             rp = self._session.execute(stmt).scalar_one_or_none()
             if not rp:
-                raise RolePermissionNotFoundError("RolePermission association not found.")
-            
+                raise RolePermissionNotFoundError(
+                    "RolePermission association not found."
+                )
+
             self._session.delete(rp)
             self._session.commit()
             return True
@@ -99,7 +109,9 @@ class RolePermissionsRepository:
             raise
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolePermissionsRepositoryError("Failed to remove permission from role.") from err
+            raise RolePermissionsRepositoryError(
+                "Failed to remove permission from role."
+            ) from err
 
     def list_permissions_for_role(self, role_id: UUID) -> Sequence[Permission]:
         """List all permissions assigned to a given role.
@@ -123,7 +135,9 @@ class RolePermissionsRepository:
             return self._session.execute(stmt).scalars().all()
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolePermissionsRepositoryError("Failed to list permissions for role.") from err
+            raise RolePermissionsRepositoryError(
+                "Failed to list permissions for role."
+            ) from err
 
     def list_roles_for_permission(self, permission_id: UUID) -> Sequence[Role]:
         """List all roles that have a given permission.
@@ -145,19 +159,21 @@ class RolePermissionsRepository:
                 .order_by(RolePermission.assigned_at.desc())
             )
             result = self._session.execute(stmt).scalars().all()
-            
+
             print("Type of result:", type(result), flush=True)
             print("Result:", result, flush=True)
             for item in result:
                 print(type(item), flush=True)
                 print(item, flush=True)
-                print(getattr(item, 'id', 'NO ID'), flush=True)
-                print(getattr(item, 'role_code', 'NO ROLE_CODE'), flush=True)
-                
+                print(getattr(item, "id", "NO ID"), flush=True)
+                print(getattr(item, "role_code", "NO ROLE_CODE"), flush=True)
+
             return result
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise RolePermissionsRepositoryError("Failed to list roles for permission.") from err
+            raise RolePermissionsRepositoryError(
+                "Failed to list roles for permission."
+            ) from err
 
     def exists(self, role_id: UUID, permission_id: UUID) -> bool:
         """Check if a specific permission is assigned to a specific role.
@@ -173,13 +189,16 @@ class RolePermissionsRepository:
             RolePermissionsRepositoryError: If the database query fails.
         """
         try:
-            stmt = select(exists().where(
-                RolePermission.role_id == role_id,
-                RolePermission.permission_id == permission_id,
-            ))
+            stmt = select(
+                exists().where(
+                    RolePermission.role_id == role_id,
+                    RolePermission.permission_id == permission_id,
+                )
+            )
             return bool(self._session.execute(stmt).scalar())
         except SQLAlchemyError as err:
             self._session.rollback()
             raise RolePermissionsRepositoryError("Failed to check existence.") from err
+
 
 __all__ = ["RolePermissionsRepository"]

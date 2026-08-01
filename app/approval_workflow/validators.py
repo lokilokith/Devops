@@ -1,4 +1,5 @@
 """Approval Workflow Validators"""
+
 from __future__ import annotations
 
 from app.approval_workflow.models import ApprovalStatus
@@ -16,7 +17,10 @@ ALLOWED_TRANSITIONS = {
     ApprovalStatus.CANCELLED: set(),
 }
 
-def validate_state_transition(current_status: ApprovalStatus, new_status: ApprovalStatus) -> None:
+
+def validate_state_transition(
+    current_status: ApprovalStatus, new_status: ApprovalStatus
+) -> None:
     """Validate if a state transition is allowed."""
     if new_status not in ALLOWED_TRANSITIONS.get(current_status, set()):
         raise ApprovalWorkflowInvalidStateError(

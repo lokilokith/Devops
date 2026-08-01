@@ -1,4 +1,5 @@
 """ApprovalWorkflow Service for OpsForge."""
+
 from __future__ import annotations
 from typing import Sequence, Any
 from uuid import UUID
@@ -21,6 +22,7 @@ from app.user_roles.exceptions import UserRoleAlreadyExistsError
 from app.audit.service import AuditService
 from app.audit.models import AuditStatus, AuditSeverity
 
+
 class ApprovalWorkflowService:
     def __init__(
         self,
@@ -36,25 +38,33 @@ class ApprovalWorkflowService:
         self._audit = audit_service
         self._session = session
 
-    def list_workflows(self, current_user_id: UUID, **kwargs) -> tuple[Sequence[ApprovalWorkflow], int]:
+    def list_workflows(
+        self, current_user_id: UUID, **kwargs
+    ) -> tuple[Sequence[ApprovalWorkflow], int]:
         from app.authorization.service import AuthorizationService
         from app.permissions.models import PermissionAction
-        
+
         authz = AuthorizationService(self._session)
         try:
-            is_admin = authz.has_permission(current_user_id, "approval_workflows", PermissionAction("read"))
+            is_admin = authz.has_permission(
+                current_user_id, "approval_workflows", PermissionAction("read")
+            )
         except ValueError:
             is_admin = False
-        
+
         if not is_admin:
             kwargs["approver_id"] = current_user_id
 
         items = self._repo.list(**kwargs)
-        count_kwargs = {k: v for k, v in kwargs.items() if k not in ("page", "page_size")}
+        count_kwargs = {
+            k: v for k, v in kwargs.items() if k not in ("page", "page_size")
+        }
         total = self._repo.count(**count_kwargs)
         return items, total
 
-    def get_workflow(self, current_user_id: UUID, workflow_id: UUID) -> ApprovalWorkflow | None:
+    def get_workflow(
+        self, current_user_id: UUID, workflow_id: UUID
+    ) -> ApprovalWorkflow | None:
         from app.authorization.service import AuthorizationService
         from app.permissions.models import PermissionAction
         from werkzeug.exceptions import Forbidden
@@ -62,23 +72,25 @@ class ApprovalWorkflowService:
         wf = self._repo.get_by_id(workflow_id)
         if not wf:
             return None
-            
+
         authz = AuthorizationService(self._session)
         try:
-            is_admin = authz.has_permission(current_user_id, "approval_workflows", PermissionAction("read"))
+            is_admin = authz.has_permission(
+                current_user_id, "approval_workflows", PermissionAction("read")
+            )
         except ValueError:
             is_admin = False
-        
+
         if not is_admin and wf.approver_id != current_user_id:
             raise Forbidden("You do not have permission to view this workflow.")
-            
+
         return wf
 
     def create_initial_workflow(
         self,
         access_request_id: UUID,
         approver_id: UUID,
-        level: ApprovalLevel = ApprovalLevel.MANAGER
+        level: ApprovalLevel = ApprovalLevel.MANAGER,
     ) -> ApprovalWorkflow:
         req = self._ar_repo.get_by_id(access_request_id)
         if not req:
@@ -91,7 +103,7 @@ class ApprovalWorkflowService:
         )
         wf = self._repo.create_workflow(wf)
         self._session.commit()
-        
+
         approval_required.send(
             self,
             payload={
@@ -103,26 +115,31 @@ class ApprovalWorkflowService:
                 "message": f"You have a new access request pending your approval.",
                 "type": "approval_required",
                 "priority": "high",
-            }
+            },
         )
         return wf
 
-    def approve(self, workflow_id: UUID, approver_id: UUID, comments: str | None = None) -> ApprovalWorkflow:
+    def approve(
+        self, workflow_id: UUID, approver_id: UUID, comments: str | None = None
+    ) -> ApprovalWorkflow:
         wf = self._repo.get_by_id(workflow_id, for_update=True)
         if not wf:
             raise ApprovalWorkflowValidationError("Approval workflow not found.")
-        
+
         validate_state_transition(wf.status, ApprovalStatus.APPROVED)
-        
+
         from app.authorization.service import AuthorizationService
         from app.permissions.models import PermissionAction
         from werkzeug.exceptions import Forbidden
+
         authz = AuthorizationService(self._session)
         try:
-            is_admin = authz.has_permission(approver_id, "approval_workflows", PermissionAction("approve"))
+            is_admin = authz.has_permission(
+                approver_id, "approval_workflows", PermissionAction("approve")
+            )
         except ValueError:
             is_admin = False
-            
+
         if not is_admin and wf.approver_id != approver_id:
             raise Forbidden("Approver mismatch or insufficient permissions.")
 
@@ -136,17 +153,17 @@ class ApprovalWorkflowService:
             # Update Access Request and Assign Roles
             req = self._ar_repo.get_by_id(wf.access_request_id)
             if req:
-                self._ar_repo.approve(req.id, approver_id) # repo handles flush inside
+                self._ar_repo.approve(req.id, approver_id)  # repo handles flush inside
                 if req.requested_role_id:
                     try:
                         self._ur_repo.assign_role_to_user(
                             user_id=req.requester_id,
                             role_id=req.requested_role_id,
-                            assigned_by_user_id=approver_id
+                            assigned_by_user_id=approver_id,
                         )
                     except UserRoleAlreadyExistsError:
                         pass
-            
+
             # Audit log
             self._audit.log_event(
                 actor_user_id=approver_id,
@@ -160,8 +177,8 @@ class ApprovalWorkflowService:
                 details={
                     "old_status": old_status.value,
                     "new_status": wf.status.value,
-                    "comment": comments
-                }
+                    "comment": comments,
+                },
             )
             self._session.commit()
             return wf
@@ -173,31 +190,38 @@ class ApprovalWorkflowService:
                     "event": "workflow_failed",
                     "workflow_id": str(workflow_id),
                     "actor_id": str(approver_id),
-                    "recipient_id": str(approver_id), # notify the approver that their action failed? Or admin?
+                    "recipient_id": str(
+                        approver_id
+                    ),  # notify the approver that their action failed? Or admin?
                     "title": "Workflow Error",
                     "message": f"An error occurred while approving the workflow: {str(e)}",
                     "type": "system",
                     "priority": "high",
-                }
+                },
             )
             raise e
 
-    def reject(self, workflow_id: UUID, rejecter_id: UUID, comments: str | None = None) -> ApprovalWorkflow:
+    def reject(
+        self, workflow_id: UUID, rejecter_id: UUID, comments: str | None = None
+    ) -> ApprovalWorkflow:
         wf = self._repo.get_by_id(workflow_id, for_update=True)
         if not wf:
             raise ApprovalWorkflowValidationError("Approval workflow not found.")
-            
+
         validate_state_transition(wf.status, ApprovalStatus.REJECTED)
-        
+
         from app.authorization.service import AuthorizationService
         from app.permissions.models import PermissionAction
         from werkzeug.exceptions import Forbidden
+
         authz = AuthorizationService(self._session)
         try:
-            is_admin = authz.has_permission(rejecter_id, "approval_workflows", PermissionAction("reject"))
+            is_admin = authz.has_permission(
+                rejecter_id, "approval_workflows", PermissionAction("reject")
+            )
         except ValueError:
             is_admin = False
-            
+
         if not is_admin and wf.approver_id != rejecter_id:
             raise Forbidden("Approver mismatch or insufficient permissions.")
 
@@ -210,8 +234,12 @@ class ApprovalWorkflowService:
             # Update Access Request
             req = self._ar_repo.get_by_id(wf.access_request_id)
             if req:
-                self._ar_repo.reject(req.id, reason=comments or "Rejected by workflow", rejecter_id=rejecter_id)
-            
+                self._ar_repo.reject(
+                    req.id,
+                    reason=comments or "Rejected by workflow",
+                    rejecter_id=rejecter_id,
+                )
+
             # Audit log
             self._audit.log_event(
                 actor_user_id=rejecter_id,
@@ -225,8 +253,8 @@ class ApprovalWorkflowService:
                 details={
                     "old_status": old_status.value,
                     "new_status": wf.status.value,
-                    "comment": comments
-                }
+                    "comment": comments,
+                },
             )
             self._session.commit()
             return wf
@@ -234,19 +262,24 @@ class ApprovalWorkflowService:
             self._session.rollback()
             raise e
 
-    def cancel(self, workflow_id: UUID, canceller_id: UUID, comments: str | None = None) -> ApprovalWorkflow:
+    def cancel(
+        self, workflow_id: UUID, canceller_id: UUID, comments: str | None = None
+    ) -> ApprovalWorkflow:
         wf = self._repo.get_by_id(workflow_id, for_update=True)
         if not wf:
             raise ApprovalWorkflowValidationError("Approval workflow not found.")
-            
+
         validate_state_transition(wf.status, ApprovalStatus.CANCELLED)
 
         from app.authorization.service import AuthorizationService
         from app.permissions.models import PermissionAction
         from werkzeug.exceptions import Forbidden
+
         authz = AuthorizationService(self._session)
         try:
-            is_admin = authz.has_permission(canceller_id, "approval_workflows", PermissionAction("cancel"))
+            is_admin = authz.has_permission(
+                canceller_id, "approval_workflows", PermissionAction("cancel")
+            )
         except ValueError:
             is_admin = False
 
@@ -258,7 +291,7 @@ class ApprovalWorkflowService:
             wf.status = ApprovalStatus.CANCELLED
             wf.comments = comments
             self._repo.update_workflow(wf)
-            
+
             # Audit log
             self._audit.log_event(
                 actor_user_id=canceller_id,
@@ -272,8 +305,8 @@ class ApprovalWorkflowService:
                 details={
                     "old_status": old_status.value,
                     "new_status": wf.status.value,
-                    "comment": comments
-                }
+                    "comment": comments,
+                },
             )
             self._session.commit()
             return wf
@@ -281,7 +314,9 @@ class ApprovalWorkflowService:
             self._session.rollback()
             raise e
 
-    def cancel_workflow_for_request(self, access_request_id: UUID, comments: str | None = None) -> None:
+    def cancel_workflow_for_request(
+        self, access_request_id: UUID, comments: str | None = None
+    ) -> None:
         """Cancel pending approvals for a request."""
         workflows = self._repo.get_by_request(access_request_id)
         for wf in workflows:
@@ -295,5 +330,6 @@ class ApprovalWorkflowService:
                         self._session.commit()
                 except Exception:
                     self._session.rollback()
+
 
 __all__ = ["ApprovalWorkflowService"]

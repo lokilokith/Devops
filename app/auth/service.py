@@ -1,4 +1,5 @@
 """Authentication Service."""
+
 from __future__ import annotations
 import datetime
 import logging
@@ -14,7 +15,7 @@ from app.auth.exceptions import (
     UserInactiveError,
     TokenError,
     TokenExpiredError,
-    TokenRevokedError
+    TokenRevokedError,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,9 @@ class AuthService:
             raise InvalidCredentialsError("Invalid username or password")
 
         try:
-            status_val = user.status.value if hasattr(user.status, "value") else str(user.status)
+            status_val = (
+                user.status.value if hasattr(user.status, "value") else str(user.status)
+            )
             if status_val != "active":
                 raise UserInactiveError("User is not active")
         except UserInactiveError:
@@ -46,7 +49,9 @@ class AuthService:
             logger.error("Error checking user status for '%s': %s", username, exc)
             raise InvalidCredentialsError("Invalid username or password") from exc
 
-        if not user.password_hash or not self.verify_password(password_raw, user.password_hash):
+        if not user.password_hash or not self.verify_password(
+            password_raw, user.password_hash
+        ):
             raise InvalidCredentialsError("Invalid username or password")
 
         access_token = self.generate_access_token(user.id)
@@ -55,7 +60,7 @@ class AuthService:
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "expires_in": 3600
+            "expires_in": 3600,
         }
 
     def _get_secret(self) -> str:
@@ -66,23 +71,27 @@ class AuthService:
 
     def generate_access_token(self, user_id: UUID) -> str:
         import uuid as uuid_module
+
         payload = {
             "jti": str(uuid_module.uuid4()),
             "sub": str(user_id),
             "type": "access",
-            "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1),
-            "iat": datetime.datetime.now(datetime.timezone.utc)
+            "exp": datetime.datetime.now(datetime.timezone.utc)
+            + datetime.timedelta(hours=1),
+            "iat": datetime.datetime.now(datetime.timezone.utc),
         }
         return jwt.encode(payload, self._get_secret(), algorithm="HS256")
 
     def generate_refresh_token(self, user_id: UUID) -> str:
         import uuid as uuid_module
+
         payload = {
             "jti": str(uuid_module.uuid4()),
             "sub": str(user_id),
             "type": "refresh",
-            "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7),
-            "iat": datetime.datetime.now(datetime.timezone.utc)
+            "exp": datetime.datetime.now(datetime.timezone.utc)
+            + datetime.timedelta(days=7),
+            "iat": datetime.datetime.now(datetime.timezone.utc),
         }
         return jwt.encode(payload, self._get_secret(), algorithm="HS256")
 
@@ -92,6 +101,7 @@ class AuthService:
 
             from app.auth.models import RevokedToken
             from app.platform.extensions import db
+
             jti = payload.get("jti")
             if jti:
                 revoked = db.session.query(RevokedToken).filter_by(jti=jti).first()
@@ -108,7 +118,12 @@ class AuthService:
 
     def revoke_token(self, token: str) -> None:
         try:
-            payload = jwt.decode(token, self._get_secret(), algorithms=["HS256"], options={"verify_exp": False})
+            payload = jwt.decode(
+                token,
+                self._get_secret(),
+                algorithms=["HS256"],
+                options={"verify_exp": False},
+            )
             jti = payload.get("jti")
             exp = payload.get("exp")
             if jti and exp:
@@ -119,8 +134,7 @@ class AuthService:
                 existing = db.session.query(RevokedToken).filter_by(jti=jti).first()
                 if not existing:
                     revoked = RevokedToken(
-                        jti=jti,
-                        expires_at=datetime.fromtimestamp(exp, tz=timezone.utc)
+                        jti=jti, expires_at=datetime.fromtimestamp(exp, tz=timezone.utc)
                     )
                     db.session.add(revoked)
                     db.session.commit()
@@ -131,10 +145,14 @@ class AuthService:
         from app.auth.models import RevokedToken
         from app.platform.extensions import db
         from datetime import datetime, timezone
-        
+
         try:
             now = datetime.now(timezone.utc)
-            deleted_count = db.session.query(RevokedToken).filter(RevokedToken.expires_at < now).delete(synchronize_session=False)
+            deleted_count = (
+                db.session.query(RevokedToken)
+                .filter(RevokedToken.expires_at < now)
+                .delete(synchronize_session=False)
+            )
             db.session.commit()
             return deleted_count
         except Exception as exc:
@@ -152,9 +170,7 @@ class AuthService:
             raise UserInactiveError("User is not active")
 
         access_token = self.generate_access_token(user_id)
-        return {
-            "access_token": access_token,
-            "expires_in": 3600
-        }
+        return {"access_token": access_token, "expires_in": 3600}
+
 
 __all__ = ["AuthService"]

@@ -1,4 +1,5 @@
 """Access requests API routes."""
+
 from uuid import UUID
 from flask import request, g
 from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
@@ -10,7 +11,7 @@ from app.access_requests.schemas import (
     access_request_create_model,
     access_request_reject_model,
     access_requests_list_response_model,
-    access_request_single_response_model
+    access_request_single_response_model,
 )
 from app.access_requests.validators import validate_access_request_create
 from app.access_requests.service import AccessRequestService
@@ -19,7 +20,7 @@ from app.access_requests.exceptions import (
     AccessRequestInvalidStateError,
     AccessRequestDuplicateError,
     AccessRequestValidationError,
-    AccessRequestNotFoundError
+    AccessRequestNotFoundError,
 )
 from app.api.decorators import login_required, requires_permission
 from app.authorization.service import AuthorizationService
@@ -30,50 +31,57 @@ from app.resources.repository import ResourcesRepository
 from app.user_roles.repository import UserRolesRepository
 from app.extensions import db
 
+
 def get_service() -> AccessRequestService:
     return AccessRequestService(
         AccessRequestRepository(db.session),
         IdentityRepository(db.session),
         RolesRepository(db.session),
         ResourcesRepository(db.session),
-        UserRolesRepository(db.session)
+        UserRolesRepository(db.session),
     )
+
 
 @access_requests_ns.route("")
 class AccessRequestList(Resource):
     @access_requests_ns.doc("list_access_requests")
     @access_requests_ns.param("skip", "Number of records to skip", type=int, default=0)
-    @access_requests_ns.param("limit", "Number of records to return", type=int, default=50)
+    @access_requests_ns.param(
+        "limit", "Number of records to return", type=int, default=50
+    )
     @access_requests_ns.marshal_with(access_requests_list_response_model)
     @login_required
     def get(self):
         """List access requests."""
         skip, limit = validate_pagination(
-            request.args.get("skip", 0),
-            request.args.get("limit", 50)
+            request.args.get("skip", 0), request.args.get("limit", 50)
         )
-        
+
         authz = AuthorizationService(db.session)
-        is_admin_or_auditor = authz.has_permission(UUID(g.user_id), "access_requests", PermissionAction.READ)
-        
+        is_admin_or_auditor = authz.has_permission(
+            UUID(g.user_id), "access_requests", PermissionAction.READ
+        )
+
         service = get_service()
-        
+
         # Calculate page for internal repo
         page = (skip // limit) + 1 if limit > 0 else 1
         page_size = limit
-        
+
         if is_admin_or_auditor:
             requests = service._repo.list_requests(page=page, page_size=page_size)
             total = service._repo.count()
         else:
-            requests = service._repo.search(page=page, page_size=page_size, requester_id=UUID(g.user_id))
+            requests = service._repo.search(
+                page=page, page_size=page_size, requester_id=UUID(g.user_id)
+            )
             total = service._repo.count(requester_id=UUID(g.user_id))
-            
+
         return {
             "success": True,
             "message": "Access requests retrieved successfully",
             "data": requests,
-            "meta": {"skip": skip, "limit": limit, "total": total}
+            "meta": {"skip": skip, "limit": limit, "total": total},
         }
 
     @access_requests_ns.doc("create_access_request")
@@ -84,27 +92,36 @@ class AccessRequestList(Resource):
         """Submit a new access request."""
         data = request.json or {}
         validate_access_request_create(data)
-        
+
         service = get_service()
         try:
             req = service.submit_request(
                 requester_id=UUID(g.user_id),
                 business_justification=data["business_justification"],
-                requested_role_id=UUID(data["requested_role_id"]) if data.get("requested_role_id") else None,
-                requested_resource_id=UUID(data["requested_resource_id"]) if data.get("requested_resource_id") else None,
+                requested_role_id=(
+                    UUID(data["requested_role_id"])
+                    if data.get("requested_role_id")
+                    else None
+                ),
+                requested_resource_id=(
+                    UUID(data["requested_resource_id"])
+                    if data.get("requested_resource_id")
+                    else None
+                ),
                 priority=data.get("priority", "low"),
                 requested_start=data.get("requested_start"),
-                requested_end=data.get("requested_end")
+                requested_end=data.get("requested_end"),
             )
             return {
                 "success": True,
                 "message": "Access request created successfully",
-                "data": req
+                "data": req,
             }, 201
         except AccessRequestDuplicateError as e:
             raise Conflict(str(e))
         except AccessRequestValidationError as e:
             raise UnprocessableEntity(str(e))
+
 
 @access_requests_ns.route("/<uuid:request_id>")
 class AccessRequestDetail(Resource):
@@ -117,17 +134,20 @@ class AccessRequestDetail(Resource):
         req = service._repo.get_by_id(request_id)
         if not req:
             raise NotFound("Access request not found")
-            
+
         authz = AuthorizationService(db.session)
-        is_admin_or_auditor = authz.has_permission(UUID(g.user_id), "access_requests", PermissionAction.READ)
+        is_admin_or_auditor = authz.has_permission(
+            UUID(g.user_id), "access_requests", PermissionAction.READ
+        )
         if not is_admin_or_auditor and req.requester_id != UUID(g.user_id):
-            raise NotFound("Access request not found") # Hide existence
-            
+            raise NotFound("Access request not found")  # Hide existence
+
         return {
             "success": True,
             "message": "Access request retrieved successfully",
-            "data": req
+            "data": req,
         }
+
 
 @access_requests_ns.route("/<uuid:request_id>/approval-workflow")
 class AccessRequestApprovalWorkflow(Resource):
@@ -140,37 +160,45 @@ class AccessRequestApprovalWorkflow(Resource):
         req = service._repo.get_by_id(request_id)
         if not req:
             raise NotFound("Access request not found")
-            
+
         authz = AuthorizationService(db.session)
-        is_admin_or_auditor = authz.has_permission(UUID(g.user_id), "access_requests", PermissionAction.READ)
+        is_admin_or_auditor = authz.has_permission(
+            UUID(g.user_id), "access_requests", PermissionAction.READ
+        )
         if not is_admin_or_auditor and req.requester_id != UUID(g.user_id):
             raise NotFound("Access request not found")
-            
+
         from app.approval_workflow.service import ApprovalWorkflowService
         from app.approval_workflow.repository import ApprovalWorkflowRepository
         from app.user_roles.repository import UserRolesRepository
         from app.audit.service import AuditService
         from app.audit.repository import AuditRepository
-        
+
         wf_svc = ApprovalWorkflowService(
             ApprovalWorkflowRepository(db.session),
             service._repo,  # AccessRequestRepository is already inside service
             UserRolesRepository(db.session),
             AuditService(AuditRepository(db.session)),
-            db.session
+            db.session,
         )
-        
+
         workflows = wf_svc._repo.get_by_request(request_id)
-        
+
         from app.approval_workflow.schemas import approval_workflow_list_response_model
+
         # Use marshal to format? We can just return the dict but it's cleaner to marshal
         from flask_restx import marshal
+
         return {
             "success": True,
             "message": "Approval workflows retrieved",
-            "data": marshal(workflows, approval_workflow_list_response_model.get("data").container.nested),
-            "meta": {}
+            "data": marshal(
+                workflows,
+                approval_workflow_list_response_model.get("data").container.nested,
+            ),
+            "meta": {},
         }
+
 
 @access_requests_ns.route("/<uuid:request_id>/approve")
 class AccessRequestApprove(Resource):
@@ -185,7 +213,7 @@ class AccessRequestApprove(Resource):
             return {
                 "success": True,
                 "message": "Access request approved successfully",
-                "data": req
+                "data": req,
             }
         except AccessRequestNotFoundError:
             raise NotFound("Access request not found")
@@ -193,6 +221,7 @@ class AccessRequestApprove(Resource):
             raise BadRequest(str(e))
         except AccessRequestValidationError as e:
             raise UnprocessableEntity(str(e))
+
 
 @access_requests_ns.route("/<uuid:request_id>/reject")
 class AccessRequestReject(Resource):
@@ -206,14 +235,14 @@ class AccessRequestReject(Resource):
         reason = data.get("rejected_reason")
         if not reason:
             raise UnprocessableEntity("Missing rejected_reason")
-            
+
         service = get_service()
         try:
             req = service.reject_request(request_id, reason, UUID(g.user_id))
             return {
                 "success": True,
                 "message": "Access request rejected successfully",
-                "data": req
+                "data": req,
             }
         except AccessRequestNotFoundError:
             raise NotFound("Access request not found")
@@ -221,6 +250,7 @@ class AccessRequestReject(Resource):
             raise BadRequest(str(e))
         except AccessRequestValidationError as e:
             raise UnprocessableEntity(str(e))
+
 
 @access_requests_ns.route("/<uuid:request_id>/cancel")
 class AccessRequestCancel(Resource):
@@ -233,18 +263,20 @@ class AccessRequestCancel(Resource):
         req = service._repo.get_by_id(request_id)
         if not req:
             raise NotFound("Access request not found")
-            
+
         authz = AuthorizationService(db.session)
-        is_admin = authz.has_permission(UUID(g.user_id), "access_requests", PermissionAction.READ)
+        is_admin = authz.has_permission(
+            UUID(g.user_id), "access_requests", PermissionAction.READ
+        )
         if not is_admin and req.requester_id != UUID(g.user_id):
             raise NotFound("Access request not found")
-            
+
         try:
             cancelled_req = service.cancel_request(request_id)
             return {
                 "success": True,
                 "message": "Access request cancelled successfully",
-                "data": cancelled_req
+                "data": cancelled_req,
             }
         except AccessRequestNotFoundError:
             raise NotFound("Access request not found")

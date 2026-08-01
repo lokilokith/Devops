@@ -19,6 +19,7 @@ from app.shared.database import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
 
+
 class ResourcesRepository:
     """
     Repository managing persistence and retrieval
@@ -152,9 +153,7 @@ class ResourcesRepository:
     ) -> Sequence[Resource]:
         """List resources with optional status/type filtering, pagination, and deterministic ordering."""
         try:
-            bounded_limit, normalized_offset = (
-                self._normalize_pagination(limit, offset)
-            )
+            bounded_limit, normalized_offset = self._normalize_pagination(limit, offset)
             stmt = select(Resource)
             stmt = self._apply_filters(
                 stmt,
@@ -178,9 +177,7 @@ class ResourcesRepository:
             return self._commit_and_refresh(merged_resource)
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise ResourcesRepositoryError(
-                "Failed to update resource record."
-            ) from err
+            raise ResourcesRepositoryError("Failed to update resource record.") from err
 
     def delete(self, resource_id: UUID) -> bool:
         """Delete a Resource entity by ID."""
@@ -193,9 +190,7 @@ class ResourcesRepository:
             raise
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise ResourcesRepositoryError(
-                "Failed to delete resource record."
-            ) from err
+            raise ResourcesRepositoryError("Failed to delete resource record.") from err
 
     def activate(self, resource_id: UUID) -> Resource:
         """Activate a Resource entity."""
@@ -264,9 +259,7 @@ class ResourcesRepository:
     ) -> Sequence[Resource]:
         """Search resources matching optional filters sorted by created_at descending."""
         try:
-            bounded_limit, normalized_offset = (
-                self._normalize_pagination(limit, offset)
-            )
+            bounded_limit, normalized_offset = self._normalize_pagination(limit, offset)
             stmt = select(Resource)
             stmt = self._apply_filters(
                 stmt,
@@ -284,6 +277,7 @@ class ResourcesRepository:
         except SQLAlchemyError as err:
             self._session.rollback()
             raise ResourcesRepositoryError("Failed to search resources.") from err
+
 
 __all__ = [
     "ResourcesRepository",

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from app.permissions.models import Permission
     from app.identity.models import User
 
+
 class RolePermission(Base):
     """Membership association between a Role and a Permission."""
 
@@ -51,13 +52,18 @@ class RolePermission(Base):
     )
 
     role: Mapped["Role"] = relationship("Role", foreign_keys=[role_id])
-    permission: Mapped["Permission"] = relationship("Permission", foreign_keys=[permission_id])
-    assigned_by_user: Mapped["User | None"] = relationship("User", foreign_keys=[assigned_by_user_id])
+    permission: Mapped["Permission"] = relationship(
+        "Permission", foreign_keys=[permission_id]
+    )
+    assigned_by_user: Mapped["User | None"] = relationship(
+        "User", foreign_keys=[assigned_by_user_id]
+    )
 
     def __repr__(self) -> str:
         return (
             f"<RolePermission(role_id={self.role_id!r}, "
             f"permission_id={self.permission_id!r})>"
         )
+
 
 __all__ = ["RolePermission"]

@@ -10,8 +10,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import (CheckConstraint, DateTime, Enum, ForeignKey, String,
-                        func)
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
@@ -91,10 +90,7 @@ class Role(BaseModel):
 
     # Recommended Change 3: Improve debugging inspectability
     def __repr__(self) -> str:
-        return (
-            f"<Role(role_code={self.role_code!r}, "
-            f"role_name={self.role_name!r})>"
-        )
+        return f"<Role(role_code={self.role_code!r}, " f"role_name={self.role_name!r})>"
 
     @property
     def status_value(self) -> str:
@@ -153,11 +149,7 @@ class UserRole(Base):
 
     # Recommended Change 3: Improve debugging inspectability
     def __repr__(self) -> str:
-        return (
-            f"<UserRole(user_id={self.user_id!r}, "
-            f"role_id={self.role_id!r})>"
-        )
+        return f"<UserRole(user_id={self.user_id!r}, " f"role_id={self.role_id!r})>"
 
 
 __all__ = ["Role", "RoleStatus", "RoleType", "UserRole"]
-

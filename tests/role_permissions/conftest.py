@@ -5,6 +5,7 @@ from app.role_permissions.repository import RolePermissionsRepository
 from app.roles.models import Role, RoleType, RoleStatus
 from app.permissions.models import Permission, PermissionAction, PermissionStatus
 
+
 @pytest.fixture
 def app():
     app = Flask(__name__)
@@ -17,11 +18,13 @@ def app():
         import app.roles.models
         import app.permissions.models
         import app.role_permissions.models
+
         db.create_all()
         yield app
         db.session.remove()
         db.drop_all()
         db.engine.dispose()
+
 
 @pytest.fixture
 def db_session(app):
@@ -29,9 +32,11 @@ def db_session(app):
     db.session.rollback()
     db.session.remove()
 
+
 @pytest.fixture
 def role_permissions_repo(db_session):
     return RolePermissionsRepository(db_session)
+
 
 @pytest.fixture
 def sample_role(db_session):
@@ -39,12 +44,13 @@ def sample_role(db_session):
         role_code="RP_ROLE",
         role_name="Role for RP",
         role_type=RoleType.SYSTEM,
-        status=RoleStatus.ACTIVE
+        status=RoleStatus.ACTIVE,
     )
     db_session.add(role)
     db_session.commit()
     db_session.refresh(role)
     return role
+
 
 @pytest.fixture
 def sample_permission(db_session):
@@ -52,7 +58,7 @@ def sample_permission(db_session):
         permission_code="RP_PERM",
         permission_name="Perm for RP",
         action=PermissionAction.READ,
-        status=PermissionStatus.ACTIVE
+        status=PermissionStatus.ACTIVE,
     )
     db_session.add(perm)
     db_session.commit()

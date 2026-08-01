@@ -1,4 +1,5 @@
 """UserRoles feature service layer."""
+
 from __future__ import annotations
 
 from typing import Sequence
@@ -14,21 +15,24 @@ from app.user_roles.exceptions import (
     UserRoleNotFoundError,
     UserRoleAlreadyExistsError,
     UserRolesServiceError,
-    ValidationError
+    ValidationError,
 )
+
 
 class UserRoleService:
     def __init__(
-        self, 
+        self,
         repository: UserRolesRepository,
         roles_repository: RolesRepository,
-        users_repository: IdentityRepository
+        users_repository: IdentityRepository,
     ):
         self._repository = repository
         self._roles_repository = roles_repository
         self._users_repository = users_repository
-        
-    def assign_role(self, user_id: UUID, role_id: UUID, assigned_by_user_id: UUID | None = None) -> UserRole:
+
+    def assign_role(
+        self, user_id: UUID, role_id: UUID, assigned_by_user_id: UUID | None = None
+    ) -> UserRole:
         try:
             user = self._users_repository.get_by_id(user_id)
             if not user:
@@ -49,20 +53,24 @@ class UserRoleService:
 
         try:
             from app.notifications.events import role_provisioned
-            
-            ur = self._repository.assign_role_to_user(user_id, role_id, assigned_by_user_id)
-            
+
+            ur = self._repository.assign_role_to_user(
+                user_id, role_id, assigned_by_user_id
+            )
+
             role_provisioned.send(
                 self,
                 payload={
                     "event": "role_provisioned",
-                    "actor_id": str(assigned_by_user_id) if assigned_by_user_id else "system",
+                    "actor_id": (
+                        str(assigned_by_user_id) if assigned_by_user_id else "system"
+                    ),
                     "recipient_id": str(user_id),
                     "title": "Role Provisioned",
                     "message": f"You have been assigned the role {role.role_name}.",
                     "type": "role_provisioned",
                     "priority": "normal",
-                }
+                },
             )
             return ur
         except UserRoleAlreadyExistsError as e:

@@ -13,11 +13,15 @@ from sqlalchemy import Select, exists, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.permissions.exceptions import PermissionNotFoundError, PermissionsRepositoryError
+from app.permissions.exceptions import (
+    PermissionNotFoundError,
+    PermissionsRepositoryError,
+)
 from app.permissions.models import Permission, PermissionStatus, PermissionAction
 from app.shared.database import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
+
 
 class PermissionsRepository:
     """
@@ -37,7 +41,9 @@ class PermissionsRepository:
         """Fetch a Permission entity by ID or raise PermissionNotFoundError."""
         permission = self.get_by_id(permission_id)
         if not permission:
-            raise PermissionNotFoundError(f"Permission with ID '{permission_id}' not found.")
+            raise PermissionNotFoundError(
+                f"Permission with ID '{permission_id}' not found."
+            )
         return permission
 
     def _commit_and_refresh(self, entity: T) -> T:
@@ -70,9 +76,13 @@ class PermissionsRepository:
         filters: list[Any] = []
 
         if permission_code is not None and permission_code.strip():
-            filters.append(Permission.permission_code.ilike(f"%{permission_code.strip()}%"))
+            filters.append(
+                Permission.permission_code.ilike(f"%{permission_code.strip()}%")
+            )
         if permission_name is not None and permission_name.strip():
-            filters.append(Permission.permission_name.ilike(f"%{permission_name.strip()}%"))
+            filters.append(
+                Permission.permission_name.ilike(f"%{permission_name.strip()}%")
+            )
         if status is not None:
             filters.append(Permission.status == status)
         if action is not None:
@@ -82,7 +92,9 @@ class PermissionsRepository:
             return stmt.where(*filters)
         return stmt
 
-    def _update_status(self, permission_id: UUID, new_status: PermissionStatus) -> Permission:
+    def _update_status(
+        self, permission_id: UUID, new_status: PermissionStatus
+    ) -> Permission:
         """Internal helper to transition a Permission to a new status state."""
         try:
             permission = self._get_permission_or_raise(permission_id)
@@ -122,7 +134,9 @@ class PermissionsRepository:
         """Fetch a Permission entity by permission code (exact match)."""
         try:
             normalized_code = permission_code.strip()
-            stmt = select(Permission).where(Permission.permission_code == normalized_code)
+            stmt = select(Permission).where(
+                Permission.permission_code == normalized_code
+            )
             return self._session.execute(stmt).scalar_one_or_none()
         except SQLAlchemyError as err:
             self._session.rollback()
@@ -134,7 +148,9 @@ class PermissionsRepository:
         """Fetch a Permission entity by permission name (exact match)."""
         try:
             normalized_name = permission_name.strip()
-            stmt = select(Permission).where(Permission.permission_name == normalized_name)
+            stmt = select(Permission).where(
+                Permission.permission_name == normalized_name
+            )
             return self._session.execute(stmt).scalar_one_or_none()
         except SQLAlchemyError as err:
             self._session.rollback()
@@ -152,9 +168,7 @@ class PermissionsRepository:
     ) -> Sequence[Permission]:
         """List permissions with optional status/action filtering, pagination, and deterministic ordering."""
         try:
-            bounded_limit, normalized_offset = (
-                self._normalize_pagination(limit, offset)
-            )
+            bounded_limit, normalized_offset = self._normalize_pagination(limit, offset)
             stmt = select(Permission)
             stmt = self._apply_filters(
                 stmt,
@@ -264,9 +278,7 @@ class PermissionsRepository:
     ) -> Sequence[Permission]:
         """Search permissions matching optional filters sorted by created_at descending."""
         try:
-            bounded_limit, normalized_offset = (
-                self._normalize_pagination(limit, offset)
-            )
+            bounded_limit, normalized_offset = self._normalize_pagination(limit, offset)
             stmt = select(Permission)
             stmt = self._apply_filters(
                 stmt,
@@ -284,6 +296,53 @@ class PermissionsRepository:
         except SQLAlchemyError as err:
             self._session.rollback()
             raise PermissionsRepositoryError("Failed to search permissions.") from err
+
+    def count_search_permissions(self, query: str) -> int:
+        try:
+            from sqlalchemy import func, or_
+
+            pattern = f"%{query}%"
+            stmt = (
+                select(func.count())
+                .select_from(Permission)
+                .where(
+                    or_(
+                        Permission.permission_code.ilike(pattern),
+                        Permission.permission_name.ilike(pattern),
+                    )
+                )
+            )
+            return self._session.scalar(stmt) or 0
+        except SQLAlchemyError as err:
+            raise PermissionsRepositoryError(
+                "Failed to count searched permissions."
+            ) from err
+
+    def search_permissions(
+        self, query: str, offset: int = 0, limit: int = 100
+    ) -> Sequence[Permission]:
+        try:
+            from sqlalchemy import or_
+
+            bounded_limit, normalized_offset = self._normalize_pagination(limit, offset)
+            pattern = f"%{query}%"
+            stmt = (
+                select(Permission)
+                .where(
+                    or_(
+                        Permission.permission_code.ilike(pattern),
+                        Permission.permission_name.ilike(pattern),
+                    )
+                )
+                .order_by(Permission.created_at.desc())
+                .offset(normalized_offset)
+                .limit(bounded_limit)
+            )
+            return self._session.execute(stmt).scalars().all()
+        except SQLAlchemyError as err:
+            self._session.rollback()
+            raise PermissionsRepositoryError("Failed to search permissions.") from err
+
 
 __all__ = [
     "PermissionsRepository",

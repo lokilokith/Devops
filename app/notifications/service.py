@@ -11,16 +11,22 @@ from app.notifications.models import (
     NotificationType,
     NotificationPriority,
 )
-from app.notifications.repository import NotificationRepository, NotificationNotFoundError
+from app.notifications.repository import (
+    NotificationRepository,
+    NotificationNotFoundError,
+)
 from app.notifications.providers.base import NotificationProvider
 from app.audit.service import AuditService
 from app.audit.models import AuditStatus, AuditSeverity
 
+
 class NotificationValidationError(Exception):
     pass
 
+
 class NotificationServiceError(Exception):
     pass
+
 
 class NotificationService:
     def __init__(
@@ -45,10 +51,12 @@ class NotificationService:
         metadata_payload: Dict[str, Any] | None = None,
     ) -> Notification:
         if not title or len(title) > 255:
-            raise NotificationValidationError("Title must be between 1 and 255 characters.")
+            raise NotificationValidationError(
+                "Title must be between 1 and 255 characters."
+            )
         if not message:
             raise NotificationValidationError("Message cannot be empty.")
-            
+
         try:
             notification = Notification(
                 recipient_user_id=str(recipient_user_id),
@@ -60,7 +68,7 @@ class NotificationService:
             )
             created = self._repo.create_notification(notification)
             self._session.commit()
-            
+
             self._audit.log_event(
                 action="notification.created",
                 resource_type="notifications",
@@ -68,24 +76,26 @@ class NotificationService:
                 actor_user_id=recipient_user_id,
                 status=AuditStatus.SUCCESS,
                 severity=AuditSeverity.INFO,
-                details={"type": type_.value, "priority": priority.value}
+                details={"type": type_.value, "priority": priority.value},
             )
-            
+
             # Attempt delivery synchronously for now, or could be async later
             return self.send_email(created.id)
-            
+
         except Exception as err:
             self._session.rollback()
-            raise NotificationServiceError(f"Failed to create notification: {str(err)}") from err
+            raise NotificationServiceError(
+                f"Failed to create notification: {str(err)}"
+            ) from err
 
     def send_email(self, notification_id: UUID) -> Notification:
         try:
             notif = self._repo.get_by_id(notification_id)
             if not notif:
                 raise NotificationNotFoundError("Notification not found.")
-                
+
             notif.delivery_attempts += 1
-            
+
             try:
                 success = self._provider.send(notif)
                 if success:
@@ -93,7 +103,7 @@ class NotificationService:
                     notif.last_error = None
                     self._repo.update_notification(notif)
                     self._session.commit()
-                    
+
                     self._audit.log_event(
                         action="notification.sent",
                         resource_type="notifications",
@@ -104,13 +114,13 @@ class NotificationService:
                     )
                 else:
                     raise Exception("Provider returned False.")
-                    
+
             except Exception as e:
                 notif.status = NotificationStatus.FAILED
                 notif.last_error = str(e)
                 self._repo.update_notification(notif)
                 self._session.commit()
-                
+
                 self._audit.log_event(
                     action="notification.failed",
                     resource_type="notifications",
@@ -118,9 +128,9 @@ class NotificationService:
                     actor_user_id=notif.recipient_user_id,
                     status=AuditStatus.FAILED,
                     severity=AuditSeverity.HIGH,
-                    details={"error": str(e), "attempts": notif.delivery_attempts}
+                    details={"error": str(e), "attempts": notif.delivery_attempts},
                 )
-            
+
             return notif
         except Exception as err:
             self._session.rollback()
@@ -131,17 +141,19 @@ class NotificationService:
             notif = self._repo.get_by_id(notification_id)
             if not notif:
                 raise NotificationNotFoundError("Notification not found.")
-                
+
             if str(notif.recipient_user_id) != str(user_id):
-                raise NotificationValidationError("Not authorized to mark this notification as read.")
-                
+                raise NotificationValidationError(
+                    "Not authorized to mark this notification as read."
+                )
+
             if not notif.is_read:
                 notif.is_read = True
                 notif.read_at = datetime.utcnow()
                 notif.status = NotificationStatus.READ
                 self._repo.update_notification(notif)
                 self._session.commit()
-                
+
                 self._audit.log_event(
                     action="notification.read",
                     resource_type="notifications",
@@ -150,11 +162,13 @@ class NotificationService:
                     status=AuditStatus.SUCCESS,
                     severity=AuditSeverity.INFO,
                 )
-                
+
             return notif
         except Exception as err:
             self._session.rollback()
-            raise NotificationServiceError(f"Failed to mark notification as read: {str(err)}") from err
+            raise NotificationServiceError(
+                f"Failed to mark notification as read: {str(err)}"
+            ) from err
 
     def mark_all_as_read(self, user_id: UUID) -> int:
         try:
@@ -168,12 +182,14 @@ class NotificationService:
                     actor_user_id=user_id,
                     status=AuditStatus.SUCCESS,
                     severity=AuditSeverity.INFO,
-                    details={"count": count}
+                    details={"count": count},
                 )
             return count
         except Exception as err:
             self._session.rollback()
-            raise NotificationServiceError(f"Failed to mark all as read: {str(err)}") from err
+            raise NotificationServiceError(
+                f"Failed to mark all as read: {str(err)}"
+            ) from err
 
     def list_notifications(
         self,
@@ -188,7 +204,15 @@ class NotificationService:
         offset: int = 0,
     ) -> Sequence[Notification]:
         return self._repo.list_notifications(
-            recipient_id, status, type_, priority, is_read, created_after, created_before, limit, offset
+            recipient_id,
+            status,
+            type_,
+            priority,
+            is_read,
+            created_after,
+            created_before,
+            limit,
+            offset,
         )
 
     def count_unread(self, user_id: UUID) -> int:
@@ -199,11 +223,11 @@ class NotificationService:
             notif = self._repo.get_by_id(notification_id)
             if not notif:
                 raise NotificationNotFoundError("Notification not found.")
-                
+
             # Ownership will be handled by the route, but double check here or trust the caller.
             self._repo.delete_notification(notification_id)
             self._session.commit()
-            
+
             self._audit.log_event(
                 action="notification.deleted",
                 resource_type="notifications",
@@ -214,7 +238,9 @@ class NotificationService:
             )
         except Exception as err:
             self._session.rollback()
-            raise NotificationServiceError(f"Failed to delete notification: {str(err)}") from err
+            raise NotificationServiceError(
+                f"Failed to delete notification: {str(err)}"
+            ) from err
 
     def retry_failed_notifications(self, max_attempts: int = 3) -> int:
         try:
@@ -228,4 +254,6 @@ class NotificationService:
                     success_count += 1
             return success_count
         except Exception as err:
-            raise NotificationServiceError(f"Failed to retry notifications: {str(err)}") from err
+            raise NotificationServiceError(
+                f"Failed to retry notifications: {str(err)}"
+            ) from err

@@ -1,4 +1,5 @@
 """Audit Service for OpsForge."""
+
 from __future__ import annotations
 import uuid
 import logging
@@ -10,6 +11,7 @@ from app.audit.models import AuditLog, AuditStatus, AuditSeverity
 from app.audit.repository import AuditRepository
 
 logger = logging.getLogger(__name__)
+
 
 class AuditService:
     def __init__(self, audit_repo: AuditRepository) -> None:
@@ -53,17 +55,29 @@ class AuditService:
             logger.error(f"Audit logging failed: {err}")
             return None
 
-    def log_login(self, actor_user_id: UUID, status: AuditStatus, ip_address: str | None = None) -> None:
+    def log_login(
+        self, actor_user_id: UUID, status: AuditStatus, ip_address: str | None = None
+    ) -> None:
         self.log_event(
             actor_user_id=actor_user_id,
             action="LOGIN",
             resource_type="SYSTEM",
             status=status,
-            severity=AuditSeverity.INFO if status == AuditStatus.SUCCESS else AuditSeverity.HIGH,
+            severity=(
+                AuditSeverity.INFO
+                if status == AuditStatus.SUCCESS
+                else AuditSeverity.HIGH
+            ),
             ip_address=ip_address,
         )
 
-    def log_role_assignment(self, actor_user_id: UUID, target_user_id: UUID, role_id: UUID, status: AuditStatus) -> None:
+    def log_role_assignment(
+        self,
+        actor_user_id: UUID,
+        target_user_id: UUID,
+        role_id: UUID,
+        status: AuditStatus,
+    ) -> None:
         self.log_event(
             actor_user_id=actor_user_id,
             target_user_id=target_user_id,
@@ -74,7 +88,13 @@ class AuditService:
             severity=AuditSeverity.MEDIUM,
         )
 
-    def log_permission_assignment(self, actor_user_id: UUID, role_id: UUID, permission_id: UUID, status: AuditStatus) -> None:
+    def log_permission_assignment(
+        self,
+        actor_user_id: UUID,
+        role_id: UUID,
+        permission_id: UUID,
+        status: AuditStatus,
+    ) -> None:
         self.log_event(
             actor_user_id=actor_user_id,
             action="ASSIGN_PERMISSION",
@@ -85,7 +105,9 @@ class AuditService:
             details={"role_id": str(role_id)},
         )
 
-    def log_access_request(self, actor_user_id: UUID, request_id: UUID, status: AuditStatus) -> None:
+    def log_access_request(
+        self, actor_user_id: UUID, request_id: UUID, status: AuditStatus
+    ) -> None:
         self.log_event(
             actor_user_id=actor_user_id,
             action="SUBMIT_ACCESS_REQUEST",
@@ -96,7 +118,9 @@ class AuditService:
             severity=AuditSeverity.INFO,
         )
 
-    def log_approval(self, actor_user_id: UUID, approval_workflow_id: UUID, status: AuditStatus) -> None:
+    def log_approval(
+        self, actor_user_id: UUID, approval_workflow_id: UUID, status: AuditStatus
+    ) -> None:
         self.log_event(
             actor_user_id=actor_user_id,
             action="PROCESS_APPROVAL",
@@ -107,7 +131,9 @@ class AuditService:
             severity=AuditSeverity.INFO,
         )
 
-    def log_authorization_denied(self, actor_user_id: UUID, resource_id: str, permission_action: str) -> None:
+    def log_authorization_denied(
+        self, actor_user_id: UUID, resource_id: str, permission_action: str
+    ) -> None:
         self.log_event(
             actor_user_id=actor_user_id,
             action="AUTHORIZATION_DENIED",
@@ -117,5 +143,6 @@ class AuditService:
             severity=AuditSeverity.HIGH,
             details={"permission_action": permission_action},
         )
+
 
 __all__ = ["AuditService"]

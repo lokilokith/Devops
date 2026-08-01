@@ -22,14 +22,25 @@ from app.notifications.repository import NotificationNotFoundError
 
 logger = logging.getLogger(__name__)
 
-notifications_ns = Namespace("notifications", description="Notification Engine Operations")
+notifications_ns = Namespace(
+    "notifications", description="Notification Engine Operations"
+)
 
 # Add models to namespace
 notifications_ns.models[notification_response_model.name] = notification_response_model
-notifications_ns.models[notification_list_response_model.name] = notification_list_response_model
-notifications_ns.models[notification_single_response_model.name] = notification_single_response_model
-notifications_ns.models[notification_unread_count_model.name] = notification_unread_count_model
-notifications_ns.models[notification_mark_all_response_model.name] = notification_mark_all_response_model
+notifications_ns.models[notification_list_response_model.name] = (
+    notification_list_response_model
+)
+notifications_ns.models[notification_single_response_model.name] = (
+    notification_single_response_model
+)
+notifications_ns.models[notification_unread_count_model.name] = (
+    notification_unread_count_model
+)
+notifications_ns.models[notification_mark_all_response_model.name] = (
+    notification_mark_all_response_model
+)
+
 
 def get_service():
     from app.notifications.service import NotificationService
@@ -37,13 +48,14 @@ def get_service():
     from app.notifications.providers.console import ConsoleEmailProvider
     from app.audit.service import AuditService
     from app.audit.repository import AuditRepository
-    
+
     return NotificationService(
         repository=NotificationRepository(db.session),
         audit_service=AuditService(AuditRepository(db.session)),
         provider=ConsoleEmailProvider(),
-        session=db.session
+        session=db.session,
     )
+
 
 @notifications_ns.route("")
 class NotificationListResource(Resource):
@@ -54,13 +66,13 @@ class NotificationListResource(Resource):
         """List notifications."""
         args = notification_list_parser.parse_args()
         parsed_filters = validate_filter_params(args)
-        
+
         user_id = UUID(g.user_id)
-        
+
         # Enforce Ownership/Admin read access
         authz = AuthorizationService(db.session)
         is_admin = authz.has_permission(user_id, "notifications", PermissionAction.READ)
-        
+
         if "recipient_id" in parsed_filters:
             requested_recipient = parsed_filters["recipient_id"]
             if str(requested_recipient) != str(user_id) and not is_admin:
@@ -73,6 +85,7 @@ class NotificationListResource(Resource):
         notifs = svc.list_notifications(**parsed_filters)
         return {"success": True, "data": notifs}
 
+
 @notifications_ns.route("/unread-count")
 class NotificationUnreadCountResource(Resource):
     @login_required
@@ -82,6 +95,7 @@ class NotificationUnreadCountResource(Resource):
         svc = get_service()
         count = svc.count_unread(UUID(g.user_id))
         return {"success": True, "data": {"unread_count": count}}
+
 
 @notifications_ns.route("/read-all")
 class NotificationReadAllResource(Resource):
@@ -93,6 +107,7 @@ class NotificationReadAllResource(Resource):
         count = svc.mark_all_as_read(UUID(g.user_id))
         return {"success": True, "data": count}
 
+
 @notifications_ns.route("/<uuid:notification_id>")
 class NotificationResource(Resource):
     @login_required
@@ -100,19 +115,21 @@ class NotificationResource(Resource):
     def get(self, notification_id):
         """Get a notification by ID."""
         svc = get_service()
-        notifs = svc.list_notifications() # Not best, let's use a get_by_id from repo directly, wait service doesn't have get_by_id!
+        notifs = (
+            svc.list_notifications()
+        )  # Not best, let's use a get_by_id from repo directly, wait service doesn't have get_by_id!
         # Instead I'll use list_notifications with limit=1, or just fetch via repo.
         notif = svc._repo.get_by_id(notification_id)
         if not notif:
             raise NotFound("Notification not found.")
-            
+
         user_id = UUID(g.user_id)
         authz = AuthorizationService(db.session)
         is_admin = authz.has_permission(user_id, "notifications", PermissionAction.READ)
-        
+
         if str(notif.recipient_user_id) != str(user_id) and not is_admin:
             raise Forbidden("Cannot read this notification.")
-            
+
         return {"success": True, "data": notif}
 
     @login_required
@@ -123,16 +140,19 @@ class NotificationResource(Resource):
         notif = svc._repo.get_by_id(notification_id)
         if not notif:
             raise NotFound("Notification not found.")
-            
+
         user_id = UUID(g.user_id)
         authz = AuthorizationService(db.session)
-        is_admin = authz.has_permission(user_id, "notifications", PermissionAction.DELETE)
-        
+        is_admin = authz.has_permission(
+            user_id, "notifications", PermissionAction.DELETE
+        )
+
         if str(notif.recipient_user_id) != str(user_id) and not is_admin:
             raise Forbidden("Cannot delete this notification.")
-            
+
         svc.delete_notification(notification_id, user_id)
         return "", 204
+
 
 @notifications_ns.route("/<uuid:notification_id>/read")
 class NotificationReadResource(Resource):

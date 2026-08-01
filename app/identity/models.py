@@ -82,4 +82,3 @@ class User(BaseModel):
 
 
 __all__ = ["User", "UserStatus"]
-

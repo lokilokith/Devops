@@ -1,2 +1,1 @@
 """Access feature validators placeholder."""
-

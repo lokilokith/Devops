@@ -12,6 +12,7 @@ from sqlalchemy.types import Uuid
 
 from app.shared.database import BaseModel
 
+
 class AuditSeverity(str, enum.Enum):
     INFO = "info"
     LOW = "low"
@@ -19,23 +20,39 @@ class AuditSeverity(str, enum.Enum):
     HIGH = "high"
     CRITICAL = "critical"
 
+
 class AuditStatus(str, enum.Enum):
     SUCCESS = "success"
     FAILED = "failed"
     DENIED = "denied"
 
+
 class AuditLog(BaseModel):
     __tablename__ = "audit_logs"
 
-    event_id: Mapped[str] = mapped_column(String(50), nullable=False, unique=True, index=True)
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
-    target_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True, index=True)
+    event_id: Mapped[str] = mapped_column(
+        String(50), nullable=False, unique=True, index=True
+    )
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    actor_user_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), nullable=False, index=True
+    )
+    target_user_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), nullable=True, index=True
+    )
     action: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     resource_type: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    resource_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    request_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True, index=True)
-    approval_workflow_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True, index=True)
+    resource_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, index=True
+    )
+    request_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), nullable=True, index=True
+    )
+    approval_workflow_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), nullable=True, index=True
+    )
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[AuditStatus] = mapped_column(
@@ -63,5 +80,6 @@ class AuditLog(BaseModel):
         index=True,
     )
     details: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+
 
 __all__ = ["AuditLog", "AuditSeverity", "AuditStatus"]

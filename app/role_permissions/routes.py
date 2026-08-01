@@ -27,16 +27,21 @@ from app.permissions.repository import PermissionsRepository
 from app.extensions import db
 from app.role_permissions.exceptions import ValidationError
 
+
 def get_service():
     return RolePermissionService(
         repository=RolePermissionsRepository(db.session),
         roles_repository=RolesRepository(db.session),
-        permissions_repository=PermissionsRepository(db.session)
+        permissions_repository=PermissionsRepository(db.session),
     )
+
 
 @role_permissions_ns.route("roles/<string:role_id>/permissions")
 class RolePermissionsCollection(Resource):
-    @role_permissions_ns.doc(summary="List permissions for role", description="Retrieve all permissions assigned to a role.")
+    @role_permissions_ns.doc(
+        summary="List permissions for role",
+        description="Retrieve all permissions assigned to a role.",
+    )
     @role_permissions_ns.marshal_with(role_permissions_list_response_model)
     @login_required
     @requires_permission("role_permissions", "manage")
@@ -49,7 +54,10 @@ class RolePermissionsCollection(Resource):
         except Exception:
             raise NotFound("Role not found")
 
-    @role_permissions_ns.doc(summary="Assign permission to role", description="Assign a permission to a role.")
+    @role_permissions_ns.doc(
+        summary="Assign permission to role",
+        description="Assign a permission to a role.",
+    )
     @role_permissions_ns.expect(role_permission_request_model)
     @role_permissions_ns.marshal_with(role_permission_response_model, code=201)
     @login_required
@@ -58,21 +66,33 @@ class RolePermissionsCollection(Resource):
         r_id = validate_uuid(role_id)
         data = request.json or {}
         p_id = validate_permission_assignment(data)
-        
+
         user_id = None
         service = get_service()
         try:
             rp = service.assign_permission(r_id, p_id, user_id)
-            return success_response(data={"role_id": str(rp.role_id), "permission_id": str(rp.permission_id)}, message="Permission assigned successfully", status_code=201)
+            return success_response(
+                data={
+                    "role_id": str(rp.role_id),
+                    "permission_id": str(rp.permission_id),
+                },
+                message="Permission assigned successfully",
+                status_code=201,
+            )
         except ValidationError as e:
             if "already in use" in str(e) or "already assigned" in str(e).lower():
                 from werkzeug.exceptions import Conflict
+
                 raise Conflict(str(e))
             raise NotFound(str(e))
 
+
 @role_permissions_ns.route("roles/<string:role_id>/permissions/<string:permission_id>")
 class RolePermissionResource(Resource):
-    @role_permissions_ns.doc(summary="Remove permission from role", description="Remove a permission from a role.")
+    @role_permissions_ns.doc(
+        summary="Remove permission from role",
+        description="Remove a permission from a role.",
+    )
     @role_permissions_ns.marshal_with(role_permission_response_model)
     @login_required
     @requires_permission("role_permissions", "manage")
@@ -86,9 +106,13 @@ class RolePermissionResource(Resource):
         except ValidationError as e:
             raise NotFound(str(e))
 
+
 @role_permissions_ns.route("permissions/<string:permission_id>/roles")
 class PermissionRolesCollection(Resource):
-    @role_permissions_ns.doc(summary="List roles for permission", description="Retrieve all roles that have a permission.")
+    @role_permissions_ns.doc(
+        summary="List roles for permission",
+        description="Retrieve all roles that have a permission.",
+    )
     @role_permissions_ns.marshal_with(permission_roles_list_response_model)
     @login_required
     @requires_permission("role_permissions", "manage")

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.shared.database import BaseModel
 
+
 class PermissionAction(str, enum.Enum):
     """Approved permission actions."""
 
@@ -26,12 +27,14 @@ class PermissionAction(str, enum.Enum):
     OVERRIDE = "override"
     ESCALATE = "escalate"
 
+
 class PermissionStatus(str, enum.Enum):
     """Approved lifecycle state for permissions."""
 
     ACTIVE = "active"
     INACTIVE = "inactive"
     RETIRED = "retired"
+
 
 class Permission(BaseModel):
     """Granular authorization right tracked by OpsForge."""
@@ -84,5 +87,6 @@ class Permission(BaseModel):
             f"<Permission(permission_code={self.permission_code!r}, "
             f"permission_name={self.permission_name!r})>"
         )
+
 
 __all__ = ["Permission", "PermissionStatus", "PermissionAction"]
