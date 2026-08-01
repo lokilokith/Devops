@@ -18,14 +18,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install black==26.5.1
-          pip install isort==6.0.1
-          pip install flake8
-          pip install mypy
+          pip install -e .[dev]
 
       - name: Check code formatting
         run: |
@@ -48,11 +46,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install bandit safety pip-audit
+          pip install -e .[dev]
 
       - name: Run Bandit (SAST)
         run: |
@@ -60,11 +59,11 @@ jobs:
 
       - name: Run Safety (SCA)
         run: |
-          safety check --full-report -i 70612
+          safety check -r requirements.txt --full-report -i 70612
 
       - name: Run pip-audit (SCA)
         run: |
-          pip-audit
+          pip-audit -r requirements.txt
 
   tests:
     name: Tests and Mutation
@@ -83,12 +82,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov mutmut
+          pip install -e .[dev]
 
       - name: Run Pytest with Coverage
         run: |
@@ -101,7 +100,7 @@ jobs:
           python -c "
           import sqlite3
           try:
-              conn = sqlite3.connect('mutmut.db')
+              conn = sqlite3.connect('.mutmut-cache')
               c = conn.cursor()
               c.execute('SELECT status, count(*) FROM mutant GROUP BY status')
               results = dict(c.fetchall())
