@@ -1,18 +1,14 @@
 import uuid
-from unittest.mock import Mock
-
-import pytest
 
 from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
 from app.notifications.models import (
-    NotificationPriority,
     NotificationStatus,
     NotificationType,
 )
 from app.notifications.providers.base import NotificationProvider
 from app.notifications.repository import NotificationRepository
-from app.notifications.service import NotificationService, NotificationValidationError
+from app.notifications.service import NotificationService
 
 
 class DummyProvider(NotificationProvider):

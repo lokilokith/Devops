@@ -1,13 +1,10 @@
 import datetime
 
 import jwt
-import pytest
 from flask import jsonify
 
 from app.api.decorators import login_required, requires_permission
-from app.auth.service import AuthService
 from app.identity.models import User, UserStatus
-from app.identity.repository import IdentityRepository
 from app.permissions.models import Permission, PermissionAction
 from app.resources.models import Resource
 from app.role_permissions.models import RolePermission

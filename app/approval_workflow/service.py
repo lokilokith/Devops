@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Sequence
+from typing import Sequence
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.access_requests.models import AccessRequestStatus
 from app.access_requests.repository import AccessRequestRepository
-from app.approval_workflow.exceptions import (
-    ApprovalWorkflowInvalidStateError,
-    ApprovalWorkflowValidationError,
-)
+from app.approval_workflow.exceptions import ApprovalWorkflowValidationError
 from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
 from app.approval_workflow.repository import ApprovalWorkflowRepository
 from app.approval_workflow.validators import validate_state_transition
@@ -114,7 +110,7 @@ class ApprovalWorkflowService:
                 "request_id": str(access_request_id),
                 "recipient_id": str(approver_id),
                 "title": "Approval Required",
-                "message": f"You have a new access request pending your approval.",
+                "message": "You have a new access request pending your approval.",
                 "type": "approval_required",
                 "priority": "high",
             },

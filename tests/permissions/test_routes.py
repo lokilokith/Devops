@@ -27,10 +27,7 @@ def app():
 
     db.init_app(flask_app)
     with flask_app.app_context():
-        import app.identity.models
-        import app.permissions.models
-        import app.resources.models
-        import app.roles.models
+        pass
 
         db.create_all()
         yield flask_app

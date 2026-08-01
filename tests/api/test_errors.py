@@ -1,6 +1,3 @@
-import pytest
-
-
 def test_error_400(client):
     res = client.get("/error/400")
     assert res.status_code == 400

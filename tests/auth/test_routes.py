@@ -1,8 +1,6 @@
 import datetime
-from uuid import uuid4
 
 import jwt
-import pytest
 from flask import current_app
 
 

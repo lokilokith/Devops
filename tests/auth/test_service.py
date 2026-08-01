@@ -1,6 +1,3 @@
-from unittest.mock import patch
-from uuid import uuid4
-
 import jwt
 import pytest
 from flask import current_app
@@ -127,5 +124,6 @@ def test_revoke_token_exception(auth_service, monkeypatch):
     import app.auth.service
 
     monkeypatch.setattr(app.auth.service, "_revoked_tokens", None)
-    # This will raise AttributeError inside revoke_token, which should be caught and passed
+    # This will raise AttributeError inside revoke_token, which should be
+    # caught and passed
     auth_service.revoke_token("some_token")

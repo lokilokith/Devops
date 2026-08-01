@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Sequence
+from typing import Any
 from uuid import UUID
 
 from app.access_requests.exceptions import (
@@ -18,7 +18,6 @@ from app.access_requests.models import (
     AccessRequestStatus,
 )
 from app.access_requests.repository import AccessRequestRepository
-from app.identity.exceptions import UserNotFoundError
 from app.identity.repository import IdentityRepository
 from app.notifications.events import (
     access_request_created,
@@ -26,9 +25,7 @@ from app.notifications.events import (
     request_cancelled,
     request_rejected,
 )
-from app.resources.exceptions import ResourceNotFoundError
 from app.resources.repository import ResourcesRepository
-from app.roles.exceptions import RoleNotFoundError
 from app.roles.repository import RolesRepository
 
 
@@ -39,7 +36,8 @@ class AccessRequestService:
         user_repo: IdentityRepository,
         role_repo: RolesRepository,
         resource_repo: ResourcesRepository,
-        user_roles_repo: Any = None,  # Avoid circular imports if needed, but we can type it properly if imported
+        user_roles_repo: Any = None,
+        # Avoid circular imports if needed, but we can type it properly if imported
     ) -> None:
         self._repo = access_request_repo
         self._user_repo = user_repo
@@ -113,7 +111,8 @@ class AccessRequestService:
                 "recipient_id": str(
                     requester_id
                 ),  # Usually we notify the requester, but wait, who should be notified?
-                # The prompt says: "Automatically generate notifications for: Access Request Created -> User receives notification"
+                # The prompt says: "Automatically generate notifications for: Access
+                # Request Created -> User receives notification"
                 "title": "Access Request Created",
                 "message": f"Your access request {request_number} has been submitted.",
                 "type": "access_request_created",
@@ -152,7 +151,8 @@ class AccessRequestService:
                 "actor_id": str(approver_id),
                 "recipient_id": str(approved_req.requester_id),
                 "title": "Access Request Approved",
-                "message": f"Your access request {approved_req.request_number} has been approved.",
+                "message": f"Your access request {
+                    approved_req.request_number} has been approved.",
                 "type": "request_approved",
                 "priority": "high",
             },
@@ -179,7 +179,8 @@ class AccessRequestService:
                 "actor_id": str(rejecter_id) if rejecter_id else "system",
                 "recipient_id": str(rejected_req.requester_id),
                 "title": "Access Request Rejected",
-                "message": f"Your access request {rejected_req.request_number} has been rejected.",
+                "message": f"Your access request {
+                    rejected_req.request_number} has been rejected.",
                 "type": "request_rejected",
                 "priority": "high",
             },
@@ -204,7 +205,8 @@ class AccessRequestService:
                 "request_id": str(cancelled_req.id),
                 "recipient_id": str(cancelled_req.requester_id),
                 "title": "Access Request Cancelled",
-                "message": f"Your access request {cancelled_req.request_number} has been cancelled.",
+                "message": f"Your access request {
+                    cancelled_req.request_number} has been cancelled.",
                 "type": "request_cancelled",
                 "priority": "normal",
             },

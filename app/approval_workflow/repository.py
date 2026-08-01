@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Sequence
+from typing import Sequence
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.approval_workflow.exceptions import (
-    ApprovalWorkflowNotFoundError,
-    ApprovalWorkflowRepositoryError,
-)
+from app.approval_workflow.exceptions import ApprovalWorkflowRepositoryError
 from app.approval_workflow.models import ApprovalStatus, ApprovalWorkflow
 
 

@@ -1,5 +1,9 @@
 """Custom exceptions for the Resources module."""
 
+from app.shared.exceptions import (
+    ResourceNotFoundException as GlobalResourceNotFoundException,
+)
+
 
 class ResourcesError(Exception):
     """Base exception for all Resources module errors."""
@@ -7,11 +11,6 @@ class ResourcesError(Exception):
 
 class ResourcesRepositoryError(ResourcesError):
     """Raised when a repository operation fails."""
-
-
-from app.shared.exceptions import (
-    ResourceNotFoundException as GlobalResourceNotFoundException,
-)
 
 
 class ResourceNotFoundError(GlobalResourceNotFoundException, ResourcesRepositoryError):

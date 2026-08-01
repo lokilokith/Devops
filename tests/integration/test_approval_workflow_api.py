@@ -1,13 +1,9 @@
 """Integration tests for Approval Workflow API."""
 
-from datetime import datetime, timezone
-from uuid import uuid4
-
 import pytest
 
 from app.access_requests.models import AccessRequest, AccessRequestPriority
 from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
-from app.platform.extensions import db
 
 
 @pytest.fixture

@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Any, Dict, Sequence
 from uuid import UUID
 
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.audit.models import AuditSeverity, AuditStatus
@@ -224,7 +223,8 @@ class NotificationService:
             if not notif:
                 raise NotificationNotFoundError("Notification not found.")
 
-            # Ownership will be handled by the route, but double check here or trust the caller.
+            # Ownership will be handled by the route, but double check here or trust
+            # the caller.
             self._repo.delete_notification(notification_id)
             self._session.commit()
 

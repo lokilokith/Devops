@@ -1,7 +1,5 @@
 import uuid
-from datetime import datetime, timezone
 
-import pytest
 from sqlalchemy.orm import Session
 
 from app.notifications.models import (
@@ -11,7 +9,6 @@ from app.notifications.models import (
     NotificationType,
 )
 from app.notifications.repository import (
-    NotificationNotFoundError,
     NotificationRepository,
 )
 

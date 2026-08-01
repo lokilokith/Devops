@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Any
 
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import JSON, Uuid

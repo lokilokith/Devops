@@ -12,7 +12,7 @@ from app.resources.exceptions import (
     ResourcesServiceError,
     ValidationError,
 )
-from app.resources.models import Resource, ResourceStatus, ResourceType
+from app.resources.models import Resource, ResourceType
 from app.resources.repository import ResourcesRepository
 
 
@@ -100,7 +100,7 @@ class ResourcesService:
         return self.update_resource(resource_id, data)
 
     def delete_resource(self, resource_id: UUID) -> bool:
-        resource = self.get_resource(resource_id)
+        self.get_resource(resource_id)
 
         try:
             return self._repository.delete(resource_id)

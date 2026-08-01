@@ -1,4 +1,3 @@
-from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -9,7 +8,6 @@ from app.approval_workflow.exceptions import (
     ApprovalWorkflowValidationError,
 )
 from app.approval_workflow.models import ApprovalStatus
-from app.roles.models import UserRole
 from app.user_roles.exceptions import UserRoleAlreadyExistsError
 
 
@@ -52,7 +50,8 @@ def test_approve_workflow(
     assert lst[0].id == sample_role.id
 
     # Test duplicate approval role assignment ignore
-    # Actually wait, need a new request with the same role for duplicate. Or just assign manually.
+    # Actually wait, need a new request with the same role for duplicate. Or
+    # just assign manually.
     with pytest.raises(UserRoleAlreadyExistsError):
         ur_repo.assign_role_to_user(
             user_id=u1.id, role_id=sample_role.id, assigned_by_user_id=u2.id

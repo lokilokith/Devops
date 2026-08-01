@@ -60,7 +60,7 @@ class LoginResource(Resource):
             raise Unauthorized("Invalid credentials")
         except UserInactiveError:
             raise Forbidden("Inactive user")
-        except Exception as exc:
+        except Exception:
             logger.exception("Unexpected error during login for user '%s'", username)
             raise
 

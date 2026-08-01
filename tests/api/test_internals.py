@@ -1,4 +1,3 @@
-import pytest
 from flask import Flask
 from werkzeug.exceptions import InternalServerError
 

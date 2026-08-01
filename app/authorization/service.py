@@ -13,7 +13,6 @@ from app.authorization.exceptions import (
     AuthorizationDeniedError,
     AuthorizationRepositoryError,
 )
-from app.identity.models import User
 from app.permissions.models import Permission, PermissionAction
 from app.resources.models import Resource
 from app.role_permissions.models import RolePermission

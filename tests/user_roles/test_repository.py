@@ -1,10 +1,9 @@
 from unittest.mock import patch
-from uuid import uuid4
 
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.identity.models import User, UserStatus
+from app.identity.models import User
 from app.roles.models import Role, RoleStatus, RoleType
 from app.user_roles.exceptions import (
     UserRoleAlreadyExistsError,

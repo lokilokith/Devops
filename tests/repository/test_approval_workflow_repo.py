@@ -1,8 +1,5 @@
 """Tests for ApprovalWorkflow Repository."""
 
-from datetime import datetime, timedelta, timezone
-from uuid import uuid4
-
 import pytest
 
 from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
@@ -43,7 +40,6 @@ def test_role(db_session):
 def sample_workflow(db_session, test_user, test_role):
     # Mock an access request because of foreign key constraint
     from app.access_requests.models import AccessRequest, AccessRequestPriority
-    from app.access_requests.repository import AccessRequestRepository
 
     ar = AccessRequest(
         request_number="AR-TEST-001",

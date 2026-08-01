@@ -2,10 +2,10 @@
 
 from flask import request
 from flask_restx import Resource
-from werkzeug.exceptions import Conflict, NotFound
+from werkzeug.exceptions import Conflict
 
 from app.api.decorators import login_required, requires_permission
-from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, validate_pagination
+from app.api.pagination import DEFAULT_PAGE_SIZE, validate_pagination
 from app.api.responses import success_response
 from app.extensions import db
 from app.resources.exceptions import DuplicateResourceError
@@ -132,7 +132,7 @@ class ResourceResource(Resource):
     def delete(self, resource_id):
         uid = validate_uuid(resource_id)
         service = get_service()
-        resource = service.get_resource(uid)
+        service.get_resource(uid)
 
         service.delete_resource(uid)
         return success_response(message="Resource deleted successfully")

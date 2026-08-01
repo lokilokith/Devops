@@ -1,13 +1,8 @@
 """End-to-End Test for Approval Workflow using Pytest."""
 
-import json
-from datetime import datetime, timezone
 from uuid import UUID
 
-import pytest
-
 from app.access_requests.repository import AccessRequestRepository
-from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
 from app.approval_workflow.repository import ApprovalWorkflowRepository
 from app.approval_workflow.service import ApprovalWorkflowService
 from app.audit.repository import AuditRepository
@@ -118,7 +113,8 @@ def test_e2e_approval_workflow_full_lifecycle(client, db_session):
     assert response.json["success"] is True
     request_id = response.json["data"]["id"]
 
-    # 3. Create Approval Workflow (this would normally be done via event/trigger, but we simulate it)
+    # 3. Create Approval Workflow (this would normally be done via
+    # event/trigger, but we simulate it)
 
     wf_svc = ApprovalWorkflowService(
         ApprovalWorkflowRepository(db_session),

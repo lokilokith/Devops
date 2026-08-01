@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.approval_workflow.exceptions import (
-    ApprovalWorkflowNotFoundError,
     ApprovalWorkflowRepositoryError,
 )
 from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow

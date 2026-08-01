@@ -10,7 +10,6 @@ from typing import Dict, List
 
 from flask import current_app
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 
 from app.identity.models import User
 from app.permissions.models import Permission, PermissionAction
@@ -27,8 +26,6 @@ logger = logging.getLogger("opsforge.security.bootstrap")
 
 class RBACSeedError(Exception):
     """Exception raised for errors during RBAC seed."""
-
-    pass
 
 
 def seed_rbac() -> bool:
@@ -286,9 +283,10 @@ def _validate_bootstrap() -> None:
     # Perform a functional verification using the test client
     # Note: the test client simulates a request without starting a server
     if current_app:
-        with current_app.test_client() as client:
+        with current_app.test_client():
             # We don't have the real JWT for admin, but we can just log success of the DB validations
-            # To strictly verify GET /users, we would need to bypass auth or authenticate
+            # To strictly verify GET /users, we would need to bypass auth or
+            # authenticate
             pass
 
     logger.info("OK - Bootstrap Validation Passed")

@@ -35,8 +35,6 @@ def db_session(app):
     session = _db.session
     session.begin_nested()
 
-    import factory
-
     from tests.fixtures import factories
 
     for f in [

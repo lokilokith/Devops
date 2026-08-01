@@ -23,7 +23,7 @@ from app.access_requests.schemas import (
 from app.access_requests.service import AccessRequestService
 from app.access_requests.validators import validate_access_request_create
 from app.api.decorators import login_required, requires_permission
-from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, validate_pagination
+from app.api.pagination import validate_pagination
 from app.authorization.service import AuthorizationService
 from app.extensions import db
 from app.identity.repository import IdentityRepository

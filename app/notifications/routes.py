@@ -7,7 +7,6 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from app.api.decorators import login_required, requires_permission
 from app.authorization.service import AuthorizationService
-from app.notifications.repository import NotificationNotFoundError
 from app.notifications.schemas import (
     notification_list_parser,
     notification_list_response_model,
@@ -115,9 +114,9 @@ class NotificationResource(Resource):
     def get(self, notification_id):
         """Get a notification by ID."""
         svc = get_service()
-        notifs = (
-            svc.list_notifications()
-        )  # Not best, let's use a get_by_id from repo directly, wait service doesn't have get_by_id!
+        # Not best, let's use a get_by_id from repo directly, wait service doesn't
+        # have get_by_id!
+        svc.list_notifications()
         # Instead I'll use list_notifications with limit=1, or just fetch via repo.
         notif = svc._repo.get_by_id(notification_id)
         if not notif:

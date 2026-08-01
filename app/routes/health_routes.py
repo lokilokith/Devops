@@ -3,10 +3,8 @@
 Defines the health check namespace and database connectivity validation.
 """
 
-import os
 import time
 
-from flask import current_app
 from flask_restx import Namespace, Resource, fields
 from sqlalchemy import text
 

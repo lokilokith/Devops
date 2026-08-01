@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 from flask import Flask
 
@@ -28,7 +26,7 @@ def app():
 
     db.init_app(flask_app)
     with flask_app.app_context():
-        import app.identity.models
+        pass
 
         db.create_all()
         yield flask_app

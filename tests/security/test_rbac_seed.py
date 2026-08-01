@@ -1,6 +1,5 @@
 """Tests for the RBAC Bootstrap Service."""
 
-import pytest
 from sqlalchemy import select
 
 from app.identity.models import User
@@ -9,7 +8,7 @@ from app.resources.models import Resource
 from app.role_permissions.models import RolePermission
 from app.roles.models import Role, UserRole
 from app.security.bootstrap.default_permissions import DEFAULT_PERMISSIONS
-from app.security.bootstrap.rbac_seed_service import RBACSeedError, seed_rbac
+from app.security.bootstrap.rbac_seed_service import seed_rbac
 
 
 def _create_admin_user(db_session):

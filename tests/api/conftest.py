@@ -1,5 +1,5 @@
 import pytest
-from flask import Flask, jsonify
+from flask import Flask
 from werkzeug.exceptions import (
     BadRequest,
     Conflict,
@@ -10,10 +10,7 @@ from werkzeug.exceptions import (
 )
 
 from app.api.errors import errors_bp
-from app.auth.service import AuthService
 from app.extensions import db
-from app.identity.models import User, UserStatus
-from app.identity.repository import IdentityRepository
 
 
 @pytest.fixture
@@ -58,11 +55,7 @@ def app():
 
     db.init_app(flask_app)
     with flask_app.app_context():
-        import app.identity.models
-        import app.permissions.models
-        import app.resources.models
-        import app.role_permissions.models
-        import app.roles.models
+        pass
 
         db.create_all()
         yield flask_app

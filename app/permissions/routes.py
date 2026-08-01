@@ -5,7 +5,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import Conflict, NotFound
 
 from app.api.decorators import login_required, requires_permission
-from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, validate_pagination
+from app.api.pagination import DEFAULT_PAGE_SIZE, validate_pagination
 from app.api.responses import success_response
 from app.extensions import db
 from app.permissions.exceptions import DuplicatePermissionError

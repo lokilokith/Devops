@@ -10,8 +10,6 @@ from typing import Any
 class OpsForgeException(Exception):
     """Base exception class for all OpsForge domain errors."""
 
-    pass
-
 
 class ValidationException(OpsForgeException):
     """Raised when input validation rules are violated (HTTP 400)."""
@@ -57,8 +55,6 @@ class DatabaseOperationException(OpsForgeException):
 
 class DatabaseException(DatabaseOperationException):
     """Legacy alias for database persistence failures (HTTP 500)."""
-
-    pass
 
 
 class ConfigurationException(OpsForgeException):

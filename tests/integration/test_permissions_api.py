@@ -1,6 +1,3 @@
-import pytest
-
-from app.extensions import db
 from app.identity.models import User, UserStatus
 from app.permissions.models import Permission, PermissionAction, PermissionStatus
 from app.role_permissions.models import RolePermission

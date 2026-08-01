@@ -153,7 +153,8 @@ class IdentityService:
 
         try:
             # Note: For now, we return all matching records up to a sensible limit since the
-            # original method didn't take pagination args. In a real system we'd paginate.
+            # original method didn't take pagination args. In a real system we'd
+            # paginate.
             return list(self._repository.search_users(query, skip=0, limit=1000))
         except IdentityRepositoryError as e:
             raise IdentityServiceError(f"Failed to fetch users for search: {e}") from e

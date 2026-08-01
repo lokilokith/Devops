@@ -1,10 +1,5 @@
-import uuid
-
-import pytest
-
 from app.identity.models import User, UserStatus
 from app.notifications.models import Notification, NotificationStatus, NotificationType
-from app.platform.extensions import db
 from tests.api.test_decorators import create_mock_token
 
 

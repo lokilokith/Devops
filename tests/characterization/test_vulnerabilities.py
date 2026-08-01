@@ -15,7 +15,8 @@ def test_approver_can_read_own_workflow_returns_200(
 
 
 def test_revoked_token_persists_restart(security_auth_service, db_session):
-    # This proves the JWT revocation vulnerability is fixed by verifying persistence in DB
+    # This proves the JWT revocation vulnerability is fixed by verifying
+    # persistence in DB
     import uuid
 
     from app.auth.models import RevokedToken

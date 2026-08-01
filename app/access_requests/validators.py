@@ -1,6 +1,6 @@
 """AccessRequest Validation Logic."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
 
 from werkzeug.exceptions import UnprocessableEntity

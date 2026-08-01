@@ -1,6 +1,5 @@
 """Integration tests for the Access Requests API."""
 
-from datetime import datetime
 from uuid import uuid4
 
 import pytest

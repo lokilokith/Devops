@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 from uuid import UUID
 
 from app.audit.models import AuditLog, AuditSeverity, AuditStatus

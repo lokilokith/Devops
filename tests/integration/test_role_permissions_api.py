@@ -1,8 +1,3 @@
-from uuid import UUID
-
-import pytest
-
-from app.extensions import db
 from app.identity.models import User, UserStatus
 from app.permissions.models import Permission, PermissionAction
 from app.role_permissions.models import RolePermission

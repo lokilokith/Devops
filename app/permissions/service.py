@@ -12,7 +12,7 @@ from app.permissions.exceptions import (
     PermissionsServiceError,
     ValidationError,
 )
-from app.permissions.models import Permission, PermissionAction, PermissionStatus
+from app.permissions.models import Permission, PermissionAction
 from app.permissions.repository import PermissionsRepository
 
 
@@ -114,7 +114,7 @@ class PermissionsService:
         return self.update_permission(permission_id, data)
 
     def delete_permission(self, permission_id: UUID) -> bool:
-        permission = self.get_permission(permission_id)
+        self.get_permission(permission_id)
 
         try:
             return self._repository.delete(permission_id)
