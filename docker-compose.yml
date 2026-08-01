@@ -1,59 +1,59 @@
 services:
-  db:
+  postgres:
     image: postgres:15-alpine
-    container_name: opsforge-db
-    restart: unless-stopped
+    container_name: opsforge-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-opsforge_prod}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opsforge_prod}
-      POSTGRES_DB: ${POSTGRES_DB:-opsforge_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-opsforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opsforge_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-opsforge_db}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opsforge_prod} -d ${POSTGRES_DB:-opsforge_prod}"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      - opsforge_postgres_data:/var/lib/postgresql/data
     networks:
       - opsforge_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opsforge} -d ${POSTGRES_DB:-opsforge_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
-  api:
+  backend:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: opsforge-api
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "8000:8000"
+      dockerfile: Dockerfile.backend
+    container_name: opsforge-backend
     environment:
       - APP_ENV=${APP_ENV:-production}
-      - FLASK_DEBUG=${FLASK_DEBUG:-0}
       - SECRET_KEY=${SECRET_KEY}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-opsforge_prod}:${POSTGRES_PASSWORD:-opsforge_prod}@db:5432/${POSTGRES_DB:-opsforge_prod}
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER:-opsforge_prod}
-      # Gunicorn configs mapping
-      - GUNICORN_BIND=${GUNICORN_BIND:-0.0.0.0:8000}
-      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
-      - GUNICORN_THREADS=${GUNICORN_THREADS:-4}
-      - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-30}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opsforge}:${POSTGRES_PASSWORD:-opsforge_pass}@postgres:5432/${POSTGRES_DB:-opsforge_db}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - opsforge_net
+    restart: unless-stopped
 
-volumes:
-  postgres_data:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: opsforge-frontend
+    ports:
+      - "${PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - opsforge_net
+    restart: unless-stopped
 
 networks:
   opsforge_net:
+    name: opsforge_net
     driver: bridge
+
+volumes:
+  opsforge_postgres_data:
+    name: opsforge_postgres_data

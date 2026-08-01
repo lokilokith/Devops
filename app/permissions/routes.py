@@ -1,5 +1,6 @@
 """Permissions REST API Routes."""
 from flask import request
+from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
@@ -12,7 +13,7 @@ from app.permissions.schemas import (
 )
 from app.permissions.validators import (
     validate_permission_create, validate_permission_update, validate_permission_patch,
-    validate_uuid, validate_pagination
+    validate_uuid
 )
 from app.permissions.repository import PermissionsRepository
 from app.permissions.service import PermissionsService
@@ -29,7 +30,7 @@ class PermissionCollection(Resource):
     @login_required
     @requires_permission("permissions", "read")
     def get(self):
-        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", 100))
+        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE))
         service = get_service()
         permissions = service.list_permissions(skip=skip, limit=limit)
         return success_response(data=permissions)

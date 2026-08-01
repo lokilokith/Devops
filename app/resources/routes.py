@@ -1,5 +1,6 @@
 """Resources REST API Routes."""
 from flask import request
+from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
@@ -12,7 +13,7 @@ from app.resources.schemas import (
 )
 from app.resources.validators import (
     validate_resource_create, validate_resource_update, validate_resource_patch,
-    validate_uuid, validate_pagination
+    validate_uuid
 )
 from app.resources.repository import ResourcesRepository
 from app.resources.service import ResourcesService
@@ -29,7 +30,7 @@ class ResourceCollection(Resource):
     @login_required
     @requires_permission("resources", "read")
     def get(self):
-        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", 100))
+        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE))
         service = get_service()
         resources = service.list_resources(skip=skip, limit=limit)
         return success_response(data=resources)
@@ -59,8 +60,7 @@ class ResourceResource(Resource):
         uid = validate_uuid(resource_id)
         service = get_service()
         resource = service.get_resource(uid)
-        if not resource:
-            raise NotFound("Resource not found")
+
         return success_response(data=resource)
 
     @resources_ns.doc(summary="Update resource", description="Completely update a resource by UUID.")
@@ -75,8 +75,7 @@ class ResourceResource(Resource):
         service = get_service()
         try:
             resource = service.update_resource(uid, data)
-            if not resource:
-                raise NotFound("Resource not found")
+
             return success_response(data=resource, message="Resource updated successfully")
         except DuplicateResourceError as e:
             raise Conflict(str(e))
@@ -93,8 +92,7 @@ class ResourceResource(Resource):
         service = get_service()
         try:
             resource = service.patch_resource(uid, data)
-            if not resource:
-                raise NotFound("Resource not found")
+
             return success_response(data=resource, message="Resource updated successfully")
         except DuplicateResourceError as e:
             raise Conflict(str(e))
@@ -107,7 +105,6 @@ class ResourceResource(Resource):
         uid = validate_uuid(resource_id)
         service = get_service()
         resource = service.get_resource(uid)
-        if not resource:
-            raise NotFound("Resource not found")
+
         service.delete_resource(uid)
         return success_response(message="Resource deleted successfully")

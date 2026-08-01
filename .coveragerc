@@ -1,0 +1,6 @@
+[run]
+branch = True
+source = app
+omit =
+    app/tests/*
+    app/security/bootstrap/*

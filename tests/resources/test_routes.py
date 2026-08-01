@@ -1,7 +1,7 @@
 import pytest
 from uuid import uuid4
 from flask import Flask
-from flask_restx import Api
+from app.routes.__init__ import CustomApi as Api
 from unittest.mock import MagicMock
 from app.extensions import db
 from app.api.errors import errors_bp
@@ -97,8 +97,9 @@ def test_get_resource(client, mock_auth, mock_service):
     assert res.json["data"]["id"] == uid
 
 def test_get_resource_not_found(client, mock_auth, mock_service):
+    from app.resources.exceptions import ResourceNotFoundError
     uid = str(uuid4())
-    mock_service.get_resource.return_value = None
+    mock_service.get_resource.side_effect = ResourceNotFoundError(f"Resource {uid} not found")
     res = client.get(f"/resources/{uid}", headers={"Authorization": "Bearer token"})
     assert res.status_code == 404
 
@@ -110,8 +111,9 @@ def test_update_resource(client, mock_auth, mock_service):
     assert res.json["data"]["resource_name"] == "Updated"
 
 def test_update_resource_not_found(client, mock_auth, mock_service):
+    from app.resources.exceptions import ResourceNotFoundError
     uid = str(uuid4())
-    mock_service.update_resource.return_value = None
+    mock_service.update_resource.side_effect = ResourceNotFoundError(f"Resource {uid} not found")
     res = client.put(f"/resources/{uid}", json={"resource_name": "Updated", "resource_type": "database", "status": "active"}, headers={"Authorization": "Bearer token"})
     assert res.status_code == 404
 
@@ -123,8 +125,9 @@ def test_patch_resource(client, mock_auth, mock_service):
     assert res.json["data"]["resource_name"] == "Patched"
 
 def test_patch_resource_not_found(client, mock_auth, mock_service):
+    from app.resources.exceptions import ResourceNotFoundError
     uid = str(uuid4())
-    mock_service.patch_resource.return_value = None
+    mock_service.patch_resource.side_effect = ResourceNotFoundError(f"Resource {uid} not found")
     res = client.patch(f"/resources/{uid}", json={"resource_name": "Patched"}, headers={"Authorization": "Bearer token"})
     assert res.status_code == 404
 
@@ -135,15 +138,16 @@ def test_delete_resource(client, mock_auth, mock_service):
     assert res.status_code == 200
 
 def test_delete_resource_not_found(client, mock_auth, mock_service):
+    from app.resources.exceptions import ResourceNotFoundError
     uid = str(uuid4())
-    mock_service.get_resource.return_value = None
+    mock_service.get_resource.side_effect = ResourceNotFoundError(f"Resource {uid} not found")
     res = client.delete(f"/resources/{uid}", headers={"Authorization": "Bearer token"})
     assert res.status_code == 404
 
 def test_invalid_uuid(client, mock_auth):
     res = client.get("/resources/invalid-uuid", headers={"Authorization": "Bearer token"})
     assert res.status_code == 422
-    assert "Invalid UUID" in res.json["message"]
+    assert any("Invalid UUID" in str(err) for err in res.json["errors"])
 
 def test_validation_errors(client, mock_auth, mock_service):
     # Resource code invalid chars

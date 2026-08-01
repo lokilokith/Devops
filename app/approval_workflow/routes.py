@@ -3,9 +3,10 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from flask import request, g
+from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
 
-from app.api.decorators import requires_permission
+from app.api.decorators import login_required
 from werkzeug.exceptions import BadRequest, Conflict, NotFound, UnprocessableEntity
 from app.approval_workflow.schemas import (
     approval_workflows_ns,
@@ -19,6 +20,7 @@ from app.approval_workflow.exceptions import (
     ApprovalWorkflowValidationError,
     ApprovalWorkflowInvalidStateError,
 )
+from app.approval_workflow.models import ApprovalWorkflow  # noqa: F401 — registers table in db.metadata for Alembic
 
 # Locator pattern function to fetch the service
 def get_service():
@@ -45,7 +47,7 @@ class ApprovalWorkflowCollection(Resource):
     @approval_workflows_ns.response(401, "Unauthorized")
     @approval_workflows_ns.response(403, "Forbidden")
     @approval_workflows_ns.marshal_with(approval_workflow_list_response_model)
-    @requires_permission("approval_workflows", "read")
+    @login_required
     def get(self):
         """List and filter approval workflows."""
         args = approval_workflow_query_parser.parse_args()
@@ -67,16 +69,10 @@ class ApprovalWorkflowCollection(Resource):
         svc = get_service()
         
         try:
-            items = svc._repo.list(
+            items, total = svc.list_workflows(
+                current_user_id=UUID(g.user_id),
                 page=args["page"],
                 page_size=args["page_size"],
-                status=args.get("status"),
-                request_id=UUID(args["request_id"]) if args.get("request_id") else None,
-                approver_id=UUID(args["approver_id"]) if args.get("approver_id") else None,
-                created_after=created_after,
-                created_before=created_before,
-            )
-            total = svc._repo.count(
                 status=args.get("status"),
                 request_id=UUID(args["request_id"]) if args.get("request_id") else None,
                 approver_id=UUID(args["approver_id"]) if args.get("approver_id") else None,
@@ -106,11 +102,15 @@ class ApprovalWorkflowResource(Resource):
     @approval_workflows_ns.response(403, "Forbidden")
     @approval_workflows_ns.response(404, "Not Found")
     @approval_workflows_ns.marshal_with(approval_workflow_single_response_model)
-    @requires_permission("approval_workflows", "read")
+    @login_required
     def get(self, workflow_id):
         """Get an approval workflow by ID."""
         svc = get_service()
-        wf = svc._repo.get_by_id(workflow_id)
+        from werkzeug.exceptions import Forbidden
+        try:
+            wf = svc.get_workflow(current_user_id=UUID(g.user_id), workflow_id=workflow_id)
+        except Forbidden as e:
+            raise Forbidden(str(e))
         if not wf:
             raise NotFound(f"Approval workflow {workflow_id} not found.")
         return {
@@ -132,7 +132,7 @@ class ApprovalWorkflowApprove(Resource):
     @approval_workflows_ns.response(409, "Invalid State")
     @approval_workflows_ns.response(422, "Validation Error")
     @approval_workflows_ns.marshal_with(approval_workflow_single_response_model)
-    @requires_permission("approval_workflows", "approve")
+    @login_required
     def post(self, workflow_id):
         """Approve a workflow request."""
         data = request.json or {}
@@ -166,7 +166,7 @@ class ApprovalWorkflowReject(Resource):
     @approval_workflows_ns.response(409, "Invalid State")
     @approval_workflows_ns.response(422, "Validation Error")
     @approval_workflows_ns.marshal_with(approval_workflow_single_response_model)
-    @requires_permission("approval_workflows", "reject")
+    @login_required
     def post(self, workflow_id):
         """Reject a workflow request."""
         data = request.json or {}
@@ -200,7 +200,7 @@ class ApprovalWorkflowCancel(Resource):
     @approval_workflows_ns.response(409, "Invalid State")
     @approval_workflows_ns.response(422, "Validation Error")
     @approval_workflows_ns.marshal_with(approval_workflow_single_response_model)
-    @requires_permission("approval_workflows", "cancel")
+    @login_required
     def post(self, workflow_id):
         """Cancel a workflow request."""
         data = request.json or {}

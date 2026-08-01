@@ -45,16 +45,16 @@ def seed_rbac() -> bool:
         _seed_resources()
 
         # 2. Seed Roles
-        admin_role = _seed_roles()
+        roles_map = _seed_roles()
 
         # 3. Seed Permissions
         all_permissions = _seed_permissions()
 
-        # 4. Assign Permissions to Administrator Role
-        _assign_permissions_to_role(admin_role, all_permissions)
+        # 4. Assign Permissions to Roles
+        _assign_permissions_to_role(roles_map, all_permissions)
 
         # 5. Assign Administrator Role to Admin User
-        _assign_role_to_admin_user(admin_role)
+        _assign_role_to_admin_user(roles_map["ADMIN"])
 
         # Commit the transaction
         db.session.commit()
@@ -91,13 +91,13 @@ def _seed_resources() -> None:
             logger.debug(f"OK - Resource {res_code} already exists")
 
 
-def _seed_roles() -> Role:
+def _seed_roles() -> Dict[str, Role]:
     """Seed default roles into the database.
     
     Returns:
-        Role: The Administrator role instance.
+        Dict[str, Role]: A mapping of role code to Role instance.
     """
-    admin_role = None
+    roles_map = {}
     for role_def in DEFAULT_ROLES:
         role_code = role_def["role_code"]
         existing = db.session.scalar(select(Role).where(Role.role_code == role_code))
@@ -110,17 +110,15 @@ def _seed_roles() -> Role:
             )
             db.session.add(new_role)
             logger.info(f"OK - Created role {role_code}")
-            if role_code == "ADMIN":
-                admin_role = new_role
+            roles_map[role_code] = new_role
         else:
             logger.debug(f"OK - Role {role_code} already exists")
-            if role_code == "ADMIN":
-                admin_role = existing
+            roles_map[role_code] = existing
                 
-    if not admin_role:
+    if "ADMIN" not in roles_map:
         raise RBACSeedError("Failed to find or create the ADMIN role.")
         
-    return admin_role
+    return roles_map
 
 
 def _seed_permissions() -> List[Permission]:
@@ -162,26 +160,28 @@ def _seed_permissions() -> List[Permission]:
     return permissions
 
 
-def _assign_permissions_to_role(role: Role, permissions: List[Permission]) -> None:
-    """Assign a list of permissions to a role.
-    
-    Args:
-        role (Role): The role to assign permissions to.
-        permissions (List[Permission]): The permissions to assign.
-    """
-    db.session.flush() # Ensure role and permissions have IDs
-    
-    for perm in permissions:
-        existing = db.session.scalar(
-            select(RolePermission).where(
-                RolePermission.role_id == role.id,
-                RolePermission.permission_id == perm.id
-            )
-        )
-        if not existing:
-            rp = RolePermission(role_id=role.id, permission_id=perm.id)
-            db.session.add(rp)
-            logger.info(f"OK - Assigned permission {perm.permission_code} to role {role.role_code}")
+def _assign_permissions_to_role(roles_map: Dict[str, Role], permissions: List[Permission]) -> None:
+    """Assign permissions to roles based on ROLE_PERMISSION_MAP."""
+    from app.security.bootstrap.default_permissions import ROLE_PERMISSION_MAP
+    db.session.flush()
+
+    for role_code, mapped_perms in ROLE_PERMISSION_MAP.items():
+        role = roles_map.get(role_code)
+        if not role:
+            continue
+            
+        for perm in permissions:
+            if "*" in mapped_perms or perm.permission_code in mapped_perms:
+                existing = db.session.scalar(
+                    select(RolePermission).where(
+                        RolePermission.role_id == role.id,
+                        RolePermission.permission_id == perm.id
+                    )
+                )
+                if not existing:
+                    rp = RolePermission(role_id=role.id, permission_id=perm.id)
+                    db.session.add(rp)
+                    logger.info(f"OK - Assigned permission {perm.permission_code} to role {role_code}")
 
 
 def _assign_role_to_admin_user(role: Role) -> None:
@@ -202,7 +202,14 @@ def _assign_role_to_admin_user(role: Role) -> None:
         from app.auth.service import AuthService
         from app.identity.repository import IdentityRepository
         auth_svc = AuthService(IdentityRepository(db.session))
-        admin_user.password_hash = auth_svc.hash_password("secret123")
+        import os
+        admin_pass = os.environ.get("ADMIN_DEFAULT_PASSWORD")
+        if not admin_pass:
+            if os.environ.get("APP_ENV") == "production":
+                raise RBACSeedError("ADMIN_DEFAULT_PASSWORD must be set in production environments.")
+            admin_pass = "secret123"
+            
+        admin_user.password_hash = auth_svc.hash_password(admin_pass)
         db.session.add(admin_user)
         db.session.flush()
 

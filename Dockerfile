@@ -60,7 +60,7 @@ EXPOSE 8000
 
 # Healthcheck leveraging the /health/ready endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
-    CMD curl -f http://localhost:8000/health/ready || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')" || exit 1
 
 ENTRYPOINT ["/app/scripts/entrypoint.sh"]
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "wsgi:app"]

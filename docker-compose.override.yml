@@ -1,0 +1,18 @@
+services:
+  backend:
+    # In development, mount the app code directly to enable live-reload
+    volumes:
+      - ./app:/app/app
+      - ./run.py:/app/run.py
+    environment:
+      - FLASK_DEBUG=1
+      - APP_ENV=development
+
+  frontend:
+    # Mount the src directory to avoid needing to rebuild Docker on every UI change
+    # Note: Vite dev server handles HMR, but since we are running Nginx inside the container,
+    # mapping volumes requires a different strategy (like running Vite natively inside docker for dev).
+    # Since this is a production-like nginx container, it serves static files. For full HMR,
+    # consider creating a separate Dockerfile.dev for the frontend that runs `npm run dev`.
+    ports:
+      - "8080:80"

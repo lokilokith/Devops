@@ -9,7 +9,7 @@ from app.role_permissions.models import RolePermission
 from app.resources.models import Resource, ResourceType, ResourceStatus
 
 @pytest.fixture
-def app():
+def auth_mock_app():
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
@@ -23,17 +23,18 @@ def app():
         db.engine.dispose()
 
 @pytest.fixture
-def db_session(app):
+def auth_mock_db_session(auth_mock_app):
     yield db.session
     db.session.rollback()
     db.session.remove()
 
 @pytest.fixture
-def auth_service(db_session):
-    return AuthorizationService(db_session)
+def auth_test_service(auth_mock_db_session):
+    return AuthorizationService(auth_mock_db_session)
 
 @pytest.fixture
-def populated_db(db_session):
+def populated_db(auth_mock_db_session):
+    db_session = auth_mock_db_session
     u1 = User(employee_id="U1", username="u1", email="u1@e.com", full_name="u1", status=UserStatus.ACTIVE)
     u2 = User(employee_id="U2", username="u2", email="u2@e.com", full_name="u2", status=UserStatus.ACTIVE)
     u3 = User(employee_id="U3", username="u3", email="u3@e.com", full_name="u3", status=UserStatus.ACTIVE)

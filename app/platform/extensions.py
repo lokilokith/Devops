@@ -1,6 +1,6 @@
 """Platform extension entrypoints."""
 
-from app.extensions import db, migrate
+from app.extensions import db, migrate, limiter
 
-__all__ = ["db", "migrate"]
+__all__ = ["db", "migrate", "limiter"]
 

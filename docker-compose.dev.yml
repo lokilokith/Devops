@@ -1,26 +1,55 @@
-# docker-compose.dev.yml
-# Use this file to override production settings for local development.
-# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+version: '3.8'
 
 services:
-  db:
-    ports:
-      - "5432:5432" # Expose DB for direct connection in development
+  postgres:
+    image: postgres:15-alpine
+    container_name: opsforge-postgres-dev
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-opsforge}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opsforge}
-      POSTGRES_DB: ${POSTGRES_DB:-opsforge_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opsforge_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-opsforge_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - opsforge_net_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opsforge} -d ${POSTGRES_DB:-opsforge_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  api:
+  # In Dev mode, backend and frontend are usually run locally via CLI (flask run / npm run dev) 
+  # or can be mounted via volumes for hot-reloading.
+  # Providing a mounted backend for convenience:
+  backend:
     build:
       context: .
-      dockerfile: Dockerfile
-    # Override entrypoint to use Flask development server
-    command: ["flask", "run", "--host=0.0.0.0", "--port=8000", "--debug"]
+      dockerfile: Dockerfile.backend
+    container_name: opsforge-backend-dev
+    command: flask run --host=0.0.0.0 --port=5000
     environment:
-      - APP_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opsforge}:${POSTGRES_PASSWORD:-opsforge_pass}@postgres:5432/${POSTGRES_DB:-opsforge_db}
+      - SECRET_KEY=dev_secret_key
+      - JWT_SECRET_KEY=dev_jwt_secret_key
+      - FLASK_ENV=development
       - FLASK_DEBUG=1
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-opsforge}:${POSTGRES_PASSWORD:-opsforge}@db:5432/${POSTGRES_DB:-opsforge_dev}
-      - POSTGRES_USER=${POSTGRES_USER:-opsforge}
+    ports:
+      - "5000:5000"
     volumes:
-      - ./:/app
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - opsforge_net_dev
+
+networks:
+  opsforge_net_dev:
+    name: opsforge_net_dev
+    driver: bridge
+
+volumes:
+  postgres_data_dev:
+    name: opsforge_postgres_data_dev

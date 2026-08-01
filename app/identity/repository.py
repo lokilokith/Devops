@@ -242,6 +242,73 @@ class IdentityRepository:
         except SQLAlchemyError as err:
             raise IdentityRepositoryError("Failed to check email existence.") from err
 
+    def exists_by_employee_id(self, employee_id: str, exclude_user_id: UUID | None = None) -> bool:
+        """Check if a user exists with the given employee ID.
+
+        Args:
+            employee_id: Employee ID to check.
+            exclude_user_id: Optional user ID to exclude from the check.
+
+        Returns:
+            True if exists, False otherwise.
+
+        Raises:
+            IdentityRepositoryError: If the database query fails.
+        """
+        try:
+            from sqlalchemy import and_
+            conditions = [User.employee_id == employee_id]
+            if exclude_user_id:
+                conditions.append(User.id != exclude_user_id)
+            stmt = select(exists().where(and_(*conditions)))
+            return bool(self._session.scalar(stmt))
+        except SQLAlchemyError as err:
+            raise IdentityRepositoryError("Failed to check employee_id existence.") from err
+
+    def search_users(self, query: str, skip: int = 0, limit: int = 100) -> Sequence[User]:
+        """Search users by username, email, employee_id, or full_name.
+
+        Args:
+            query: The search string.
+            skip: Number of records to skip.
+            limit: Maximum number of records to return.
+
+        Returns:
+            Sequence of User instances.
+
+        Raises:
+            IdentityRepositoryError: If the database query fails.
+        """
+        try:
+            from sqlalchemy import or_
+            bounded_limit = min(max(1, limit), 1000)
+            pattern = f"%{query}%"
+            stmt = select(User).where(or_(
+                User.username.ilike(pattern),
+                User.email.ilike(pattern),
+                User.employee_id.ilike(pattern),
+                User.full_name.ilike(pattern)
+            )).order_by(User.username.asc()).offset(skip).limit(bounded_limit)
+            return self._session.scalars(stmt).all()
+        except SQLAlchemyError as err:
+            raise IdentityRepositoryError("Failed to search users.") from err
+
+    def count_users(self) -> int:
+        """Count total users in the database.
+
+        Returns:
+            Total number of users.
+
+        Raises:
+            IdentityRepositoryError: If the database query fails.
+        """
+        try:
+            from sqlalchemy import func
+            stmt = select(func.count()).select_from(User)
+            return self._session.scalar(stmt) or 0
+        except SQLAlchemyError as err:
+            raise IdentityRepositoryError("Failed to count users.") from err
+
     def activate_user(self, user_id: UUID) -> User:
         """Activate a User entity.
 

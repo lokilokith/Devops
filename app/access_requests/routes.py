@@ -1,6 +1,7 @@
 """Access requests API routes."""
 from uuid import UUID
 from flask import request, g
+from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, Conflict, NotFound, UnprocessableEntity
 
@@ -11,7 +12,7 @@ from app.access_requests.schemas import (
     access_requests_list_response_model,
     access_request_single_response_model
 )
-from app.access_requests.validators import validate_access_request_create, validate_pagination
+from app.access_requests.validators import validate_access_request_create
 from app.access_requests.service import AccessRequestService
 from app.access_requests.repository import AccessRequestRepository
 from app.access_requests.exceptions import (

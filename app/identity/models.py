@@ -76,6 +76,10 @@ class User(BaseModel):
         remote_side=lambda: [User.id],
     )
 
+    @property
+    def status_value(self) -> str:
+        return self.status.value if hasattr(self.status, "value") else str(self.status)
+
 
 __all__ = ["User", "UserStatus"]
 

@@ -1,0 +1,1623 @@
+﻿L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\alembic\testing\plugin\bootstrap.py:2
+Bootstrapper for test framework plugins.
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\coverage\multiproc.py:24
+original_bootstrap = OriginalProcess._bootstrap  # type: ignore[attr-defined]
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\coverage\multiproc.py:30
+    def _bootstrap(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\coverage\multiproc.py:31
+        """Wrapper around _bootstrap to start coverage."""
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\coverage\multiproc.py:44
+                debug.write("Calling multiprocessing bootstrap")
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\coverage\multiproc.py:46
+            print("Exception during multiprocessing bootstrap init:", file=sys.stderr)
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\coverage\multiproc.py:51
+            return original_bootstrap(self, *args, **kwargs)
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\coverage\multiproc.py:54
+                debug.write("Finished multiprocessing bootstrap")
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\coverage\multiproc.py:60
+                    debug.write("Exception during multiprocessing bootstrap cleanup", exc=exc)
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\coverage\multiproc.py:92
+    OriginalProcess._bootstrap = ProcessWithCoverage._bootstrap  # type: ignore[attr-defined]
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\flask_restx\postman.py:32
+        seed = str(" ".join((self.method, self.url)))
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\flask_restx\postman.py:33
+        return str(uuid5(self.collection.uuid, seed))
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\greenlet\tests\fail_clearing_run_switches.py:38
+# its run callable C++ variable in inner_bootstrap. That triggers
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\greenlet\tests\test_greenlet.py:1399
+        # the ``inner_bootstrap()`` C frame and its descendents hanging around,
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\mypy\build.py:4276
+    # Seed the graph with the initial root sources.
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\mypyc\codegen\emit.py:1485
+    deterministic order (frozenset iteration order is hash-seed dependent).
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\mypyc\primitives\librt_random_ops.py:16
+# Random(seed) -- construct with integer seed
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\mypyc\primitives\librt_random_ops.py:21
+    c_function_name="LibRTRandom_Random_from_seed_internal",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\mypyc\test\test_literals.py:95
+        # order (which is hash-seed dependent), so that generated code is
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_internal\utils\misc.py:745
+    On Windows, users may run pip as Administrator without issues.
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_internal\utils\misc.py:753
+    # Administrator via pip is the correct way of updating system environments.
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_internal\vcs\versioncontrol.py:667
+                f"locally, globally (ask admin), or check your PATH. "
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_vendor\distlib\compat.py:514
+                # Can't use functools.wraps() here because of bootstrap issues
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_vendor\distlib\util.py:1946
+            # bootstrap problem. We use a dict to get an error
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_vendor\pygments\lexers\python.py:1174
+        'sample', 'savetxt', 'sctype2char', 'searchsorted', 'seed', 'select',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_vendor\requests\sessions.py:469
+        # Bootstrap CookieJar.
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_vendor\rich\logging.py:280
+    log.info("POST /admin/ 401 42234")
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_vendor\rich\logging.py:281
+    log.warning("password was rejected for admin site.")
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_vendor\rich\_emoji_codes.py:419
+    "badminton": "🏸",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_vendor\rich\_emoji_codes.py:2101
+    "seedling": "🌱",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pip\_vendor\rich\_emoji_codes.py:2830
+    "badminton_racquet_and_shuttlecock": "🏸",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\psycopg2\errorcodes.py:396
+ADMIN_SHUTDOWN = '57P01'
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\automation.py:140
+             r'A_IPAddress1|A_IPAddress2|A_IPAddress3|A_IPAddress4|A_ISAdmin|'
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\automation.py:262
+    inirenamesection iniwrite iniwritesection inputbox int isadmin isarray
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\configs.py:1377
+    _headers = r'^(\s*)(bootstrap|from|osversion|mirrorurl|include|registry|namespace|includecmd)(:)'
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\c_like.py:490
+        'subnetMask', 'debugPrint', 'macAddress', 'writeGreen', 'randomSeed',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\fortran.py:139
+                'Radix', 'Rand', 'Random_Number', 'Random_Seed', 'Range', 'Real',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\gdscript.py:114
+                    "rand_range", "rand_seed", "randf", "randi", "randomize",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\gdscript.py:115
+                    "range", "round", "seed", "sign", "sin", "sinh", "sqrt",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\graphics.py:745
+                'scattering', 'seed', 'shadowless', 'sin', 'sine_wave', 'sinh', 'sky', 'sky_sphere',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\igor.py:105
+         'ImageSave', 'ImageSeedFill', 'ImageSkeleton3d', 'ImageSnake', 'ImageStats',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\igor.py:167
+         'SetMarquee', 'SetProcessSleep', 'SetRandomSeed', 'SetScale', 'SetVariable',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\installers.py:107
+             r'admin|all|auto|both|bottom|bzip2|checkbox|colored|current|false|'
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\installers.py:122
+            (r'\$(ADMINTOOLS|APPDATA|CDBURN_AREA|COOKIES|COMMONFILES(?:32|64)|'
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\lisp.py:1174
+        'raise-user-error', 'random', 'random-seed', 'range', 'rational?',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\lisp.py:1591
+        'rotate', 'round', 'save', 'search', 'seed', 'seek', 'select', 'self',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\lisp.py:2952
+        'math/rng-uniform', 'math/round', 'math/seedrandom',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\macaulay2.py:969
+    "setRandomSeed",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\markup.py:1083
+        'NUMBEROFACTIVEUSERS', 'NUMBEROFADMINS', 'NUMBEROFARTICLES', 'NUMBEROFEDITS',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\markup.py:1100
+        'NAMESPACENUMBER', 'NUMBERINGROUP', 'NUMINGROUP', 'NUMBEROFACTIVEUSERS', 'NUMBEROFADMINS',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\mosel.py:111
+    'setrandseed',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\ncl.py:193
+                'random_chi', 'random_gamma', 'random_normal', 'random_setallseed',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\ncl.py:776
+                'vcFillArrowHeadInteriorXF', 'vcFillArrowHeadMinFracXF',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\ncl.py:777
+                'vcFillArrowHeadMinFracYF', 'vcFillArrowHeadXF', 'vcFillArrowHeadYF',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\ncl.py:784
+                'vcLineArrowHeadMaxSizeF', 'vcLineArrowHeadMinSizeF',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\pawn.py:88
+                'AdminFlag', 'OverrideType', 'OverrideRule', 'ImmunityType',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\pawn.py:89
+                'GroupId', 'AdminId', 'AdmAccessMode', 'AdminCachePart',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\python.py:1177
+        'sample', 'savetxt', 'sctype2char', 'searchsorted', 'seed', 'select',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_csound_builtins.py:567
+getseed
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_csound_builtins.py:1309
+rndseed
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_csound_builtins.py:1338
+seed
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:376
+        'admin_authorization',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:377
+        'admin_currentgroups',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:378
+        'admin_currentuserid',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:379
+        'admin_currentusername',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:380
+        'admin_getpref',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:381
+        'admin_initialize',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:382
+        'admin_lassoservicepath',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:383
+        'admin_removepref',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:384
+        'admin_setpref',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:385
+        'admin_userexists',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:387
+        'auth_admin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1381
+        'random_seed',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1412
+        'server_admin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1543
+        'sys_seed48',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1912
+        '_admin_addgroup',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1913
+        '_admin_adduser',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1914
+        '_admin_defaultconnector',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1915
+        '_admin_defaultconnectornames',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1916
+        '_admin_defaultdatabase',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1917
+        '_admin_defaultfield',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1918
+        '_admin_defaultgroup',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1919
+        '_admin_defaulthost',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1920
+        '_admin_defaulttable',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1921
+        '_admin_defaultuser',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1922
+        '_admin_deleteconnector',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1923
+        '_admin_deletedatabase',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1924
+        '_admin_deletefield',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1925
+        '_admin_deletegroup',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1926
+        '_admin_deletehost',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1927
+        '_admin_deletetable',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1928
+        '_admin_deleteuser',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1929
+        '_admin_duplicategroup',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1930
+        '_admin_internaldatabase',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1931
+        '_admin_listconnectors',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1932
+        '_admin_listdatabases',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1933
+        '_admin_listfields',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1934
+        '_admin_listgroups',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1935
+        '_admin_listhosts',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1936
+        '_admin_listtables',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1937
+        '_admin_listusers',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1938
+        '_admin_refreshconnector',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1939
+        '_admin_refreshsecurity',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1940
+        '_admin_servicepath',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1941
+        '_admin_updateconnector',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1942
+        '_admin_updatedatabase',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1943
+        '_admin_updatefield',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1944
+        '_admin_updategroup',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1945
+        '_admin_updatehost',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1946
+        '_admin_updatetable',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1947
+        '_admin_updateuser',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1997
+        'admin_allowedfileroots',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1998
+        'admin_changeuser',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:1999
+        'admin_createuser',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2000
+        'admin_currentgroups',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2001
+        'admin_currentuserid',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2002
+        'admin_currentusername',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2003
+        'admin_getpref',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2004
+        'admin_groupassignuser',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2005
+        'admin_grouplistusers',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2006
+        'admin_groupremoveuser',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2007
+        'admin_lassoservicepath',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2008
+        'admin_listgroups',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2009
+        'admin_refreshlicensing',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2010
+        'admin_refreshsecurity',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2011
+        'admin_reloaddatasource',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2012
+        'admin_removepref',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2013
+        'admin_setpref',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2014
+        'admin_userexists',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2015
+        'admin_userlistgroups',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:2021
+        'auth_admin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lasso_builtins.py:4587
+        'serveradmin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lilypond_builtins.py:2943
+  "ly:make-rand-seed",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lilypond_builtins.py:3200
+  "ly:set-rand-seed",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lilypond_builtins.py:3937
+  "randomize-rand-seed",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_lua_builtins.py:117
+          'math.randomseed',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_mql_builtins.py:1162
+    'input', '_Digits', '_Point', '_LastError', '_Period', '_RandomSeed',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_mysql_builtins.py:566
+    'admin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_php_builtins.py:1053
+         'gmp_random_seed',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_php_builtins.py:2476
+            'sodium_crypto_box_seed_keypair',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_php_builtins.py:2489
+            'sodium_crypto_kx_seed_keypair',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_php_builtins.py:2520
+            'sodium_crypto_sign_seed_keypair',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_postgres_builtins.py:21
+    'ADMIN',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_scheme_builtins.py:1166
+    "seed->random-state",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_scilab_builtins.py:408
+    'closeEditor',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_scilab_builtins.py:409
+    'closeEditvar',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_scilab_builtins.py:988
+    'useeditor',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:36
+    'OnAdminMenuCreated',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:37
+    'OnAdminMenuReady',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:38
+    'GetAdminTopMenu',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:41
+    'RedisplayAdminMenu',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:209
+    'SetURandomSeed',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:210
+    'SetURandomSeedSimple',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:378
+    'OnRebuildAdminCache',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:379
+    'DumpAdminCache',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:394
+    'CreateAdmin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:395
+    'GetAdminUsername',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:396
+    'BindAdminIdentity',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:397
+    'SetAdminFlag',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:398
+    'GetAdminFlag',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:399
+    'GetAdminFlags',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:400
+    'AdminInheritGroup',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:401
+    'GetAdminGroupCount',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:402
+    'GetAdminGroup',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:403
+    'SetAdminPassword',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:404
+    'GetAdminPassword',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:405
+    'FindAdminByIdentity',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:406
+    'RemoveAdmin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:415
+    'CanAdminTarget',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:419
+    'SetAdminImmunityLevel',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:420
+    'GetAdminImmunityLevel',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:444
+    'RegAdminCmd',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:715
+    'OnClientPreAdminCheck',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:716
+    'OnClientPostAdminFilter',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:717
+    'OnClientPostAdminCheck',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:738
+    'SetUserAdmin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:739
+    'GetUserAdmin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:745
+    'RunAdminCacheChecks',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:746
+    'NotifyPostAdminCheck',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sourcemod_builtins.py:1017
+    'SetRandomSeed',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_sql_builtins.py:12
+    'ABORT', 'ABS', 'ABSOLUTE', 'ACCESS', 'ADA', 'ADD', 'ADMIN', 'AFTER',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_stata_builtins.py:31
+    "bmemsize", "boot", "bootsamp", "bootstrap", "bootstrap_8",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\pygments\lexers\_tsql_builtins.py:252
+    'admin',
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\dialects\mssql\base.py:3681
+                identity_cols.c.seed_value,
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\dialects\mssql\base.py:3756
+            identity_start = row[identity_cols.c.seed_value]
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\dialects\mssql\information_schema.py:254
+    Column("seed_value", NumericSqlVariant),
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\dialects\mysql\reserved_words.py:294
+    "admin",
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\dialects\oracle\dictionary.py:450
+# https://docs.oracle.com/cd/B28359_01/server.111/b28310/ds_admin005.htm
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\compiler.py:4389
+        if tablesample.seed is not None:
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\compiler.py:4391
+                tablesample.seed._compiler_dispatch(self, **kw)
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\elements.py:1729
+        self, seed: Optional[str], add_hash: Optional[int] = None
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\elements.py:1747
+            assert seed
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\elements.py:1755
+            seed = seed + "_"
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\elements.py:1757
+        if isinstance(seed, _anonymous_label):
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\elements.py:1759
+                hash_value, "", enclosing_label=seed
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\elements.py:1762
+        return _anonymous_label.safe_construct(hash_value, seed or "anon")
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\elements.py:5541
+        seed: int,
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\elements.py:5554
+        label = "%%(%d %s)s" % (seed, body.replace("%", "%%"))
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\selectable.py:798
+        seed: Optional[roles.ExpressionElementRole[Any]] = None,
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\selectable.py:812
+            self, sampling=sampling, name=name, seed=seed
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\selectable.py:2080
+            ("seed", InternalTraversal.dp_clauseelement),
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\selectable.py:2090
+        seed: Optional[roles.ExpressionElementRole[Any]] = None,
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\selectable.py:2093
+            sampling, name=name, seed=seed
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\selectable.py:2103
+        seed: Optional[roles.ExpressionElementRole[Any]] = None,
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\selectable.py:2111
+        self.seed = seed
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\_selectable_constructors.py:567
+    seed: Optional[roles.ExpressionElementRole[Any]] = None,
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\_selectable_constructors.py:588
+            func.bernoulli(1), name="alias", seed=func.random()
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\_selectable_constructors.py:606
+    :param seed: any real-valued SQL expression.  When specified, the
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\sql\_selectable_constructors.py:610
+    return TableSample._factory(selectable, sampling, name=name, seed=seed)
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\bootstrap.py:1
+# testing/plugin/bootstrap.py
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\bootstrap.py:10
+Bootstrapper for test framework plugins.
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\bootstrap.py:30
+bootstrap_file = locals()["bootstrap_file"]
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\bootstrap.py:31
+to_bootstrap = locals()["to_bootstrap"]
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\bootstrap.py:35
+    path = os.path.join(os.path.dirname(bootstrap_file), "%s.py" % name)
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\bootstrap.py:45
+if to_bootstrap == "pytest":
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\bootstrap.py:47
+    sys.modules["sqla_plugin_base"].bootstrapped_as_sqlalchemy = True
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\bootstrap.py:50
+    raise Exception("unknown bootstrap: %s" % to_bootstrap)  # noqa
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\plugin_base.py:35
+bootstrapped_as_sqlalchemy = False
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\plugin_base.py:494
+    config.bootstrapped_as_sqlalchemy = bootstrapped_as_sqlalchemy
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\plugin\pytestplugin.py:26
+    # installed by bootstrap.py
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\engines.py:96
+        if not config.bootstrapped_as_sqlalchemy:
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\sqlalchemy\testing\engines.py:134
+        if not config.bootstrapped_as_sqlalchemy:
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\werkzeug\middleware\dispatcher.py:14
+This example dispatches to an API app under "/api", an admin app
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\werkzeug\middleware\dispatcher.py:15
+under "/admin", and an app that serves frontend files for all other
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\werkzeug\middleware\dispatcher.py:20
+        '/admin': admin_app,
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\werkzeug\middleware\dispatcher.py:25
+API and admin apps would each be deployed with a separate WSGI server,
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\werkzeug\local.py:440
+        repr(user)  # <User admin>
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\_pytest\config\__init__.py:762
+    # API for bootstrapping plugin loading
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\_pytest\hookspec.py:159
+# Bootstrapping hooks called for plugins registered early enough:
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\_pytest\main.py:846
+        # role as the bootstrapping collector.
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\_pytest\pathlib.py:42
+    from importlib._bootstrap_external import _NamespaceLoader as NamespaceLoader
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\_pytest\pathlib.py:666
+    # https://github.com/python/cpython/blob/73906d5c908c1e0b73c5436faeff7d93698fc074/Lib/importlib/_bootstrap.py#L1308-L1311
+
+L:\DOWNLOADS\Devops\opsforge\.venv\Lib\site-packages\_pytest\pytester.py:1222
+        This invokes the pytest bootstrapping code in _pytest.config to create a
+
+L:\DOWNLOADS\Devops\opsforge\app\access_requests\routes.py:56
+        is_admin_or_auditor = authz.has_permission(UUID(g.user_id), "access_requests", PermissionAction.READ)
+
+L:\DOWNLOADS\Devops\opsforge\app\access_requests\routes.py:64
+        if is_admin_or_auditor:
+
+L:\DOWNLOADS\Devops\opsforge\app\access_requests\routes.py:121
+        is_admin_or_auditor = authz.has_permission(UUID(g.user_id), "access_requests", PermissionAction.READ)
+
+L:\DOWNLOADS\Devops\opsforge\app\access_requests\routes.py:122
+        if not is_admin_or_auditor and req.requester_id != UUID(g.user_id):
+
+L:\DOWNLOADS\Devops\opsforge\app\access_requests\routes.py:144
+        is_admin_or_auditor = authz.has_permission(UUID(g.user_id), "access_requests", PermissionAction.READ)
+
+L:\DOWNLOADS\Devops\opsforge\app\access_requests\routes.py:145
+        if not is_admin_or_auditor and req.requester_id != UUID(g.user_id):
+
+L:\DOWNLOADS\Devops\opsforge\app\access_requests\routes.py:237
+        is_admin = authz.has_permission(UUID(g.user_id), "access_requests", PermissionAction.READ)
+
+L:\DOWNLOADS\Devops\opsforge\app\access_requests\routes.py:238
+        if not is_admin and req.requester_id != UUID(g.user_id):
+
+L:\DOWNLOADS\Devops\opsforge\app\approval_workflow\models.py:25
+    SYSTEM_ADMIN = "system_admin"
+
+L:\DOWNLOADS\Devops\opsforge\app\approval_workflow\service.py:129
+                    "recipient_id": str(approver_id), # notify the approver that their action failed? Or admin?
+
+L:\DOWNLOADS\Devops\opsforge\app\auth\schemas.py:7
+    "username": fields.String(required=True, description="Username or Email", example="admin"),
+
+L:\DOWNLOADS\Devops\opsforge\app\cli\seed_commands.py:3
+from app.security.bootstrap import seed_rbac
+
+L:\DOWNLOADS\Devops\opsforge\app\cli\seed_commands.py:4
+from app.security.bootstrap.rbac_seed_service import RBACSeedError
+
+L:\DOWNLOADS\Devops\opsforge\app\cli\seed_commands.py:6
+@click.command('seed-rbac')
+
+L:\DOWNLOADS\Devops\opsforge\app\cli\seed_commands.py:8
+def seed_rbac_command():
+
+L:\DOWNLOADS\Devops\opsforge\app\cli\seed_commands.py:9
+    """Seed the database with default RBAC configuration."""
+
+L:\DOWNLOADS\Devops\opsforge\app\cli\seed_commands.py:11
+        seed_rbac()
+
+L:\DOWNLOADS\Devops\opsforge\app\cli\seed_commands.py:12
+    except RBACSeedError as e:
+
+L:\DOWNLOADS\Devops\opsforge\app\cli\seed_commands.py:21
+    app.cli.add_command(seed_rbac_command)
+
+L:\DOWNLOADS\Devops\opsforge\app\identity\repository.py:62
+    def create_user(self, user: User) -> User:
+
+L:\DOWNLOADS\Devops\opsforge\app\identity\routes.py:51
+            user = service.create_user(data)
+
+L:\DOWNLOADS\Devops\opsforge\app\identity\service.py:42
+    def create_user(self, data: dict) -> User:
+
+L:\DOWNLOADS\Devops\opsforge\app\identity\service.py:73
+            return self._repository.create_user(user)
+
+L:\DOWNLOADS\Devops\opsforge\app\notifications\routes.py:60
+        # Enforce Ownership/Admin read access
+
+L:\DOWNLOADS\Devops\opsforge\app\notifications\routes.py:62
+        is_admin = authz.has_permission(user_id, "notifications", PermissionAction.READ)
+
+L:\DOWNLOADS\Devops\opsforge\app\notifications\routes.py:66
+            if str(requested_recipient) != str(user_id) and not is_admin:
+
+L:\DOWNLOADS\Devops\opsforge\app\notifications\routes.py:69
+            if not is_admin:
+
+L:\DOWNLOADS\Devops\opsforge\app\notifications\routes.py:111
+        is_admin = authz.has_permission(user_id, "notifications", PermissionAction.READ)
+
+L:\DOWNLOADS\Devops\opsforge\app\notifications\routes.py:113
+        if str(notif.recipient_user_id) != str(user_id) and not is_admin:
+
+L:\DOWNLOADS\Devops\opsforge\app\notifications\routes.py:121
+        """Delete a notification (Admin only, as per typical REST, but let's allow owners too via service)."""
+
+L:\DOWNLOADS\Devops\opsforge\app\notifications\routes.py:129
+        is_admin = authz.has_permission(user_id, "notifications", PermissionAction.DELETE)
+
+L:\DOWNLOADS\Devops\opsforge\app\notifications\routes.py:131
+        if str(notif.recipient_user_id) != str(user_id) and not is_admin:
+
+L:\DOWNLOADS\Devops\opsforge\app\roles\schemas.py:7
+    "role_code": fields.String(description="Role Code", example="ADMIN"),
+
+L:\DOWNLOADS\Devops\opsforge\app\roles\schemas.py:8
+    "role_name": fields.String(description="Role Name", example="Administrator"),
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\default_roles.py:5
+        "role_code": "ADMIN",
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\default_roles.py:6
+        "role_name": "Administrator",
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\default_roles.py:10
+        "role_code": "SEC_ADMIN",
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\default_roles.py:11
+        "role_name": "Security Administrator",
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:1
+"""RBAC Bootstrap Service for OpsForge.
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:4
+default Roles, Resources, Permissions, and assigning them to the bootstrap
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:5
+admin user.
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:22
+from app.security.bootstrap.default_roles import DEFAULT_ROLES
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:23
+from app.security.bootstrap.default_permissions import DEFAULT_PERMISSIONS
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:24
+from app.security.bootstrap.default_resources import DEFAULT_RESOURCES
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:26
+logger = logging.getLogger("opsforge.security.bootstrap")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:29
+class RBACSeedError(Exception):
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:30
+    """Exception raised for errors during RBAC seed."""
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:34
+def seed_rbac() -> bool:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:35
+    """Idempotently seed the RBAC tables.
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:40
+    logger.info("Starting RBAC bootstrap...")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:44
+        # 1. Seed Resources
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:45
+        _seed_resources()
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:47
+        # 2. Seed Roles
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:48
+        admin_role = _seed_roles()
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:50
+        # 3. Seed Permissions
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:51
+        all_permissions = _seed_permissions()
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:53
+        # 4. Assign Permissions to Administrator Role
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:54
+        _assign_permissions_to_role(admin_role, all_permissions)
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:56
+        # 5. Assign Administrator Role to Admin User
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:57
+        _assign_role_to_admin_user(admin_role)
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:62
+        logger.info("OK - RBAC bootstrap completed successfully")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:65
+        _validate_bootstrap()
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:67
+        print("RBAC Bootstrap Successful")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:72
+        logger.error(f"RBAC bootstrap failed: {e}")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:73
+        raise RBACSeedError(f"Bootstrap failed: {str(e)}") from e
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:76
+def _seed_resources() -> None:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:77
+    """Seed default resources into the database."""
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:94
+def _seed_roles() -> Role:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:95
+    """Seed default roles into the database.
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:98
+        Role: The Administrator role instance.
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:100
+    admin_role = None
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:113
+            if role_code == "ADMIN":
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:114
+                admin_role = new_role
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:117
+            if role_code == "ADMIN":
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:118
+                admin_role = existing
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:120
+    if not admin_role:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:121
+        raise RBACSeedError("Failed to find or create the ADMIN role.")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:123
+    return admin_role
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:126
+def _seed_permissions() -> List[Permission]:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:127
+    """Seed default permissions into the database.
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:187
+def _assign_role_to_admin_user(role: Role) -> None:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:188
+    """Assign the Administrator role to the bootstrap admin user.
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:191
+        role (Role): The Administrator role.
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:193
+    admin_user = db.session.scalar(select(User).where(User.username == "admin"))
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:194
+    if not admin_user:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:195
+        logger.info("Admin user not found. Creating bootstrap admin user...")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:196
+        admin_user = User(
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:197
+            employee_id="ADMIN_BOOT",
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:198
+            username="admin",
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:199
+            email="admin@opsforge.local",
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:200
+            full_name="System Administrator",
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:205
+        admin_user.password_hash = auth_svc.hash_password("secret123")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:206
+        db.session.add(admin_user)
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:211
+            UserRole.user_id == admin_user.id,
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:216
+        ur = UserRole(user_id=admin_user.id, role_id=role.id)
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:218
+        logger.info(f"OK - Assigned {role.role_code} role to user 'admin'")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:220
+        logger.debug(f"OK - User 'admin' already has role {role.role_code}")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:223
+def _validate_bootstrap() -> None:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:224
+    """Perform post-bootstrap functional verification."""
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:225
+    logger.info("Validating RBAC bootstrap...")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:227
+    # Validate Admin User Exists
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:228
+    admin_user = db.session.scalar(select(User).where(User.username == "admin"))
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:229
+    if not admin_user:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:230
+        raise RBACSeedError("Validation failed: User 'admin' not found.")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:231
+    logger.info("OK - Administrator User Exists")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:233
+    # Validate Administrator Role Exists
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:234
+    admin_role = db.session.scalar(select(Role).where(Role.role_code == "ADMIN"))
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:235
+    if not admin_role:
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:236
+        raise RBACSeedError("Validation failed: Role 'ADMIN' not found.")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:237
+    logger.info("OK - Administrator Role Exists")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:242
+            UserRole.user_id == admin_user.id,
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:243
+            UserRole.role_id == admin_role.id
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:247
+        raise RBACSeedError("Validation failed: 'admin' user does not have 'ADMIN' role.")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:254
+            RolePermission.role_id == admin_role.id
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:260
+        raise RBACSeedError(
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:261
+            f"Validation failed: Administrator role only has {actual_perm_count} permissions, "
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:270
+            # We don't have the real JWT for admin, but we can just log success of the DB validations
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\rbac_seed_service.py:274
+    logger.info("OK - Bootstrap Validation Passed")
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\__init__.py:1
+"""RBAC Bootstrap and Seeding Services."""
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\__init__.py:3
+from app.security.bootstrap.rbac_seed_service import seed_rbac
+
+L:\DOWNLOADS\Devops\opsforge\app\security\bootstrap\__init__.py:5
+__all__ = ["seed_rbac"]
+
+L:\DOWNLOADS\Devops\opsforge\app\utils\exceptions.py:65
+    """Raised when bootstrap configurations are invalid or missing."""
+
+L:\DOWNLOADS\Devops\opsforge\app\__init__.py:58
+    from app.cli.seed_commands import register_commands
+
+L:\DOWNLOADS\Devops\opsforge\app\__init__.py:62
+    from app.notifications.bootstrap import register_notification_handlers
+
+L:\DOWNLOADS\Devops\opsforge\scripts\seed_rbac.py:1
+"""Script to bootstrap the RBAC tables.
+
+L:\DOWNLOADS\Devops\opsforge\scripts\seed_rbac.py:4
+    python scripts/seed_rbac.py
+
+L:\DOWNLOADS\Devops\opsforge\scripts\seed_rbac.py:14
+from app.security.bootstrap import seed_rbac
+
+L:\DOWNLOADS\Devops\opsforge\scripts\seed_rbac.py:15
+from app.security.bootstrap.rbac_seed_service import RBACSeedError
+
+L:\DOWNLOADS\Devops\opsforge\scripts\seed_rbac.py:18
+    """Run the RBAC seeder within a Flask application context."""
+
+L:\DOWNLOADS\Devops\opsforge\scripts\seed_rbac.py:22
+            seed_rbac()
+
+L:\DOWNLOADS\Devops\opsforge\scripts\seed_rbac.py:24
+        except RBACSeedError as e:
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_access_requests.py:36
+        requester = db.session.query(User).filter_by(username="admin").first()
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_access_requests.py:40
+            print("Admin user not found. Run seed script first.")
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:32
+    # 1. Login as Admin
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:33
+    status, data = do_req("POST", "/auth/login", {"username": "admin", "password": "secret123"})
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:35
+        print("Failed to login as admin:", status, data)
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:37
+    admin_token = data["data"]["access_token"]
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:38
+    print("1. Logged in as Admin")
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:48
+    status, data = do_req("POST", "/users", user_data, admin_token)
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:53
+        status, data = do_req("GET", "/users", token=admin_token)
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:66
+    status, data = do_req("POST", "/roles", role_data, admin_token)
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:70
+        status, data = do_req("GET", "/roles", token=admin_token)
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:79
+    status, data = do_req("GET", "/permissions", token=admin_token)
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:83
+        print("users.read permission not found. Are RBAC seeds run?")
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:87
+    do_req("POST", f"/roles/{role_id}/permissions", {"permission_id": perm_id}, admin_token)
+
+L:\DOWNLOADS\Devops\opsforge\scripts\test_e2e_auth.py:91
+    status, data = do_req("POST", f"/users/{user_id}/roles", {"role_id": role_id}, admin_token)
+
+L:\DOWNLOADS\Devops\opsforge\tests\api\test_decorators.py:22
+    @app.route("/admin")
+
+L:\DOWNLOADS\Devops\opsforge\tests\api\test_decorators.py:23
+    @requires_permission("ADMIN_RES", "read")
+
+L:\DOWNLOADS\Devops\opsforge\tests\api\test_decorators.py:24
+    def admin():
+
+L:\DOWNLOADS\Devops\opsforge\tests\api\test_decorators.py:95
+    r = Role(role_code="ADM", role_name="Admin", role_type=RoleType.SYSTEM, status=RoleStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\api\test_decorators.py:96
+    res_obj = Resource(resource_code="ADMIN_RES", resource_name="Admin Res")
+
+L:\DOWNLOADS\Devops\opsforge\tests\api\test_decorators.py:97
+    perm = Permission(permission_code="PERM_ADMIN_RES_READ", permission_name="Admin Res", action=PermissionAction.READ, description="read admin", status="active")
+
+L:\DOWNLOADS\Devops\opsforge\tests\api\test_decorators.py:107
+    res = client.get("/admin", headers={"Authorization": f"Bearer {token}"})
+
+L:\DOWNLOADS\Devops\opsforge\tests\api\test_decorators.py:117
+    res = client.get("/admin", headers={"Authorization": f"Bearer {token}"})
+
+L:\DOWNLOADS\Devops\opsforge\tests\api\test_decorators.py:123
+    @requires_permission("ADMIN_RES", "invalid_action_here")
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_routes.py:70
+def test_create_user(client, mock_auth, mock_service):
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_routes.py:71
+    mock_service.create_user.return_value = {"id": str(uuid4()), "username": "testuser"}
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_routes.py:83
+def test_create_user_validation_failure(client, mock_auth, mock_service):
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:29
+def test_create_user_success(service, mock_repo):
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:41
+    mock_repo.create_user.return_value = mock_user
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:43
+    result = service.create_user(data)
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:45
+    mock_repo.create_user.assert_called_once()
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:50
+def test_create_user_missing_fields(service):
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:52
+        service.create_user({"username": "u"})
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:54
+def test_create_user_duplicate_username(service, mock_repo):
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:58
+        service.create_user(data)
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:61
+def test_create_user_duplicate_email(service, mock_repo):
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:66
+        service.create_user(data)
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:69
+def test_create_user_duplicate_employee_id(service, mock_repo):
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:79
+        service.create_user(data)
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:82
+def test_create_user_repo_error_exists(service, mock_repo):
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:86
+        service.create_user(data)
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:88
+def test_create_user_repo_error_create(service, mock_repo):
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:94
+    mock_repo.create_user.side_effect = IdentityRepositoryError("DB fail")
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:96
+        service.create_user(data)
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:214
+    u1 = User(username="admin", email="admin@test.com", employee_id="1", full_name="Admin")
+
+L:\DOWNLOADS\Devops\opsforge\tests\identity\test_service.py:218
+    res = service.search_users("admin")
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:24
+    # Create Admin/Approver user
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:25
+    admin_user = User(username="e2e_admin", email="admin@e2e.com", full_name="Admin E2E", employee_id="A01")
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:26
+    db_session.add(admin_user)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:37
+    admin_role = Role(role_code="E2E_ADMIN_ROLE", role_name="E2E Admin Role", role_type=RoleType.CUSTOM)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:39
+    db_session.add(admin_role)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:43
+    # Add permissions to admin role
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:49
+        db_session.add(RolePermission(role_id=admin_role.id, permission_id=perm.id))
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:56
+    db_session.add(RolePermission(role_id=admin_role.id, permission_id=ar_read_perm.id))
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:63
+    db_session.add(UserRole(user_id=admin_user.id, role_id=admin_role.id))
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:68
+    admin_token = auth_svc.generate_access_token(admin_user.id)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:71
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:93
+    wf = wf_svc.create_initial_workflow(UUID(request_id), approver_id=admin_user.id)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:96
+    # 4. Admin views the pending workflow
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:97
+    response = client.get(f"/approval-workflows/{wf.id}", headers=admin_headers)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:101
+    # 5. Admin approves the workflow
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:102
+    response = client.post(f"/approval-workflows/{wf.id}/approve", json={"comments": "Approved!"}, headers=admin_headers)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:109
+    assert ur.assigned_by_user_id == admin_user.id
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_e2e_approval_workflow.py:112
+    response = client.get(f"/access-requests/{request_id}", headers=admin_headers)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_notifications_api.py:8
+def setup_admin_user(db_session, app):
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_notifications_api.py:9
+    u = User(employee_id="NOTIF_ADM", username="notif_admin", email="notif@test.com", full_name="Admin", status=UserStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_notifications_api.py:16
+    token, admin_id = setup_admin_user(db_session, app)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_notifications_api.py:19
+        recipient_user_id=str(admin_id),
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_notifications_api.py:20
+        title="Admin Alert",
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_notifications_api.py:36
+    assert data[0]["title"] == "Admin Alert"
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_notifications_api.py:39
+    token, admin_id = setup_admin_user(db_session, app)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_notifications_api.py:42
+        recipient_user_id=str(admin_id),
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_notifications_api.py:60
+    token, admin_id = setup_admin_user(db_session, app)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_permissions_api.py:8
+def setup_admin_user(db_session, app):
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_permissions_api.py:9
+    # Create an admin user with permission to hit the endpoint
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_permissions_api.py:10
+    u = User(employee_id="ADM1", username="admin_int", email="admin_int@test.com", full_name="Admin", status=UserStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_permissions_api.py:13
+    r = Role(role_code="ADMIN_INT", role_name="Admin Integration", role_type=RoleType.SYSTEM, status=RoleStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_permissions_api.py:45
+    token = setup_admin_user(db_session, app)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_resources_api.py:10
+def setup_admin_user(db_session, app):
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_resources_api.py:11
+    u = User(employee_id="ADM2", username="admin_res_int", email="admin_res@test.com", full_name="Admin", status=UserStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_resources_api.py:14
+    r = Role(role_code="ADMIN_RES_INT", role_name="Admin Res Int", role_type=RoleType.SYSTEM, status=RoleStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_resources_api.py:45
+    token = setup_admin_user(db_session, app)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:9
+def setup_admin_user(db_session, app):
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:10
+    u = User(employee_id="ADM4", username="admin_rp_int", email="admin_rp@test.com", full_name="Admin", status=UserStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:13
+    r = Role(role_code="ADMIN_RP_INT", role_name="Admin RP Int", role_type=RoleType.SYSTEM, status=RoleStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:38
+    token, admin_role_id = setup_admin_user(db_session, app)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:50
+    res = client.post(f"/roles/{admin_role_id}/permissions", json=assign_data, headers=headers)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:54
+    db_rp = db_session.query(RolePermission).filter_by(role_id=admin_role_id, permission_id=perm.id).first()
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:58
+    res_dup = client.post(f"/roles/{admin_role_id}/permissions", json=assign_data, headers=headers)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:62
+    res_list = client.get(f"/roles/{admin_role_id}/permissions", headers=headers)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:67
+    res_del = client.delete(f"/roles/{admin_role_id}/permissions/{perm.id}", headers=headers)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_role_permissions_api.py:70
+    assert db_session.query(RolePermission).filter_by(role_id=admin_role_id, permission_id=perm.id).first() is None
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_user_roles_api.py:9
+def setup_admin_user(db_session, app):
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_user_roles_api.py:10
+    u = User(employee_id="ADM3", username="admin_ur_int", email="admin_ur@test.com", full_name="Admin", status=UserStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_user_roles_api.py:13
+    r = Role(role_code="ADMIN_UR_INT", role_name="Admin UR Int", role_type=RoleType.SYSTEM, status=RoleStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\tests\integration\test_user_roles_api.py:38
+    token, admin_id = setup_admin_user(db_session, app)
+
+L:\DOWNLOADS\Devops\opsforge\tests\permissions\test_routes.py:80
+        "permission_code": "ADMIN"
+
+L:\DOWNLOADS\Devops\opsforge\tests\resources\test_routes.py:79
+        "resource_code": "ADMIN"
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_repository.py:11
+        role_name="Admin",
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_repository.py:13
+        description="Admin role",
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_routes.py:66
+    mock_service.create_role.return_value = {"id": str(uuid4()), "role_code": "ADMIN"}
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_routes.py:68
+        "role_code": "ADMIN",
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_routes.py:69
+        "role_name": "Administrator"
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_routes.py:78
+        "role_code": "ADMIN"
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_routes.py:86
+        "role_name": "Administrator"
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_service.py:25
+        "role_code": "ADMIN",
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_service.py:26
+        "role_name": "Administrator",
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_service.py:27
+        "description": "Admin role"
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_service.py:44
+    data = {"role_code": "A", "role_name": "Admin"}
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_service.py:51
+    data = {"role_code": "A", "role_name": "Admin"}
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_service.py:59
+    data = {"role_code": "A", "role_name": "Admin"}
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_service.py:65
+    data = {"role_code": "A", "role_name": "Admin"}
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_service.py:182
+    res = service.search_roles("admin")
+
+L:\DOWNLOADS\Devops\opsforge\tests\roles\test_service.py:184
+    mock_repo.search.assert_called_with(role_name="admin", limit=100)
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:1
+"""Tests for the RBAC Bootstrap Service."""
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:6
+from app.security.bootstrap.rbac_seed_service import seed_rbac, RBACSeedError
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:7
+from app.security.bootstrap.default_permissions import DEFAULT_PERMISSIONS
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:15
+def _create_admin_user(db_session):
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:16
+    """Helper to create the required bootstrap admin user for tests."""
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:17
+    admin = User(
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:18
+        employee_id="E-ADMIN-001",
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:19
+        username="admin",
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:20
+        email="admin@opsforge.internal",
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:21
+        full_name="System Administrator"
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:23
+    db_session.add(admin)
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:25
+    return admin
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:28
+def test_seed_creates_admin_user_if_missing(app, db_session):
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:29
+    """Verify that the seeder creates the admin user if they are missing."""
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:30
+    success = seed_rbac()
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:33
+    # Validate bootstrap admin user is created
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:34
+    admin_user = db_session.scalar(select(User).where(User.username == "admin"))
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:35
+    assert admin_user is not None
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:37
+    # Validate ADMIN role exists
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:38
+    admin_role = db_session.scalar(select(Role).where(Role.role_code == "ADMIN"))
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:39
+    assert admin_role is not None
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:41
+    # Validate ADMIN role is assigned
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:44
+            UserRole.user_id == admin_user.id,
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:45
+            UserRole.role_id == admin_role.id
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:51
+def test_seed_rbac_on_empty_tables(app, db_session):
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:53
+    _create_admin_user(db_session)
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:55
+    success = seed_rbac()
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:63
+    admin_role = db_session.scalar(select(Role).where(Role.role_code == "ADMIN"))
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:64
+    assert admin_role is not None
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:72
+        select(RolePermission).where(RolePermission.role_id == admin_role.id)
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:77
+    admin_user = db_session.scalar(select(User).where(User.username == "admin"))
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:80
+            UserRole.user_id == admin_user.id,
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:81
+            UserRole.role_id == admin_role.id
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:87
+def test_seed_rbac_is_idempotent(app, db_session):
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:88
+    """Verify that executing the seeder multiple times does not duplicate records."""
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:89
+    _create_admin_user(db_session)
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:92
+    assert seed_rbac() is True
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:102
+    assert seed_rbac() is True
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:112
+def test_seed_rbac_partial_state(app, db_session):
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:114
+    _create_admin_user(db_session)
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:116
+    # Pre-seed a partial state
+
+L:\DOWNLOADS\Devops\opsforge\tests\security\test_rbac_seed.py:124
+    assert seed_rbac() is True
+
+L:\DOWNLOADS\Devops\opsforge\tests\user_role\test_service.py:40
+    mock_roles_repo.get_by_id.return_value = MagicMock(role_name="Admin")
+
+L:\DOWNLOADS\Devops\opsforge\check_admin.py:14
+    admin = db.session.scalar(select(User).where(User.username == 'admin'))
+
+L:\DOWNLOADS\Devops\opsforge\check_admin.py:15
+    if admin:
+
+L:\DOWNLOADS\Devops\opsforge\check_admin.py:16
+        print("Admin user found:")
+
+L:\DOWNLOADS\Devops\opsforge\check_admin.py:17
+        print(f"ID: {admin.id}")
+
+L:\DOWNLOADS\Devops\opsforge\check_admin.py:18
+        print(f"Username: {admin.username}")
+
+L:\DOWNLOADS\Devops\opsforge\check_admin.py:19
+        print(f"Email: {admin.email}")
+
+L:\DOWNLOADS\Devops\opsforge\check_admin.py:20
+        print(f"Status: {admin.status}")
+
+L:\DOWNLOADS\Devops\opsforge\check_admin.py:21
+        print(f"Password hash exists: {'yes' if admin.password_hash else 'no'}")
+
+L:\DOWNLOADS\Devops\opsforge\check_admin.py:23
+        print("Admin user NOT found.")
+
+L:\DOWNLOADS\Devops\opsforge\create_admin.py:7
+    u = User(employee_id="ADMIN_SEED", username="admin", email="admin@opsforge.internal", full_name="System Admin", status=UserStatus.ACTIVE)
+
+L:\DOWNLOADS\Devops\opsforge\create_admin.py:11
+    svc.create_user("admin", "admin@opsforge.internal", "secret123", "ADMIN_SEED", "System Admin")
+
+L:\DOWNLOADS\Devops\opsforge\create_admin.py:12
+    print("Admin user created.")
+
+L:\DOWNLOADS\Devops\opsforge\find_admin.py:8
+                if 'secret123' in line or 'password' in line or 'admin' in line:
+
+L:\DOWNLOADS\Devops\opsforge\reproduce_500.py:17
+        response = client.post('/auth/login', json={'username': 'admin', 'password': 'password'})
+
+L:\DOWNLOADS\Devops\opsforge\reproduce_raw.py:14
+    repo.get_by_username('admin')
+
+L:\DOWNLOADS\Devops\opsforge\restore_password.py:16
+    admin = db.session.scalar(select(User).where(User.username == 'admin'))
+
+L:\DOWNLOADS\Devops\opsforge\restore_password.py:17
+    if admin:
+
+L:\DOWNLOADS\Devops\opsforge\restore_password.py:19
+        admin.password_hash = service.hash_password("secret123")
+
+L:\DOWNLOADS\Devops\opsforge\test_login.py:6
+data = json.dumps({'username': 'admin', 'password': 'password'}).encode('utf-8')
+
+L:\DOWNLOADS\Devops\opsforge\test_me.py:15
+data = json.dumps({'username': 'admin', 'password': 'password'}).encode('utf-8')
+

@@ -42,12 +42,3 @@ def validate_resource_patch(data: dict):
     if "resource_name" in data and data["resource_name"]:
         validate_resource_name(data["resource_name"])
 
-def validate_pagination(skip: str, limit: str):
-    try:
-        s = int(skip)
-        l = int(limit)
-        if s < 0 or l < 1:
-            raise ValueError
-        return s, l
-    except (ValueError, TypeError):
-        raise UnprocessableEntity("Invalid pagination parameters")

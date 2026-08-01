@@ -10,7 +10,7 @@ user_base = {
     "full_name": fields.String(description="Full Name", example="John Doe"),
     "title": fields.String(description="Job Title", example="Engineer"),
     "manager_user_id": fields.String(description="Manager UUID", example="12345678-1234-5678-1234-567812345678"),
-    "status": fields.String(description="Status", example="active")
+    "status": fields.String(description="Status", example="active", attribute="status_value")
 }
 
 user_model = identity_ns.model("User", {

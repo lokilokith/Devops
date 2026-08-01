@@ -67,7 +67,7 @@ class CustomApi(Api):
             return self.make_response(
                 {
                     "success": False,
-                    "message": str(e),
+                    "message": "Resource not found",
                     "errors": [str(e)],
                 },
                 404,
@@ -134,12 +134,14 @@ authorizations = {
     }
 }
 
+import os
+
 api = CustomApi(
     blueprint,
     title="OpsForge Platform API",
     version="0.1.0",
     description="Enterprise Privileged Access Management API.",
-    doc="/docs",
+    doc="/docs" if os.environ.get("APP_ENV") != "production" else False,
     authorizations=authorizations,
     security="Bearer",
     add_specs=True,

@@ -1,15 +1,25 @@
 """RolePermissions REST API Routes."""
+
 from flask import request
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from app.api.responses import success_response
 from app.api.decorators import login_required, requires_permission
+
 from app.role_permissions.schemas import (
-    role_permissions_ns, role_permission_response_model, 
-    role_permissions_list_response_model, permission_roles_list_response_model
+    role_permissions_ns,
+    role_permission_response_model,
+    role_permissions_list_response_model,
+    permission_roles_list_response_model,
+    role_permission_request_model,
 )
-from app.role_permissions.validators import validate_uuid, validate_permission_assignment
+
+from app.role_permissions.validators import (
+    validate_uuid,
+    validate_permission_assignment,
+)
+
 from app.role_permissions.service import RolePermissionService
 from app.role_permissions.repository import RolePermissionsRepository
 from app.roles.repository import RolesRepository
@@ -40,6 +50,7 @@ class RolePermissionsCollection(Resource):
             raise NotFound("Role not found")
 
     @role_permissions_ns.doc(summary="Assign permission to role", description="Assign a permission to a role.")
+    @role_permissions_ns.expect(role_permission_request_model)
     @role_permissions_ns.marshal_with(role_permission_response_model, code=201)
     @login_required
     @requires_permission("role_permissions", "manage")
@@ -86,6 +97,9 @@ class PermissionRolesCollection(Resource):
         service = get_service()
         try:
             roles = service.list_roles_for_permission(uid)
+            print("Route received:", roles, flush=True)
+            print("Type of roles:", type(roles), flush=True)
+            print("Item types:", [type(r) for r in roles], flush=True)
             return success_response(data=roles)
         except Exception:
             raise NotFound("Permission not found")

@@ -6,7 +6,9 @@ class ResourcesError(Exception):
 class ResourcesRepositoryError(ResourcesError):
     """Raised when a repository operation fails."""
 
-class ResourceNotFoundError(ResourcesRepositoryError):
+from app.shared.exceptions import ResourceNotFoundException as GlobalResourceNotFoundException
+
+class ResourceNotFoundError(GlobalResourceNotFoundException, ResourcesRepositoryError):
     """Raised when the requested resource cannot be found."""
 
 class ResourcesServiceError(ResourcesError):

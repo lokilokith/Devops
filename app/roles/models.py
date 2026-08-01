@@ -96,6 +96,10 @@ class Role(BaseModel):
             f"role_name={self.role_name!r})>"
         )
 
+    @property
+    def status_value(self) -> str:
+        return self.status.value if hasattr(self.status, "value") else str(self.status)
+
 
 class UserRole(Base):
     """Membership association between a User and a Role.

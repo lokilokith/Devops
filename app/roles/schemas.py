@@ -7,7 +7,7 @@ role_base = {
     "role_code": fields.String(description="Role Code", example="ADMIN"),
     "role_name": fields.String(description="Role Name", example="Administrator"),
     "description": fields.String(description="Description", example="Super user role"),
-    "status": fields.String(description="Status", example="active")
+    "status": fields.String(description="Status", example="active", attribute="status_value")
 }
 
 role_model = roles_ns.model("Role", {

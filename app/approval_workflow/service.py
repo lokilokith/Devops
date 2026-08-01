@@ -36,6 +36,44 @@ class ApprovalWorkflowService:
         self._audit = audit_service
         self._session = session
 
+    def list_workflows(self, current_user_id: UUID, **kwargs) -> tuple[Sequence[ApprovalWorkflow], int]:
+        from app.authorization.service import AuthorizationService
+        from app.permissions.models import PermissionAction
+        
+        authz = AuthorizationService(self._session)
+        try:
+            is_admin = authz.has_permission(current_user_id, "approval_workflows", PermissionAction("read"))
+        except ValueError:
+            is_admin = False
+        
+        if not is_admin:
+            kwargs["approver_id"] = current_user_id
+
+        items = self._repo.list(**kwargs)
+        count_kwargs = {k: v for k, v in kwargs.items() if k not in ("page", "page_size")}
+        total = self._repo.count(**count_kwargs)
+        return items, total
+
+    def get_workflow(self, current_user_id: UUID, workflow_id: UUID) -> ApprovalWorkflow | None:
+        from app.authorization.service import AuthorizationService
+        from app.permissions.models import PermissionAction
+        from werkzeug.exceptions import Forbidden
+
+        wf = self._repo.get_by_id(workflow_id)
+        if not wf:
+            return None
+            
+        authz = AuthorizationService(self._session)
+        try:
+            is_admin = authz.has_permission(current_user_id, "approval_workflows", PermissionAction("read"))
+        except ValueError:
+            is_admin = False
+        
+        if not is_admin and wf.approver_id != current_user_id:
+            raise Forbidden("You do not have permission to view this workflow.")
+            
+        return wf
+
     def create_initial_workflow(
         self,
         access_request_id: UUID,
@@ -76,8 +114,17 @@ class ApprovalWorkflowService:
         
         validate_state_transition(wf.status, ApprovalStatus.APPROVED)
         
-        if wf.approver_id != approver_id:
-            raise ApprovalWorkflowValidationError("Approver mismatch.")
+        from app.authorization.service import AuthorizationService
+        from app.permissions.models import PermissionAction
+        from werkzeug.exceptions import Forbidden
+        authz = AuthorizationService(self._session)
+        try:
+            is_admin = authz.has_permission(approver_id, "approval_workflows", PermissionAction("approve"))
+        except ValueError:
+            is_admin = False
+            
+        if not is_admin and wf.approver_id != approver_id:
+            raise Forbidden("Approver mismatch or insufficient permissions.")
 
         try:
             old_status = wf.status
@@ -142,8 +189,17 @@ class ApprovalWorkflowService:
             
         validate_state_transition(wf.status, ApprovalStatus.REJECTED)
         
-        if wf.approver_id != rejecter_id:
-            raise ApprovalWorkflowValidationError("Approver mismatch.")
+        from app.authorization.service import AuthorizationService
+        from app.permissions.models import PermissionAction
+        from werkzeug.exceptions import Forbidden
+        authz = AuthorizationService(self._session)
+        try:
+            is_admin = authz.has_permission(rejecter_id, "approval_workflows", PermissionAction("reject"))
+        except ValueError:
+            is_admin = False
+            
+        if not is_admin and wf.approver_id != rejecter_id:
+            raise Forbidden("Approver mismatch or insufficient permissions.")
 
         try:
             old_status = wf.status
@@ -185,6 +241,18 @@ class ApprovalWorkflowService:
             
         validate_state_transition(wf.status, ApprovalStatus.CANCELLED)
 
+        from app.authorization.service import AuthorizationService
+        from app.permissions.models import PermissionAction
+        from werkzeug.exceptions import Forbidden
+        authz = AuthorizationService(self._session)
+        try:
+            is_admin = authz.has_permission(canceller_id, "approval_workflows", PermissionAction("cancel"))
+        except ValueError:
+            is_admin = False
+
+        if not is_admin and wf.approver_id != canceller_id:
+            raise Forbidden("You do not have permission to cancel this workflow.")
+
         try:
             old_status = wf.status
             wf.status = ApprovalStatus.CANCELLED
@@ -200,7 +268,7 @@ class ApprovalWorkflowService:
                 approval_workflow_id=wf.id,
                 request_id=wf.access_request_id,
                 status=AuditStatus.SUCCESS,
-                severity="INFO",
+                severity=AuditSeverity.INFO,
                 details={
                     "old_status": old_status.value,
                     "new_status": wf.status.value,

@@ -40,12 +40,3 @@ def validate_role_patch(data: dict):
     if "role_name" in data and data["role_name"]:
         validate_role_name(data["role_name"])
 
-def validate_pagination(skip: str, limit: str):
-    try:
-        s = int(skip)
-        l = int(limit)
-        if s < 0 or l < 1:
-            raise ValueError
-        return s, l
-    except (ValueError, TypeError):
-        raise UnprocessableEntity("Invalid pagination parameters")

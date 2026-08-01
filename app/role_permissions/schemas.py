@@ -5,6 +5,10 @@ from app.roles.schemas import role_model
 
 role_permissions_ns = Namespace("role_permissions", description="Role Permissions management operations")
 
+role_permission_request_model = role_permissions_ns.model("RolePermissionRequest", {
+    "permission_id": fields.String(required=True, description="The UUID of the permission to assign")
+})
+
 role_permission_response_model = role_permissions_ns.model("RolePermissionResponse", {
     "success": fields.Boolean,
     "message": fields.String,

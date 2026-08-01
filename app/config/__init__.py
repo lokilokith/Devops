@@ -44,6 +44,15 @@ def get_config():
             " environments."
         )
 
+    # Validate JWT secret key for production
+    jwt_secret_key = os.environ.get("JWT_SECRET_KEY")
+    if env_lower == "production" and not jwt_secret_key:
+        raise ConfigurationException(
+            "Configuration Error: JWT_SECRET_KEY environment variable is missing. "
+            "A secure JWT secret key is required for execution"
+            " in production environments."
+        )
+
     if env_lower == "testing":
         from app.config.testing import TestingConfig
 

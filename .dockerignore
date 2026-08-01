@@ -1,49 +1,65 @@
-# Virtual environments
-.venv/
-venv/
-env/
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# Testing & Linting cache
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
 # Version control
-.git/
+.git
 .gitignore
-.github/
 
-# Local databases
-*.sqlite
-*.db
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Environment variables
+# Virtual Environment
+venv/
+.venv/
+env/
 .env
-.env.production
-.env.local
 
-# IDEs
+# Node/Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+frontend/dist/
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# IDE/Editor
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+.DS_Store
+
+# Test reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
 
 # Docker
-docker-compose.yml
-docker-compose.dev.yml
-Dockerfile
+docker-compose*.yml
+Dockerfile*
 .dockerignore
-
-# Build artifacts
-build/
-dist/
-*.egg-info/

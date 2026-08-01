@@ -1,6 +1,7 @@
 """Identity REST API Routes."""
 from uuid import UUID
 from flask import request
+from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
@@ -32,8 +33,8 @@ class UserCollection(Resource):
     @login_required
     @requires_permission("users", "read")
     def get(self):
-        skip = int(request.args.get("skip", 0))
-        limit = int(request.args.get("limit", 100))
+        
+        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE))
         service = get_service()
         users = service.list_users(skip=skip, limit=limit)
         return success_response(data=users)
@@ -115,3 +116,35 @@ class UserResource(Resource):
             raise NotFound("User not found")
         service.delete_user(uid)
         return success_response(message="User deleted successfully")
+
+
+@identity_ns.route("/<string:user_id>/lock")
+class UserLockResource(Resource):
+    @identity_ns.doc(summary="Lock user", description="Lock a user account by UUID.")
+    @identity_ns.marshal_with(user_response_model)
+    @login_required
+    @requires_permission("users", "update")
+    def post(self, user_id):
+        uid = validate_uuid(user_id)
+        repo = IdentityRepository(db.session)
+        try:
+            user = repo.lock_user(uid)
+        except Exception:
+            raise NotFound("User not found")
+        return success_response(data=user, message="User locked successfully")
+
+
+@identity_ns.route("/<string:user_id>/unlock")
+class UserUnlockResource(Resource):
+    @identity_ns.doc(summary="Unlock user", description="Unlock a user account by UUID.")
+    @identity_ns.marshal_with(user_response_model)
+    @login_required
+    @requires_permission("users", "update")
+    def post(self, user_id):
+        uid = validate_uuid(user_id)
+        repo = IdentityRepository(db.session)
+        try:
+            user = repo.unlock_user(uid)
+        except Exception:
+            raise NotFound("User not found")
+        return success_response(data=user, message="User unlocked successfully")

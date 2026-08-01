@@ -21,23 +21,12 @@ class IdentityService:
         self._auth_service = auth_service
         
     def _validate_duplicate_employee_id(self, employee_id: str, exclude_user_id: UUID | None = None) -> None:
-        """In-memory check for duplicate employee_id since repository doesn't expose it."""
-        skip = 0
-        while True:
-            try:
-                batch = self._repository.list_users(skip=skip, limit=1000)
-            except IdentityRepositoryError as e:
-                raise IdentityServiceError(f"Failed to fetch users for validation: {e}") from e
-                
-            if not batch:
-                break
-                
-            for user in batch:
-                if user.employee_id == employee_id:
-                    if exclude_user_id and user.id == exclude_user_id:
-                        continue
-                    raise DuplicateUserError(f"Employee ID '{employee_id}' is already in use.")
-            skip += 1000
+        """Check for duplicate employee_id using repository."""
+        try:
+            if self._repository.exists_by_employee_id(employee_id, exclude_user_id):
+                raise DuplicateUserError(f"Employee ID '{employee_id}' is already in use.")
+        except IdentityRepositoryError as e:
+            raise IdentityServiceError(f"Failed to validate employee_id: {e}") from e
 
     def create_user(self, data: dict) -> User:
         username = data.get("username")
@@ -145,39 +134,15 @@ class IdentityService:
         if not query:
             return []
             
-        query = query.lower()
-        results = []
-        skip = 0
-        while True:
-            try:
-                batch = self._repository.list_users(skip=skip, limit=1000)
-            except IdentityRepositoryError as e:
-                raise IdentityServiceError(f"Failed to fetch users for search: {e}") from e
-                
-            if not batch:
-                break
-                
-            for user in batch:
-                if (query in user.username.lower() or 
-                    query in user.email.lower() or 
-                    query in user.employee_id.lower() or 
-                    query in (user.full_name or "").lower()):
-                    results.append(user)
-                    
-            skip += 1000
-        return results
+        try:
+            # Note: For now, we return all matching records up to a sensible limit since the 
+            # original method didn't take pagination args. In a real system we'd paginate.
+            return list(self._repository.search_users(query, skip=0, limit=1000))
+        except IdentityRepositoryError as e:
+            raise IdentityServiceError(f"Failed to fetch users for search: {e}") from e
 
     def count_users(self) -> int:
-        count = 0
-        skip = 0
-        while True:
-            try:
-                batch = self._repository.list_users(skip=skip, limit=1000)
-            except IdentityRepositoryError as e:
-                raise IdentityServiceError(f"Failed to fetch users for count: {e}") from e
-                
-            if not batch:
-                break
-            count += len(batch)
-            skip += 1000
-        return count
+        try:
+            return self._repository.count_users()
+        except IdentityRepositoryError as e:
+            raise IdentityServiceError(f"Failed to fetch users for count: {e}") from e

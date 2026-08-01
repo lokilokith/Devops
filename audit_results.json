@@ -1,0 +1,140 @@
+[
+  {
+    "phase": "Phase B",
+    "name": "Invalid JWT",
+    "request": "GET /users (Invalid Token)",
+    "expected": 401,
+    "actual": 401,
+    "passed": true,
+    "evidence": {
+      "success": false,
+      "message": "Unauthorized",
+      "errors": [
+        "Invalid token"
+      ]
+    }
+  },
+  {
+    "phase": "Phase B",
+    "name": "Modified Signature",
+    "request": "GET /users (Modified Sig)",
+    "expected": 401,
+    "actual": 401,
+    "passed": true,
+    "evidence": {
+      "success": false,
+      "message": "Unauthorized",
+      "errors": [
+        "Invalid token"
+      ]
+    }
+  },
+  {
+    "phase": "Phase B",
+    "name": "Missing JWT",
+    "request": "GET /users (No Header)",
+    "expected": 401,
+    "actual": 401,
+    "passed": true,
+    "evidence": {
+      "success": false,
+      "message": "Unauthorized",
+      "errors": [
+        "Missing or invalid authorization header"
+      ]
+    }
+  },
+  {
+    "phase": "Phase C",
+    "name": "Admin accessing protected route",
+    "request": "GET /users",
+    "expected": 200,
+    "actual": 200,
+    "passed": true,
+    "evidence": "Success"
+  },
+  {
+    "phase": "Phase C",
+    "name": "Normal user accessing protected route",
+    "request": "GET /users",
+    "expected": 403,
+    "actual": 403,
+    "passed": true,
+    "evidence": "Expected 403"
+  },
+  {
+    "phase": "Phase D",
+    "name": "Owner reads own resource",
+    "request": "GET /notifications/52cb93a8-7b29-4a6d-a6ba-fb4845643e55",
+    "expected": 200,
+    "actual": 200,
+    "passed": true,
+    "evidence": "Success"
+  },
+  {
+    "phase": "Phase E",
+    "name": "User reads another's resource (IDOR)",
+    "request": "GET /notifications/52cb93a8-7b29-4a6d-a6ba-fb4845643e55",
+    "expected": 403,
+    "actual": 403,
+    "passed": true,
+    "evidence": {
+      "success": false,
+      "message": "Forbidden",
+      "errors": [
+        "Cannot read this notification."
+      ]
+    }
+  },
+  {
+    "phase": "Phase F",
+    "name": "Normal user accessing Admin API",
+    "request": "POST /roles",
+    "expected": 403,
+    "actual": 403,
+    "passed": true,
+    "evidence": {
+      "success": false,
+      "message": "Forbidden",
+      "errors": [
+        "Insufficient permissions"
+      ]
+    }
+  },
+  {
+    "phase": "Phase F",
+    "name": "Normal user updating self via Admin API",
+    "request": "PUT /users/5df3ac0a-04d5-4a13-a81d-65cf41a5d8c1",
+    "expected": 403,
+    "actual": 403,
+    "passed": true,
+    "evidence": "Needs users.update"
+  },
+  {
+    "phase": "Phase D",
+    "name": "Approver reading workflows",
+    "request": "GET /approval-workflows",
+    "expected": 200,
+    "actual": 403,
+    "passed": false,
+    "evidence": "Got 403"
+  },
+  {
+    "phase": "Phase I",
+    "name": "Fuzz invalid UUID format",
+    "request": "GET /users/invalid-uuid",
+    "expected": 404,
+    "actual": 422,
+    "passed": false,
+    "evidence": "Should be handled"
+  },
+  {
+    "phase": "Phase H",
+    "name": "API4 Unrestricted Resource Consumption",
+    "request": "GET /users?limit=1000000",
+    "expected": 200,
+    "actual": 200,
+    "passed": true,
+    "evidence": "Returned limit: None"
+  }
+]

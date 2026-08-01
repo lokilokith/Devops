@@ -1,5 +1,6 @@
 """Roles REST API Routes."""
 from flask import request
+from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
@@ -12,7 +13,7 @@ from app.roles.schemas import (
 )
 from app.roles.validators import (
     validate_role_create, validate_role_update, validate_role_patch,
-    validate_uuid, validate_pagination
+    validate_uuid
 )
 from app.roles.repository import RolesRepository
 from app.roles.service import RolesService
@@ -29,7 +30,7 @@ class RoleCollection(Resource):
     @login_required
     @requires_permission("roles", "read")
     def get(self):
-        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", 100))
+        skip, limit = validate_pagination(request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE))
         service = get_service()
         roles = service.list_roles(skip=skip, limit=limit)
         return success_response(data=roles)

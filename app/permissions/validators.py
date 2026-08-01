@@ -42,12 +42,3 @@ def validate_permission_patch(data: dict):
     if "permission_name" in data and data["permission_name"]:
         validate_permission_name(data["permission_name"])
 
-def validate_pagination(skip: str, limit: str):
-    try:
-        s = int(skip)
-        l = int(limit)
-        if s < 0 or l < 1:
-            raise ValueError
-        return s, l
-    except (ValueError, TypeError):
-        raise UnprocessableEntity("Invalid pagination parameters")

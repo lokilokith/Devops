@@ -1,41 +1,98 @@
-"""OpsForge Pytest Configurations & Fixtures."""
-
 import os
-
 import pytest
-
 from app import create_app
-from app.extensions import db
+from app.shared.database import db as _db
+from app.auth.service import AuthService
+from app.identity.repository import IdentityRepository
+from tests.fixtures.factories import UserFactory
 
-
-@pytest.fixture(scope="session", autouse=True)
-def set_testing_env():
-    """Forces APP_ENV to testing for all test executions."""
-    os.environ["APP_ENV"] = "testing"
-
-
-@pytest.fixture
+@pytest.fixture(scope="session")
 def app():
-    """Initializes the Flask application under a testing context."""
+    os.environ["APP_ENV"] = "testing"
+    os.environ["SECRET_KEY"] = "super-secret-key-for-testing-12345678"
     app = create_app()
-    app.config["JWT_SECRET_KEY"] = "this-is-a-very-long-test-secret-key-that-is-at-least-32-bytes"
-    app.config["PROPAGATE_EXCEPTIONS"] = True
     with app.app_context():
-        db.create_all()
+        _db.create_all()
+        # Ensure RBAC is seeded
+        from app.security.bootstrap.rbac_seed_service import seed_rbac
+        seed_rbac()
         yield app
-        db.drop_all()
+        _db.session.remove()
+        _db.drop_all()
 
-
-@pytest.fixture
+@pytest.fixture(scope="function")
 def client(app):
-    """Provides a Flask test client context."""
     return app.test_client()
 
+@pytest.fixture(scope="function")
+def db_session(app):
+    session = _db.session
+    session.begin_nested()
+
+    import factory
+    from tests.fixtures import factories
+    for f in [factories.UserFactory, factories.RoleFactory, factories.PermissionFactory, factories.WorkflowFactory, factories.NotificationFactory, factories.AccessRequestFactory]:
+        f._meta.sqlalchemy_session = session
+
+    yield session
+
+    session.rollback()
+    session.remove()
 
 @pytest.fixture
-def db_session(app):
-    """Provides an isolated database session transaction."""
-    yield db.session
-    db.session.rollback()
-    db.session.remove()
+def security_auth_service(db_session):
+    return AuthService(IdentityRepository(db_session))
+
+@pytest.fixture
+def admin_user(db_session):
+    from app.identity.models import User
+    # the bootstrap created an 'admin' user
+    user = db_session.query(User).filter_by(username="admin").first()
+    if not user:
+        user = UserFactory(username="admin")
+        db_session.add(user)
+        db_session.commit()
+    return user
+
+@pytest.fixture
+def admin_token(security_auth_service, admin_user):
+    return security_auth_service.generate_access_token(admin_user.id)
+
+@pytest.fixture
+def normal_user(db_session):
+    user = UserFactory()
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+@pytest.fixture
+def normal_token(security_auth_service, normal_user):
+    return security_auth_service.generate_access_token(normal_user.id)
+
+@pytest.fixture
+def approver_user(db_session):
+    user = UserFactory(username="approver")
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+@pytest.fixture
+def approver_token(security_auth_service, approver_user):
+    return security_auth_service.generate_access_token(approver_user.id)
+
+@pytest.fixture
+def sec_admin_user(db_session):
+    from app.roles.models import Role
+    user = UserFactory(username="sec_admin")
+    sec_admin_role = db_session.query(Role).filter_by(role_code="SEC_ADMIN").first()
+    if sec_admin_role:
+        from app.roles.models import UserRole
+        db_session.add(UserRole(user_id=user.id, role_id=sec_admin_role.id))
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+@pytest.fixture
+def sec_admin_token(security_auth_service, sec_admin_user):
+    return security_auth_service.generate_access_token(sec_admin_user.id)
 

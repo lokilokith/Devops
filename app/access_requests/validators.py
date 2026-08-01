@@ -47,12 +47,3 @@ def validate_access_request_create(data: dict):
         except ValueError:
             raise UnprocessableEntity("Invalid datetime format.")
 
-def validate_pagination(skip: str, limit: str):
-    try:
-        s = int(skip)
-        l = int(limit)
-        if s < 0 or l < 1:
-            raise ValueError
-        return s, l
-    except (ValueError, TypeError):
-        raise UnprocessableEntity("Invalid pagination parameters")

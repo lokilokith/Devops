@@ -144,7 +144,17 @@ class RolePermissionsRepository:
                 .where(RolePermission.permission_id == permission_id)
                 .order_by(RolePermission.assigned_at.desc())
             )
-            return self._session.execute(stmt).scalars().all()
+            result = self._session.execute(stmt).scalars().all()
+            
+            print("Type of result:", type(result), flush=True)
+            print("Result:", result, flush=True)
+            for item in result:
+                print(type(item), flush=True)
+                print(item, flush=True)
+                print(getattr(item, 'id', 'NO ID'), flush=True)
+                print(getattr(item, 'role_code', 'NO ROLE_CODE'), flush=True)
+                
+            return result
         except SQLAlchemyError as err:
             self._session.rollback()
             raise RolePermissionsRepositoryError("Failed to list roles for permission.") from err
