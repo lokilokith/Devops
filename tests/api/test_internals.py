@@ -1,8 +1,9 @@
 import pytest
-from app.api.responses import success_response
-from app.api.errors import errors_bp
 from flask import Flask
 from werkzeug.exceptions import InternalServerError
+
+from app.api.errors import errors_bp
+from app.api.responses import success_response
 
 
 def test_success_response():

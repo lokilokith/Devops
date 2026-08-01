@@ -1,34 +1,35 @@
 """AccessRequest Service for OpsForge."""
 
 from __future__ import annotations
-from typing import Sequence, Any
-from uuid import UUID
-from datetime import datetime
-import uuid
 
-from app.access_requests.models import (
-    AccessRequest,
-    AccessRequestStatus,
-    AccessRequestPriority,
-)
-from app.access_requests.repository import AccessRequestRepository
+import uuid
+from datetime import datetime
+from typing import Any, Sequence
+from uuid import UUID
+
 from app.access_requests.exceptions import (
-    AccessRequestInvalidStateError,
     AccessRequestDuplicateError,
+    AccessRequestInvalidStateError,
     AccessRequestValidationError,
 )
+from app.access_requests.models import (
+    AccessRequest,
+    AccessRequestPriority,
+    AccessRequestStatus,
+)
+from app.access_requests.repository import AccessRequestRepository
+from app.identity.exceptions import UserNotFoundError
+from app.identity.repository import IdentityRepository
 from app.notifications.events import (
     access_request_created,
     request_approved,
-    request_rejected,
     request_cancelled,
+    request_rejected,
 )
-from app.identity.repository import IdentityRepository
-from app.roles.repository import RolesRepository
-from app.resources.repository import ResourcesRepository
-from app.identity.exceptions import UserNotFoundError
-from app.roles.exceptions import RoleNotFoundError
 from app.resources.exceptions import ResourceNotFoundError
+from app.resources.repository import ResourcesRepository
+from app.roles.exceptions import RoleNotFoundError
+from app.roles.repository import RolesRepository
 
 
 class AccessRequestService:

@@ -1,15 +1,16 @@
-import pytest
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from app.role_permissions.service import RolePermissionService
+import pytest
+
 from app.role_permissions.exceptions import (
-    RolePermissionsRepositoryError,
-    RolePermissionNotFoundError,
     RolePermissionAlreadyExistsError,
+    RolePermissionNotFoundError,
+    RolePermissionsRepositoryError,
     RolePermissionsServiceError,
     ValidationError,
 )
+from app.role_permissions.service import RolePermissionService
 
 
 @pytest.fixture

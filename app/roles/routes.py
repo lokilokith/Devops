@@ -1,31 +1,30 @@
 """Roles REST API Routes."""
 
 from flask import request
-from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Conflict, NotFound
 
-from app.api.responses import success_response
 from app.api.decorators import login_required, requires_permission
-from werkzeug.exceptions import Conflict
+from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, validate_pagination
+from app.api.responses import success_response
+from app.extensions import db
+from app.roles.exceptions import DuplicateRoleError
+from app.roles.repository import RolesRepository
 from app.roles.schemas import (
-    roles_ns,
     role_create_model,
-    role_update_model,
+    role_list_response_model,
     role_patch_model,
     role_response_model,
-    role_list_response_model,
+    role_update_model,
+    roles_ns,
 )
+from app.roles.service import RolesService
 from app.roles.validators import (
     validate_role_create,
-    validate_role_update,
     validate_role_patch,
+    validate_role_update,
     validate_uuid,
 )
-from app.roles.repository import RolesRepository
-from app.roles.service import RolesService
-from app.roles.exceptions import DuplicateRoleError
-from app.extensions import db
 
 
 def get_service():

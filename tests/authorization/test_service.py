@@ -1,6 +1,7 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
+
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.authorization.exceptions import (

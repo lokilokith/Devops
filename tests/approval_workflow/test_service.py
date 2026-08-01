@@ -1,15 +1,16 @@
-import pytest
-from uuid import uuid4
 from datetime import datetime
+from uuid import uuid4
 
-from app.approval_workflow.models import ApprovalStatus
+import pytest
+
+from app.access_requests.models import AccessRequestStatus
 from app.approval_workflow.exceptions import (
     ApprovalWorkflowInvalidStateError,
     ApprovalWorkflowValidationError,
 )
-from app.access_requests.models import AccessRequestStatus
-from app.user_roles.exceptions import UserRoleAlreadyExistsError
+from app.approval_workflow.models import ApprovalStatus
 from app.roles.models import UserRole
+from app.user_roles.exceptions import UserRoleAlreadyExistsError
 
 
 def test_create_initial_workflow(approval_service, sample_users, sample_request):

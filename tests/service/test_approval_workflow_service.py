@@ -1,12 +1,13 @@
 """Tests for ApprovalWorkflow Service."""
 
-import pytest
+from unittest.mock import MagicMock, Mock
 from uuid import uuid4
-from unittest.mock import Mock, MagicMock
 
-from app.approval_workflow.service import ApprovalWorkflowService
-from app.approval_workflow.models import ApprovalWorkflow, ApprovalStatus, ApprovalLevel
+import pytest
+
 from app.approval_workflow.exceptions import ApprovalWorkflowInvalidStateError
+from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
+from app.approval_workflow.service import ApprovalWorkflowService
 from app.audit.models import AuditStatus
 
 

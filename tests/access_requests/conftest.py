@@ -1,14 +1,15 @@
 import pytest
 from flask import Flask
-from app.extensions import db
+
 from app.access_requests.repository import AccessRequestRepository
 from app.access_requests.service import AccessRequestService
+from app.extensions import db
 from app.identity.models import User, UserStatus
-from app.roles.models import Role, RoleType, RoleStatus
-from app.resources.models import Resource, ResourceType, ResourceStatus
 from app.identity.repository import IdentityRepository
-from app.roles.repository import RolesRepository
+from app.resources.models import Resource, ResourceStatus, ResourceType
 from app.resources.repository import ResourcesRepository
+from app.roles.models import Role, RoleStatus, RoleType
+from app.roles.repository import RolesRepository
 
 
 @pytest.fixture
@@ -19,10 +20,10 @@ def app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
     with app.app_context():
-        import app.identity.models
-        import app.roles.models
-        import app.resources.models
         import app.access_requests.models
+        import app.identity.models
+        import app.resources.models
+        import app.roles.models
 
         db.create_all()
         yield app

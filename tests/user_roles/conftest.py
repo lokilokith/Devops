@@ -1,9 +1,10 @@
 import pytest
 from flask import Flask
+
 from app.extensions import db
-from app.user_roles.repository import UserRolesRepository
-from app.roles.models import Role, RoleType, RoleStatus
 from app.identity.models import User, UserStatus
+from app.roles.models import Role, RoleStatus, RoleType
+from app.user_roles.repository import UserRolesRepository
 
 
 @pytest.fixture

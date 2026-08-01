@@ -4,21 +4,21 @@ from flask import request
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
-from app.api.responses import success_response
 from app.api.decorators import login_required, requires_permission
+from app.api.responses import success_response
+from app.extensions import db
+from app.identity.repository import IdentityRepository
+from app.roles.repository import RolesRepository
+from app.user_roles.exceptions import ValidationError
+from app.user_roles.repository import UserRolesRepository
 from app.user_roles.schemas import (
-    user_roles_ns,
+    role_users_list_response_model,
     user_role_response_model,
     user_roles_list_response_model,
-    role_users_list_response_model,
+    user_roles_ns,
 )
-from app.user_roles.validators import validate_uuid, validate_role_assignment
 from app.user_roles.service import UserRoleService
-from app.user_roles.repository import UserRolesRepository
-from app.roles.repository import RolesRepository
-from app.identity.repository import IdentityRepository
-from app.extensions import db
-from app.user_roles.exceptions import ValidationError
+from app.user_roles.validators import validate_role_assignment, validate_uuid
 
 
 def get_service():

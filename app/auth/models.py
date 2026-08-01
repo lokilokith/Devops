@@ -1,8 +1,10 @@
 """Authentication models."""
 
 from datetime import datetime, timezone
+
+from sqlalchemy import DateTime, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, DateTime, Index
+
 from app.platform.extensions import db
 
 

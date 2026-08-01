@@ -5,15 +5,15 @@ from __future__ import annotations
 from typing import Sequence
 from uuid import UUID
 
-from app.roles.repository import RolesRepository
-from app.roles.models import Role, RoleType
 from app.roles.exceptions import (
-    RolesRepositoryError,
-    RoleNotFoundError,
-    RolesServiceError,
     DuplicateRoleError,
+    RoleNotFoundError,
+    RolesRepositoryError,
+    RolesServiceError,
     ValidationError,
 )
+from app.roles.models import Role, RoleType
+from app.roles.repository import RolesRepository
 
 
 class RolesService:

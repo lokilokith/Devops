@@ -1,15 +1,16 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
+
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.identity.models import User, UserStatus
+from app.roles.models import Role, RoleStatus, RoleType
 from app.user_roles.exceptions import (
     UserRoleAlreadyExistsError,
     UserRoleNotFoundError,
     UserRolesRepositoryError,
 )
-from app.roles.models import Role, RoleType, RoleStatus
-from app.identity.models import User, UserStatus
 
 
 def test_assign_role_to_user(user_roles_repo, sample_user, sample_role):

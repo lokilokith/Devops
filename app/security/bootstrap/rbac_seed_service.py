@@ -8,20 +8,19 @@ admin user.
 import logging
 from typing import Dict, List
 
+from flask import current_app
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from flask import current_app
 
-from app.platform.extensions import db
 from app.identity.models import User
-from app.roles.models import Role, RoleType, UserRole
 from app.permissions.models import Permission, PermissionAction
-from app.role_permissions.models import RolePermission
+from app.platform.extensions import db
 from app.resources.models import Resource, ResourceType
-
-from app.security.bootstrap.default_roles import DEFAULT_ROLES
+from app.role_permissions.models import RolePermission
+from app.roles.models import Role, RoleType, UserRole
 from app.security.bootstrap.default_permissions import DEFAULT_PERMISSIONS
 from app.security.bootstrap.default_resources import DEFAULT_RESOURCES
+from app.security.bootstrap.default_roles import DEFAULT_ROLES
 
 logger = logging.getLogger("opsforge.security.bootstrap")
 

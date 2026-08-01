@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
 
-from app.audit.models import AuditStatus, AuditSeverity
+import pytest
+
+from app.audit.models import AuditSeverity, AuditStatus
 
 
 def test_log_login(audit_service, audit_repo):

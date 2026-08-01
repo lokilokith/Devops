@@ -2,6 +2,7 @@
 
 from flask import Blueprint
 from werkzeug.exceptions import HTTPException
+
 from app.api.responses import error_response
 
 errors_bp = Blueprint("errors", __name__)

@@ -1,23 +1,24 @@
 """End-to-End Test for Approval Workflow using Pytest."""
 
-import pytest
-from uuid import UUID
-from datetime import datetime, timezone
 import json
+from datetime import datetime, timezone
+from uuid import UUID
 
+import pytest
+
+from app.access_requests.repository import AccessRequestRepository
+from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
+from app.approval_workflow.repository import ApprovalWorkflowRepository
+from app.approval_workflow.service import ApprovalWorkflowService
+from app.audit.repository import AuditRepository
+from app.audit.service import AuditService
+from app.auth.service import AuthService
 from app.identity.models import User
-from app.roles.models import Role, RoleType, UserRole
+from app.identity.repository import IdentityRepository
 from app.permissions.models import Permission, PermissionAction
 from app.role_permissions.models import RolePermission
-from app.auth.service import AuthService
-from app.identity.repository import IdentityRepository
-from app.approval_workflow.service import ApprovalWorkflowService
-from app.approval_workflow.repository import ApprovalWorkflowRepository
-from app.access_requests.repository import AccessRequestRepository
+from app.roles.models import Role, RoleType, UserRole
 from app.user_roles.repository import UserRolesRepository
-from app.audit.service import AuditService
-from app.audit.repository import AuditRepository
-from app.approval_workflow.models import ApprovalWorkflow, ApprovalStatus, ApprovalLevel
 
 
 def test_e2e_approval_workflow_full_lifecycle(client, db_session):

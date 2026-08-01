@@ -1,8 +1,9 @@
 import pytest
 from flask import Flask
-from app.extensions import db
+
 from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
+from app.extensions import db
 
 
 @pytest.fixture

@@ -13,6 +13,7 @@ from sqlalchemy import exists, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.permissions.models import Permission
 from app.role_permissions.exceptions import (
     RolePermissionAlreadyExistsError,
     RolePermissionNotFoundError,
@@ -20,7 +21,6 @@ from app.role_permissions.exceptions import (
 )
 from app.role_permissions.models import RolePermission
 from app.roles.models import Role
-from app.permissions.models import Permission
 
 
 class RolePermissionsRepository:

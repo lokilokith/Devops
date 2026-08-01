@@ -1,4 +1,4 @@
-from flask_restx import fields, Model, reqparse
+from flask_restx import Model, fields, reqparse
 
 notification_response_model = Model(
     "Notification",

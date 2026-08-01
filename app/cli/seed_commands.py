@@ -1,5 +1,6 @@
 import click
 from flask.cli import with_appcontext
+
 from app.security.bootstrap import seed_rbac
 from app.security.bootstrap.rbac_seed_service import RBACSeedError
 

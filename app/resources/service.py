@@ -5,15 +5,15 @@ from __future__ import annotations
 from typing import Sequence
 from uuid import UUID
 
-from app.resources.repository import ResourcesRepository
-from app.resources.models import Resource, ResourceType, ResourceStatus
 from app.resources.exceptions import (
-    ResourcesRepositoryError,
-    ResourceNotFoundError,
-    ResourcesServiceError,
     DuplicateResourceError,
+    ResourceNotFoundError,
+    ResourcesRepositoryError,
+    ResourcesServiceError,
     ValidationError,
 )
+from app.resources.models import Resource, ResourceStatus, ResourceType
+from app.resources.repository import ResourcesRepository
 
 
 class ResourcesService:

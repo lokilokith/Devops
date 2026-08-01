@@ -1,9 +1,10 @@
 import pytest
-from app.permissions.models import Permission, PermissionAction, PermissionStatus
-from app.identity.models import User, UserStatus
-from app.roles.models import Role, RoleType, RoleStatus, UserRole
-from app.role_permissions.models import RolePermission
+
 from app.extensions import db
+from app.identity.models import User, UserStatus
+from app.permissions.models import Permission, PermissionAction, PermissionStatus
+from app.role_permissions.models import RolePermission
+from app.roles.models import Role, RoleStatus, RoleType, UserRole
 
 
 def setup_admin_user(db_session, app):

@@ -4,6 +4,7 @@ Exposes application version and build metadata.
 """
 
 import os
+
 from flask_restx import Namespace, Resource, fields
 
 # Namespace definition

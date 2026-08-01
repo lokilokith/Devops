@@ -1,9 +1,10 @@
 import pytest
 from flask import Flask
+
 from app.extensions import db
-from app.role_permissions.repository import RolePermissionsRepository
-from app.roles.models import Role, RoleType, RoleStatus
 from app.permissions.models import Permission, PermissionAction, PermissionStatus
+from app.role_permissions.repository import RolePermissionsRepository
+from app.roles.models import Role, RoleStatus, RoleType
 
 
 @pytest.fixture
@@ -15,9 +16,9 @@ def app():
     db.init_app(app)
     with app.app_context():
         import app.identity.models
-        import app.roles.models
         import app.permissions.models
         import app.role_permissions.models
+        import app.roles.models
 
         db.create_all()
         yield app

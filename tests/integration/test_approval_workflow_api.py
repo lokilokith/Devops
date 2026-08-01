@@ -1,11 +1,12 @@
 """Integration tests for Approval Workflow API."""
 
-import pytest
-from uuid import uuid4
 from datetime import datetime, timezone
+from uuid import uuid4
 
-from app.approval_workflow.models import ApprovalWorkflow, ApprovalStatus, ApprovalLevel
+import pytest
+
 from app.access_requests.models import AccessRequest, AccessRequestPriority
+from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
 from app.platform.extensions import db
 
 
@@ -38,11 +39,11 @@ def test_role(db_session):
 def auth_headers(test_user, db_session):
     from app.auth.service import AuthService
     from app.identity.repository import IdentityRepository
+    from app.permissions.models import Permission, PermissionAction
+    from app.role_permissions.models import RolePermission
 
     # We must give the user permissions to pass the @requires_permission decorator
     from app.roles.models import Role, RoleType, UserRole
-    from app.permissions.models import Permission, PermissionAction
-    from app.role_permissions.models import RolePermission
 
     role = Role(role_code="AUTH_ROLE", role_name="Auth Role", role_type=RoleType.CUSTOM)
     db_session.add(role)

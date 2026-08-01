@@ -1,12 +1,12 @@
-import pytest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 from uuid import uuid4
-from datetime import datetime, timezone, timedelta
 
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.audit.models import AuditLog, AuditStatus, AuditSeverity
 from app.audit.exceptions import AuditRepositoryError
+from app.audit.models import AuditLog, AuditSeverity, AuditStatus
 
 
 def test_create_and_get(audit_repo):

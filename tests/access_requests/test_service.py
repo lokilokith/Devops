@@ -1,13 +1,14 @@
-import pytest
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
-from datetime import datetime, timezone, timedelta
 
-from app.access_requests.models import AccessRequestStatus, AccessRequestPriority
+import pytest
+
 from app.access_requests.exceptions import (
-    AccessRequestInvalidStateError,
     AccessRequestDuplicateError,
+    AccessRequestInvalidStateError,
     AccessRequestValidationError,
 )
+from app.access_requests.models import AccessRequestPriority, AccessRequestStatus
 
 
 def test_submit_request(ar_service, sample_user, sample_role, sample_resource):
@@ -76,7 +77,7 @@ def test_duplicate_request(ar_service, sample_user, sample_role):
 
 
 def test_approve_request(ar_service, sample_user, sample_role, db_session):
-    from app.resources.models import Resource, ResourceType, ResourceStatus
+    from app.resources.models import Resource, ResourceStatus, ResourceType
 
     res1 = Resource(
         resource_code="TRES1",
@@ -98,7 +99,7 @@ def test_approve_request(ar_service, sample_user, sample_role, db_session):
 
 
 def test_reject_request(ar_service, sample_user, sample_role, db_session):
-    from app.resources.models import Resource, ResourceType, ResourceStatus
+    from app.resources.models import Resource, ResourceStatus, ResourceType
 
     res2 = Resource(
         resource_code="TRES2",
@@ -120,7 +121,7 @@ def test_reject_request(ar_service, sample_user, sample_role, db_session):
 
 
 def test_cancel_request(ar_service, sample_user, sample_role, db_session):
-    from app.resources.models import Resource, ResourceType, ResourceStatus
+    from app.resources.models import Resource, ResourceStatus, ResourceType
 
     res3 = Resource(
         resource_code="TRES3",

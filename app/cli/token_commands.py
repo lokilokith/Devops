@@ -1,5 +1,6 @@
 import click
 from flask.cli import with_appcontext
+
 from app.auth.service import AuthService
 from app.identity.repository import IdentityRepository
 from app.platform.extensions import db

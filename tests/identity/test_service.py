@@ -1,16 +1,17 @@
-import pytest
 from unittest.mock import MagicMock, call
 from uuid import uuid4
 
-from app.identity.service import IdentityService
+import pytest
+
 from app.identity.exceptions import (
-    IdentityRepositoryError,
-    UserNotFoundError,
-    IdentityServiceError,
     DuplicateUserError,
+    IdentityRepositoryError,
+    IdentityServiceError,
+    UserNotFoundError,
     ValidationError,
 )
 from app.identity.models import User
+from app.identity.service import IdentityService
 
 
 @pytest.fixture

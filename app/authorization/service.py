@@ -14,10 +14,10 @@ from app.authorization.exceptions import (
     AuthorizationRepositoryError,
 )
 from app.identity.models import User
-from app.roles.models import Role, UserRole
 from app.permissions.models import Permission, PermissionAction
-from app.role_permissions.models import RolePermission
 from app.resources.models import Resource
+from app.role_permissions.models import RolePermission
+from app.roles.models import Role, UserRole
 
 
 class AuthorizationService:

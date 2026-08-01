@@ -1,31 +1,30 @@
 """Resources REST API Routes."""
 
 from flask import request
-from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Conflict, NotFound
 
-from app.api.responses import success_response
 from app.api.decorators import login_required, requires_permission
-from werkzeug.exceptions import Conflict
+from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, validate_pagination
+from app.api.responses import success_response
+from app.extensions import db
+from app.resources.exceptions import DuplicateResourceError
+from app.resources.repository import ResourcesRepository
 from app.resources.schemas import (
-    resources_ns,
     resource_create_model,
-    resource_update_model,
+    resource_list_response_model,
     resource_patch_model,
     resource_response_model,
-    resource_list_response_model,
+    resource_update_model,
+    resources_ns,
 )
+from app.resources.service import ResourcesService
 from app.resources.validators import (
     validate_resource_create,
-    validate_resource_update,
     validate_resource_patch,
+    validate_resource_update,
     validate_uuid,
 )
-from app.resources.repository import ResourcesRepository
-from app.resources.service import ResourcesService
-from app.resources.exceptions import DuplicateResourceError
-from app.extensions import db
 
 
 def get_service():

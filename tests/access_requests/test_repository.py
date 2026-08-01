@@ -1,18 +1,18 @@
-import pytest
+from datetime import datetime, timezone
 from unittest.mock import patch
 from uuid import uuid4
-from datetime import datetime, timezone
 
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.access_requests.models import (
-    AccessRequest,
-    AccessRequestStatus,
-    AccessRequestPriority,
-)
 from app.access_requests.exceptions import (
     AccessRequestNotFoundError,
     AccessRequestRepositoryError,
+)
+from app.access_requests.models import (
+    AccessRequest,
+    AccessRequestPriority,
+    AccessRequestStatus,
 )
 
 

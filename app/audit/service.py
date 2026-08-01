@@ -1,13 +1,14 @@
 """Audit Service for OpsForge."""
 
 from __future__ import annotations
-import uuid
+
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from app.audit.models import AuditLog, AuditStatus, AuditSeverity
+from app.audit.models import AuditLog, AuditSeverity, AuditStatus
 from app.audit.repository import AuditRepository
 
 logger = logging.getLogger(__name__)

@@ -1,9 +1,11 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
+
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
-from app.resources.models import Resource, ResourceType, ResourceStatus
+
 from app.resources.exceptions import ResourceNotFoundError, ResourcesRepositoryError
+from app.resources.models import Resource, ResourceStatus, ResourceType
 
 
 def test_resources_repository_create_and_get(resources_repo):

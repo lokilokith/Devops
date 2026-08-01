@@ -1,7 +1,8 @@
 from enum import Enum
+from typing import Any
+
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import JSON, Uuid
-from typing import Any
 
 from app.platform.extensions import db
 from app.shared.database import BaseModel

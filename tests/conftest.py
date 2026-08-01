@@ -1,9 +1,11 @@
 import os
+
 import pytest
+
 from app import create_app
-from app.shared.database import db as _db
 from app.auth.service import AuthService
 from app.identity.repository import IdentityRepository
+from app.shared.database import db as _db
 from tests.fixtures.factories import UserFactory
 
 
@@ -34,6 +36,7 @@ def db_session(app):
     session.begin_nested()
 
     import factory
+
     from tests.fixtures import factories
 
     for f in [

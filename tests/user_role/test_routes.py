@@ -1,10 +1,12 @@
-import pytest
+from unittest.mock import MagicMock
 from uuid import uuid4
+
+import pytest
 from flask import Flask
 from flask_restx import Api
-from unittest.mock import MagicMock
-from app.extensions import db
+
 from app.api.errors import errors_bp
+from app.extensions import db
 from app.user_roles.routes import user_roles_ns
 
 

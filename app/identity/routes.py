@@ -1,34 +1,33 @@
 """Identity REST API Routes."""
 
 from uuid import UUID
-from flask import request
-from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
-from flask_restx import Resource
-from werkzeug.exceptions import NotFound
 
-from app.api.responses import success_response
+from flask import request
+from flask_restx import Resource
+from werkzeug.exceptions import Conflict, NotFound
+
 from app.api.decorators import login_required, requires_permission
-from werkzeug.exceptions import Conflict
+from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, validate_pagination
+from app.api.responses import success_response
+from app.auth.service import AuthService
+from app.extensions import db
+from app.identity.exceptions import DuplicateUserError
+from app.identity.repository import IdentityRepository
 from app.identity.schemas import (
     identity_ns,
     user_create_model,
-    user_update_model,
+    user_list_response_model,
     user_patch_model,
     user_response_model,
-    user_list_response_model,
-)
-from app.identity.validators import (
-    validate_user_create,
-    validate_user_update,
-    validate_user_patch,
-    validate_uuid,
+    user_update_model,
 )
 from app.identity.service import IdentityService
-from app.identity.exceptions import DuplicateUserError
-from app.extensions import db
-
-from app.identity.repository import IdentityRepository
-from app.auth.service import AuthService
+from app.identity.validators import (
+    validate_user_create,
+    validate_user_patch,
+    validate_user_update,
+    validate_uuid,
+)
 
 
 def get_service():

@@ -1,23 +1,23 @@
-from typing import Sequence, Any, Dict
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, Sequence
+from uuid import UUID
 
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
+from app.audit.models import AuditSeverity, AuditStatus
+from app.audit.service import AuditService
 from app.notifications.models import (
     Notification,
+    NotificationPriority,
     NotificationStatus,
     NotificationType,
-    NotificationPriority,
-)
-from app.notifications.repository import (
-    NotificationRepository,
-    NotificationNotFoundError,
 )
 from app.notifications.providers.base import NotificationProvider
-from app.audit.service import AuditService
-from app.audit.models import AuditStatus, AuditSeverity
+from app.notifications.repository import (
+    NotificationNotFoundError,
+    NotificationRepository,
+)
 
 
 class NotificationValidationError(Exception):

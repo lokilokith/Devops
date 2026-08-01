@@ -16,8 +16,9 @@ def test_approver_can_read_own_workflow_returns_200(
 
 def test_revoked_token_persists_restart(security_auth_service, db_session):
     # This proves the JWT revocation vulnerability is fixed by verifying persistence in DB
-    from app.auth.models import RevokedToken
     import uuid
+
+    from app.auth.models import RevokedToken
 
     # Generate and revoke a token
     token = security_auth_service.generate_access_token(uuid.uuid4())
@@ -40,6 +41,7 @@ def test_revoked_token_persists_restart(security_auth_service, db_session):
 
     # Verify the service rejects it
     import pytest
+
     from app.auth.exceptions import TokenRevokedError
 
     with pytest.raises(TokenRevokedError):
@@ -55,7 +57,7 @@ def test_pagination_enforces_upper_bound(client, admin_token):
     assert resp.status_code == 200
     # In SQLite there's not a million users, but it returns 200.
     # The actual enforcement logic can be checked directly.
-    from app.api.pagination import validate_pagination, MAX_PAGE_SIZE
+    from app.api.pagination import MAX_PAGE_SIZE, validate_pagination
 
     skip, limit = validate_pagination(0, 1000000)
     assert limit == MAX_PAGE_SIZE

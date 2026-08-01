@@ -1,17 +1,18 @@
 import pytest
 from flask import Flask
-from app.extensions import db
-from app.approval_workflow.repository import ApprovalWorkflowRepository
-from app.approval_workflow.service import ApprovalWorkflowService
-from app.access_requests.repository import AccessRequestRepository
-from app.user_roles.repository import UserRolesRepository
-from app.identity.models import User, UserStatus
-from app.roles.models import Role, RoleType, RoleStatus
+
 from app.access_requests.models import (
     AccessRequest,
-    AccessRequestStatus,
     AccessRequestPriority,
+    AccessRequestStatus,
 )
+from app.access_requests.repository import AccessRequestRepository
+from app.approval_workflow.repository import ApprovalWorkflowRepository
+from app.approval_workflow.service import ApprovalWorkflowService
+from app.extensions import db
+from app.identity.models import User, UserStatus
+from app.roles.models import Role, RoleStatus, RoleType
+from app.user_roles.repository import UserRolesRepository
 
 
 @pytest.fixture
@@ -22,14 +23,13 @@ def app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
     with app.app_context():
-        import app.identity.models
-        import app.roles.models
-        import app.resources.models
         import app.access_requests.models
         import app.approval_workflow.models
-
+        import app.identity.models
         import app.permissions.models
+        import app.resources.models
         import app.role_permissions.models
+        import app.roles.models
 
         db.create_all()
         yield app
@@ -62,8 +62,9 @@ def ur_repo(db_session):
 
 @pytest.fixture
 def audit_service():
-    from app.audit.service import AuditService
     from unittest.mock import MagicMock
+
+    from app.audit.service import AuditService
 
     return MagicMock(spec=AuditService)
 

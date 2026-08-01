@@ -1,7 +1,9 @@
-import pytest
-from app.identity.repository import IdentityRepository, IdentityRepositoryError
-from app.identity.models import User, UserStatus
 import uuid
+
+import pytest
+
+from app.identity.models import User, UserStatus
+from app.identity.repository import IdentityRepository, IdentityRepositoryError
 
 
 def test_exists_by_employee_id(db_session):

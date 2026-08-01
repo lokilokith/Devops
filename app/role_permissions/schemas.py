@@ -1,6 +1,7 @@
 """RolePermissions REST API Schemas."""
 
 from flask_restx import Namespace, fields
+
 from app.permissions.schemas import permission_model
 from app.roles.schemas import role_model
 

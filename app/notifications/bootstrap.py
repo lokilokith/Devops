@@ -1,16 +1,18 @@
 import logging
+
 from flask import Flask
+
 from app.notifications.events import (
     access_request_created,
-    request_approved,
-    request_rejected,
-    request_cancelled,
     approval_required,
-    workflow_failed,
-    role_provisioned,
     audit_alert,
+    request_approved,
+    request_cancelled,
+    request_rejected,
+    role_provisioned,
+    workflow_failed,
 )
-from app.notifications.models import NotificationType, NotificationPriority
+from app.notifications.models import NotificationPriority, NotificationType
 
 logger = logging.getLogger(__name__)
 
@@ -49,11 +51,11 @@ def register_notification_handlers(app: Flask) -> None:
         except ValueError:
             priority_enum = NotificationPriority.NORMAL
 
-        from app.notifications.service import NotificationService
-        from app.notifications.repository import NotificationRepository
-        from app.notifications.providers.console import ConsoleEmailProvider
-        from app.audit.service import AuditService
         from app.audit.repository import AuditRepository
+        from app.audit.service import AuditService
+        from app.notifications.providers.console import ConsoleEmailProvider
+        from app.notifications.repository import NotificationRepository
+        from app.notifications.service import NotificationService
         from app.platform.extensions import db
 
         service = NotificationService(

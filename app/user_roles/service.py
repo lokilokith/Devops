@@ -5,18 +5,18 @@ from __future__ import annotations
 from typing import Sequence
 from uuid import UUID
 
-from app.user_roles.repository import UserRolesRepository
-from app.roles.models import Role, UserRole
 from app.identity.models import User
-from app.roles.repository import RolesRepository
 from app.identity.repository import IdentityRepository
+from app.roles.models import Role, UserRole
+from app.roles.repository import RolesRepository
 from app.user_roles.exceptions import (
-    UserRolesRepositoryError,
-    UserRoleNotFoundError,
     UserRoleAlreadyExistsError,
+    UserRoleNotFoundError,
+    UserRolesRepositoryError,
     UserRolesServiceError,
     ValidationError,
 )
+from app.user_roles.repository import UserRolesRepository
 
 
 class UserRoleService:

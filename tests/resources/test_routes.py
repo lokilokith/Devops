@@ -1,11 +1,13 @@
-import pytest
-from uuid import uuid4
-from flask import Flask
-from app.routes.__init__ import CustomApi as Api
 from unittest.mock import MagicMock
-from app.extensions import db
+from uuid import uuid4
+
+import pytest
+from flask import Flask
+
 from app.api.errors import errors_bp
+from app.extensions import db
 from app.resources.routes import resources_ns
+from app.routes.__init__ import CustomApi as Api
 
 
 @pytest.fixture
@@ -26,8 +28,8 @@ def app():
     db.init_app(flask_app)
     with flask_app.app_context():
         import app.identity.models
-        import app.roles.models
         import app.resources.models
+        import app.roles.models
 
         db.create_all()
         yield flask_app

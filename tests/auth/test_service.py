@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
+
 import jwt
+import pytest
 from flask import current_app
 
 from app.auth.exceptions import (

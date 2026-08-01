@@ -1,24 +1,24 @@
 import logging
 from uuid import UUID
+
 from flask import g
 from flask_restx import Namespace, Resource
 from werkzeug.exceptions import Forbidden, NotFound
 
 from app.api.decorators import login_required, requires_permission
-from app.permissions.models import PermissionAction
 from app.authorization.service import AuthorizationService
-from app.platform.extensions import db
-
+from app.notifications.repository import NotificationNotFoundError
 from app.notifications.schemas import (
+    notification_list_parser,
     notification_list_response_model,
+    notification_mark_all_response_model,
+    notification_response_model,
     notification_single_response_model,
     notification_unread_count_model,
-    notification_mark_all_response_model,
-    notification_list_parser,
-    notification_response_model,
 )
 from app.notifications.validators import validate_filter_params
-from app.notifications.repository import NotificationNotFoundError
+from app.permissions.models import PermissionAction
+from app.platform.extensions import db
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +43,11 @@ notifications_ns.models[notification_mark_all_response_model.name] = (
 
 
 def get_service():
-    from app.notifications.service import NotificationService
-    from app.notifications.repository import NotificationRepository
-    from app.notifications.providers.console import ConsoleEmailProvider
-    from app.audit.service import AuditService
     from app.audit.repository import AuditRepository
+    from app.audit.service import AuditService
+    from app.notifications.providers.console import ConsoleEmailProvider
+    from app.notifications.repository import NotificationRepository
+    from app.notifications.service import NotificationService
 
     return NotificationService(
         repository=NotificationRepository(db.session),

@@ -6,6 +6,7 @@ This module defines the Resource entity for the infrastructure/asset domain.
 from __future__ import annotations
 
 import enum
+
 from sqlalchemy import CheckConstraint, Enum, String
 from sqlalchemy.orm import Mapped, mapped_column
 

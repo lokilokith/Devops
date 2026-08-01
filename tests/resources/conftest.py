@@ -1,7 +1,8 @@
 import pytest
 from flask import Flask
+
 from app.extensions import db
-from app.resources.models import Resource, ResourceType, ResourceStatus
+from app.resources.models import Resource, ResourceStatus, ResourceType
 from app.resources.repository import ResourcesRepository
 
 
@@ -17,8 +18,8 @@ def app():
 
     with app.app_context():
         import app.identity.models
-        import app.roles.models
         import app.resources.models
+        import app.roles.models
 
         db.create_all()
         yield app

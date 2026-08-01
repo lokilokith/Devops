@@ -1,8 +1,9 @@
 """UserRoles REST API Schemas."""
 
 from flask_restx import Namespace, fields
-from app.roles.schemas import role_model
+
 from app.identity.schemas import user_response_model
+from app.roles.schemas import role_model
 
 user_roles_ns = Namespace("user_roles", description="User Roles management operations")
 

@@ -1,11 +1,12 @@
 """AccessRequest repository for OpsForge."""
 
 from __future__ import annotations
-from typing import Sequence, Any
-from uuid import UUID
-from datetime import datetime, timezone
 
-from sqlalchemy import select, func, and_, or_
+from datetime import datetime, timezone
+from typing import Any, Sequence
+from uuid import UUID
+
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 

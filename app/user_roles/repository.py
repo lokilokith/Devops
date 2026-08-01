@@ -13,13 +13,13 @@ from sqlalchemy import exists, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.identity.models import User
+from app.roles.models import Role, UserRole
 from app.user_roles.exceptions import (
     UserRoleAlreadyExistsError,
     UserRoleNotFoundError,
     UserRolesRepositoryError,
 )
-from app.roles.models import Role, UserRole
-from app.identity.models import User
 
 
 class UserRolesRepository:

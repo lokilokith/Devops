@@ -4,9 +4,9 @@ from uuid import UUID
 from werkzeug.exceptions import BadRequest
 
 from app.notifications.models import (
+    NotificationPriority,
     NotificationStatus,
     NotificationType,
-    NotificationPriority,
 )
 
 

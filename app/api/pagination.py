@@ -1,6 +1,7 @@
 """Pagination Utilities."""
 
 from typing import Tuple
+
 from app.shared.exceptions import ValidationException
 
 DEFAULT_PAGE_SIZE = 50

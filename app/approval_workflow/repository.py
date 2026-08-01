@@ -1,11 +1,12 @@
 """Repository for ApprovalWorkflow"""
 
 from __future__ import annotations
-from typing import Sequence, Any
-from uuid import UUID
-from datetime import datetime, timezone
 
-from sqlalchemy import select, func
+from datetime import datetime, timezone
+from typing import Any, Sequence
+from uuid import UUID
+
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -13,7 +14,7 @@ from app.approval_workflow.exceptions import (
     ApprovalWorkflowNotFoundError,
     ApprovalWorkflowRepositoryError,
 )
-from app.approval_workflow.models import ApprovalWorkflow, ApprovalStatus
+from app.approval_workflow.models import ApprovalStatus, ApprovalWorkflow
 
 
 def _normalize_pagination(page: int | None, page_size: int | None) -> tuple[int, int]:

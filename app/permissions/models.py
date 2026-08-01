@@ -6,6 +6,7 @@ This module defines the Permission entity for the authorization domain.
 from __future__ import annotations
 
 import enum
+
 from sqlalchemy import CheckConstraint, Enum, String
 from sqlalchemy.orm import Mapped, mapped_column
 

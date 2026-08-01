@@ -1,5 +1,6 @@
 import pytest
 from flask import Flask
+
 from app.extensions import db
 from app.permissions.models import Permission, PermissionAction, PermissionStatus
 from app.permissions.repository import PermissionsRepository
@@ -17,9 +18,9 @@ def app():
 
     with app.app_context():
         import app.identity.models
-        import app.roles.models
-        import app.resources.models
         import app.permissions.models
+        import app.resources.models
+        import app.roles.models
 
         db.create_all()
         yield app

@@ -1,15 +1,16 @@
 """Integration tests for the Access Requests API."""
 
-import pytest
-from uuid import uuid4
 from datetime import datetime
-from app.identity.models import User, UserStatus
+from uuid import uuid4
+
+import pytest
+
 from app.auth.service import AuthService
+from app.identity.models import User, UserStatus
 from app.identity.repository import IdentityRepository
-from app.roles.models import Role, RoleType
 from app.permissions.models import Permission, PermissionAction
 from app.role_permissions.models import RolePermission
-from app.roles.models import UserRole
+from app.roles.models import Role, RoleType, UserRole
 
 
 @pytest.fixture

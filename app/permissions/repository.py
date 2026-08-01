@@ -17,7 +17,7 @@ from app.permissions.exceptions import (
     PermissionNotFoundError,
     PermissionsRepositoryError,
 )
-from app.permissions.models import Permission, PermissionStatus, PermissionAction
+from app.permissions.models import Permission, PermissionAction, PermissionStatus
 from app.shared.database import BaseModel
 
 T = TypeVar("T", bound=BaseModel)

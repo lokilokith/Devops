@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from app.approval_workflow.models import ApprovalStatus
 from app.approval_workflow.exceptions import ApprovalWorkflowInvalidStateError
+from app.approval_workflow.models import ApprovalStatus
 
 ALLOWED_TRANSITIONS = {
     ApprovalStatus.PENDING: {

@@ -5,15 +5,15 @@ from __future__ import annotations
 from typing import Sequence
 from uuid import UUID
 
-from app.permissions.repository import PermissionsRepository
-from app.permissions.models import Permission, PermissionAction, PermissionStatus
 from app.permissions.exceptions import (
-    PermissionsRepositoryError,
-    PermissionNotFoundError,
-    PermissionsServiceError,
     DuplicatePermissionError,
+    PermissionNotFoundError,
+    PermissionsRepositoryError,
+    PermissionsServiceError,
     ValidationError,
 )
+from app.permissions.models import Permission, PermissionAction, PermissionStatus
+from app.permissions.repository import PermissionsRepository
 
 
 class PermissionsService:

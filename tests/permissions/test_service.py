@@ -1,16 +1,17 @@
-import pytest
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from app.permissions.service import PermissionsService
+import pytest
+
 from app.permissions.exceptions import (
-    PermissionsRepositoryError,
-    PermissionNotFoundError,
-    PermissionsServiceError,
     DuplicatePermissionError,
+    PermissionNotFoundError,
+    PermissionsRepositoryError,
+    PermissionsServiceError,
     ValidationError,
 )
 from app.permissions.models import Permission
+from app.permissions.service import PermissionsService
 
 
 @pytest.fixture

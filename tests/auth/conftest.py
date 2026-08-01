@@ -1,10 +1,12 @@
+import uuid
+
 import pytest
 from flask import Flask
-from app.extensions import db
+
 from app.auth.service import AuthService
-from app.identity.repository import IdentityRepository
+from app.extensions import db
 from app.identity.models import User, UserStatus
-import uuid
+from app.identity.repository import IdentityRepository
 
 
 @pytest.fixture
@@ -17,8 +19,9 @@ def app():
         "this-is-a-very-long-test-secret-key-that-is-at-least-32-bytes"
     )
 
-    from app.auth.routes import auth_ns
     from flask_restx import Api
+
+    from app.auth.routes import auth_ns
 
     api = Api(flask_app)
     api.add_namespace(auth_ns, path="/auth")

@@ -1,12 +1,14 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
+
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
-from app.permissions.models import Permission, PermissionAction, PermissionStatus
+
 from app.permissions.exceptions import (
     PermissionNotFoundError,
     PermissionsRepositoryError,
 )
+from app.permissions.models import Permission, PermissionAction, PermissionStatus
 
 
 def test_permissions_repository_create_and_get(permissions_repo):

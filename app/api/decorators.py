@@ -1,15 +1,16 @@
 """API Decorators."""
 
 from functools import wraps
-from flask import request, g
-from werkzeug.exceptions import Unauthorized, Forbidden
+
+from flask import g, request
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 from app.auth.exceptions import TokenError, TokenExpiredError, TokenRevokedError
 from app.auth.service import AuthService
-from app.identity.repository import IdentityRepository
 from app.authorization.service import AuthorizationService
-from app.permissions.models import PermissionAction
 from app.extensions import db
+from app.identity.repository import IdentityRepository
+from app.permissions.models import PermissionAction
 
 
 def login_required(f):

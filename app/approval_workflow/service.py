@@ -1,26 +1,27 @@
 """ApprovalWorkflow Service for OpsForge."""
 
 from __future__ import annotations
-from typing import Sequence, Any
-from uuid import UUID
+
 from datetime import datetime, timezone
+from typing import Any, Sequence
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.approval_workflow.models import ApprovalWorkflow, ApprovalStatus, ApprovalLevel
-from app.approval_workflow.repository import ApprovalWorkflowRepository
-from app.approval_workflow.validators import validate_state_transition
+from app.access_requests.models import AccessRequestStatus
+from app.access_requests.repository import AccessRequestRepository
 from app.approval_workflow.exceptions import (
     ApprovalWorkflowInvalidStateError,
     ApprovalWorkflowValidationError,
 )
-from app.notifications.events import approval_required, workflow_failed
-from app.access_requests.repository import AccessRequestRepository
-from app.access_requests.models import AccessRequestStatus
-from app.user_roles.repository import UserRolesRepository
-from app.user_roles.exceptions import UserRoleAlreadyExistsError
+from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
+from app.approval_workflow.repository import ApprovalWorkflowRepository
+from app.approval_workflow.validators import validate_state_transition
+from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.service import AuditService
-from app.audit.models import AuditStatus, AuditSeverity
+from app.notifications.events import approval_required, workflow_failed
+from app.user_roles.exceptions import UserRoleAlreadyExistsError
+from app.user_roles.repository import UserRolesRepository
 
 
 class ApprovalWorkflowService:
@@ -65,9 +66,10 @@ class ApprovalWorkflowService:
     def get_workflow(
         self, current_user_id: UUID, workflow_id: UUID
     ) -> ApprovalWorkflow | None:
+        from werkzeug.exceptions import Forbidden
+
         from app.authorization.service import AuthorizationService
         from app.permissions.models import PermissionAction
-        from werkzeug.exceptions import Forbidden
 
         wf = self._repo.get_by_id(workflow_id)
         if not wf:
@@ -128,9 +130,10 @@ class ApprovalWorkflowService:
 
         validate_state_transition(wf.status, ApprovalStatus.APPROVED)
 
+        from werkzeug.exceptions import Forbidden
+
         from app.authorization.service import AuthorizationService
         from app.permissions.models import PermissionAction
-        from werkzeug.exceptions import Forbidden
 
         authz = AuthorizationService(self._session)
         try:
@@ -210,9 +213,10 @@ class ApprovalWorkflowService:
 
         validate_state_transition(wf.status, ApprovalStatus.REJECTED)
 
+        from werkzeug.exceptions import Forbidden
+
         from app.authorization.service import AuthorizationService
         from app.permissions.models import PermissionAction
-        from werkzeug.exceptions import Forbidden
 
         authz = AuthorizationService(self._session)
         try:
@@ -271,9 +275,10 @@ class ApprovalWorkflowService:
 
         validate_state_transition(wf.status, ApprovalStatus.CANCELLED)
 
+        from werkzeug.exceptions import Forbidden
+
         from app.authorization.service import AuthorizationService
         from app.permissions.models import PermissionAction
-        from werkzeug.exceptions import Forbidden
 
         authz = AuthorizationService(self._session)
         try:

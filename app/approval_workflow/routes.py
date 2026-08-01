@@ -3,38 +3,38 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from flask import request, g
-from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from flask import g, request
 from flask_restx import Resource
+from werkzeug.exceptions import BadRequest, Conflict, NotFound, UnprocessableEntity
 
 from app.api.decorators import login_required
-from werkzeug.exceptions import BadRequest, Conflict, NotFound, UnprocessableEntity
-from app.approval_workflow.schemas import (
-    approval_workflows_ns,
-    approval_workflow_list_response_model,
-    approval_workflow_single_response_model,
-    approval_action_model,
-    approval_workflow_query_parser,
-)
+from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, validate_pagination
 from app.approval_workflow.exceptions import (
+    ApprovalWorkflowInvalidStateError,
     ApprovalWorkflowNotFoundError,
     ApprovalWorkflowValidationError,
-    ApprovalWorkflowInvalidStateError,
 )
 from app.approval_workflow.models import (
     ApprovalWorkflow,
 )  # noqa: F401 — registers table in db.metadata for Alembic
+from app.approval_workflow.schemas import (
+    approval_action_model,
+    approval_workflow_list_response_model,
+    approval_workflow_query_parser,
+    approval_workflow_single_response_model,
+    approval_workflows_ns,
+)
 
 
 # Locator pattern function to fetch the service
 def get_service():
-    from app.platform.extensions import db
-    from app.approval_workflow.service import ApprovalWorkflowService
-    from app.approval_workflow.repository import ApprovalWorkflowRepository
     from app.access_requests.repository import AccessRequestRepository
-    from app.user_roles.repository import UserRolesRepository
-    from app.audit.service import AuditService
+    from app.approval_workflow.repository import ApprovalWorkflowRepository
+    from app.approval_workflow.service import ApprovalWorkflowService
     from app.audit.repository import AuditRepository
+    from app.audit.service import AuditService
+    from app.platform.extensions import db
+    from app.user_roles.repository import UserRolesRepository
 
     return ApprovalWorkflowService(
         ApprovalWorkflowRepository(db.session),

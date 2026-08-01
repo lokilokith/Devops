@@ -1,16 +1,16 @@
+from datetime import datetime
 from typing import Any, Sequence
 from uuid import UUID
-from datetime import datetime
 
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import desc
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.notifications.models import (
     Notification,
+    NotificationPriority,
     NotificationStatus,
     NotificationType,
-    NotificationPriority,
 )
 
 

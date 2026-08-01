@@ -4,28 +4,25 @@ from flask import request
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
-from app.api.responses import success_response
 from app.api.decorators import login_required, requires_permission
-
+from app.api.responses import success_response
+from app.extensions import db
+from app.permissions.repository import PermissionsRepository
+from app.role_permissions.exceptions import ValidationError
+from app.role_permissions.repository import RolePermissionsRepository
 from app.role_permissions.schemas import (
-    role_permissions_ns,
-    role_permission_response_model,
-    role_permissions_list_response_model,
     permission_roles_list_response_model,
     role_permission_request_model,
+    role_permission_response_model,
+    role_permissions_list_response_model,
+    role_permissions_ns,
 )
-
-from app.role_permissions.validators import (
-    validate_uuid,
-    validate_permission_assignment,
-)
-
 from app.role_permissions.service import RolePermissionService
-from app.role_permissions.repository import RolePermissionsRepository
+from app.role_permissions.validators import (
+    validate_permission_assignment,
+    validate_uuid,
+)
 from app.roles.repository import RolesRepository
-from app.permissions.repository import PermissionsRepository
-from app.extensions import db
-from app.role_permissions.exceptions import ValidationError
 
 
 def get_service():

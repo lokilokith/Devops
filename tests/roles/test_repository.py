@@ -1,9 +1,11 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
+
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
-from app.roles.models import Role, RoleType, RoleStatus
+
 from app.roles.exceptions import RoleNotFoundError, RolesRepositoryError
+from app.roles.models import Role, RoleStatus, RoleType
 
 
 def test_roles_repository_create_and_get(roles_repo):

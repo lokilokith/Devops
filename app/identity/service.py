@@ -5,16 +5,16 @@ from __future__ import annotations
 from typing import Sequence
 from uuid import UUID
 
-from app.identity.repository import IdentityRepository
-from app.identity.models import User
+from app.auth.service import AuthService
 from app.identity.exceptions import (
-    IdentityRepositoryError,
-    UserNotFoundError,
-    IdentityServiceError,
     DuplicateUserError,
+    IdentityRepositoryError,
+    IdentityServiceError,
+    UserNotFoundError,
     ValidationError,
 )
-from app.auth.service import AuthService
+from app.identity.models import User
+from app.identity.repository import IdentityRepository
 
 
 class IdentityService:

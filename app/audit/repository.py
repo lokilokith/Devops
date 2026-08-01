@@ -1,17 +1,16 @@
 """Audit repository for OpsForge."""
 
 from __future__ import annotations
-from typing import Sequence, Any
-from uuid import UUID
-from datetime import datetime
 
-from sqlalchemy import select, func
+from datetime import datetime
+from typing import Any, Sequence
+from uuid import UUID
+
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.audit.exceptions import (
-    AuditRepositoryError,
-)
+from app.audit.exceptions import AuditRepositoryError
 from app.audit.models import AuditLog
 
 

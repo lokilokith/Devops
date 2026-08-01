@@ -16,9 +16,9 @@ from sqlalchemy.types import Uuid
 from app.shared.database import Base, utcnow
 
 if TYPE_CHECKING:
-    from app.roles.models import Role
-    from app.permissions.models import Permission
     from app.identity.models import User
+    from app.permissions.models import Permission
+    from app.roles.models import Role
 
 
 class RolePermission(Base):

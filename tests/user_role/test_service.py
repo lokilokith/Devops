@@ -1,15 +1,16 @@
-import pytest
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from app.user_roles.service import UserRoleService
+import pytest
+
 from app.user_roles.exceptions import (
-    UserRolesRepositoryError,
-    UserRoleNotFoundError,
     UserRoleAlreadyExistsError,
+    UserRoleNotFoundError,
+    UserRolesRepositoryError,
     UserRolesServiceError,
     ValidationError,
 )
+from app.user_roles.service import UserRoleService
 
 
 @pytest.fixture

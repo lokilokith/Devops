@@ -1,35 +1,36 @@
 """Access requests API routes."""
 
 from uuid import UUID
-from flask import request, g
-from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+
+from flask import g, request
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, Conflict, NotFound, UnprocessableEntity
 
+from app.access_requests.exceptions import (
+    AccessRequestDuplicateError,
+    AccessRequestInvalidStateError,
+    AccessRequestNotFoundError,
+    AccessRequestValidationError,
+)
+from app.access_requests.repository import AccessRequestRepository
 from app.access_requests.schemas import (
-    access_requests_ns,
     access_request_create_model,
     access_request_reject_model,
-    access_requests_list_response_model,
     access_request_single_response_model,
+    access_requests_list_response_model,
+    access_requests_ns,
 )
-from app.access_requests.validators import validate_access_request_create
 from app.access_requests.service import AccessRequestService
-from app.access_requests.repository import AccessRequestRepository
-from app.access_requests.exceptions import (
-    AccessRequestInvalidStateError,
-    AccessRequestDuplicateError,
-    AccessRequestValidationError,
-    AccessRequestNotFoundError,
-)
+from app.access_requests.validators import validate_access_request_create
 from app.api.decorators import login_required, requires_permission
+from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, validate_pagination
 from app.authorization.service import AuthorizationService
-from app.permissions.models import PermissionAction
-from app.identity.repository import IdentityRepository
-from app.roles.repository import RolesRepository
-from app.resources.repository import ResourcesRepository
-from app.user_roles.repository import UserRolesRepository
 from app.extensions import db
+from app.identity.repository import IdentityRepository
+from app.permissions.models import PermissionAction
+from app.resources.repository import ResourcesRepository
+from app.roles.repository import RolesRepository
+from app.user_roles.repository import UserRolesRepository
 
 
 def get_service() -> AccessRequestService:
@@ -168,11 +169,11 @@ class AccessRequestApprovalWorkflow(Resource):
         if not is_admin_or_auditor and req.requester_id != UUID(g.user_id):
             raise NotFound("Access request not found")
 
-        from app.approval_workflow.service import ApprovalWorkflowService
         from app.approval_workflow.repository import ApprovalWorkflowRepository
-        from app.user_roles.repository import UserRolesRepository
-        from app.audit.service import AuditService
+        from app.approval_workflow.service import ApprovalWorkflowService
         from app.audit.repository import AuditRepository
+        from app.audit.service import AuditService
+        from app.user_roles.repository import UserRolesRepository
 
         wf_svc = ApprovalWorkflowService(
             ApprovalWorkflowRepository(db.session),
@@ -184,10 +185,10 @@ class AccessRequestApprovalWorkflow(Resource):
 
         workflows = wf_svc._repo.get_by_request(request_id)
 
-        from app.approval_workflow.schemas import approval_workflow_list_response_model
-
         # Use marshal to format? We can just return the dict but it's cleaner to marshal
         from flask_restx import marshal
+
+        from app.approval_workflow.schemas import approval_workflow_list_response_model
 
         return {
             "success": True,

@@ -1,31 +1,30 @@
 """Permissions REST API Routes."""
 
 from flask import request
-from app.api.pagination import validate_pagination, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Conflict, NotFound
 
-from app.api.responses import success_response
 from app.api.decorators import login_required, requires_permission
-from werkzeug.exceptions import Conflict
+from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, validate_pagination
+from app.api.responses import success_response
+from app.extensions import db
+from app.permissions.exceptions import DuplicatePermissionError
+from app.permissions.repository import PermissionsRepository
 from app.permissions.schemas import (
-    permissions_ns,
     permission_create_model,
-    permission_update_model,
+    permission_list_response_model,
     permission_patch_model,
     permission_response_model,
-    permission_list_response_model,
+    permission_update_model,
+    permissions_ns,
 )
+from app.permissions.service import PermissionsService
 from app.permissions.validators import (
     validate_permission_create,
-    validate_permission_update,
     validate_permission_patch,
+    validate_permission_update,
     validate_uuid,
 )
-from app.permissions.repository import PermissionsRepository
-from app.permissions.service import PermissionsService
-from app.permissions.exceptions import DuplicatePermissionError
-from app.extensions import db
 
 
 def get_service():

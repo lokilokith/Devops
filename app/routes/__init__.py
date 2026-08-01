@@ -7,23 +7,22 @@ and mounts namespaces.
 from flask import Blueprint
 from flask_restx import Api
 
-from app.routes.health_routes import ns as health_ns
-from app.identity.routes import identity_ns
-from app.roles.routes import roles_ns
-from app.resources.routes import resources_ns
-from app.permissions.routes import permissions_ns
-from app.role_permissions.routes import role_permissions_ns
-from app.user_roles.routes import user_roles_ns
-from app.auth.routes import auth_ns
 from app.access_requests.routes import access_requests_ns
 from app.approval_workflow.routes import approval_workflows_ns
-
+from app.auth.routes import auth_ns
+from app.identity.routes import identity_ns
+from app.permissions.routes import permissions_ns
+from app.resources.routes import resources_ns
+from app.role_permissions.routes import role_permissions_ns
+from app.roles.routes import roles_ns
+from app.routes.health_routes import ns as health_ns
 from app.shared.exceptions import (
     DatabaseOperationException,
     InvalidStatusTransition,
     ResourceNotFoundException,
     ValidationException,
 )
+from app.user_roles.routes import user_roles_ns
 
 blueprint = Blueprint("api", __name__, url_prefix="")
 

@@ -1,11 +1,13 @@
-import pytest
-from app.resources.models import Resource, ResourceType, ResourceStatus
-from app.identity.models import User, UserStatus
-from app.roles.models import Role, RoleType, RoleStatus, UserRole
-from app.permissions.models import Permission, PermissionAction
-from app.role_permissions.models import RolePermission
-from app.extensions import db
 from uuid import UUID
+
+import pytest
+
+from app.extensions import db
+from app.identity.models import User, UserStatus
+from app.permissions.models import Permission, PermissionAction
+from app.resources.models import Resource, ResourceStatus, ResourceType
+from app.role_permissions.models import RolePermission
+from app.roles.models import Role, RoleStatus, RoleType, UserRole
 
 
 def setup_admin_user(db_session, app):

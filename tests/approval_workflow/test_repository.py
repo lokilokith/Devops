@@ -1,14 +1,14 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.approval_workflow.models import ApprovalWorkflow, ApprovalStatus, ApprovalLevel
 from app.approval_workflow.exceptions import (
     ApprovalWorkflowNotFoundError,
     ApprovalWorkflowRepositoryError,
 )
+from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
 
 
 def test_create_and_get(approval_repo, sample_users, sample_request):

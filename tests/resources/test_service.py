@@ -1,16 +1,17 @@
-import pytest
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from app.resources.service import ResourcesService
+import pytest
+
 from app.resources.exceptions import (
-    ResourcesRepositoryError,
-    ResourceNotFoundError,
-    ResourcesServiceError,
     DuplicateResourceError,
+    ResourceNotFoundError,
+    ResourcesRepositoryError,
+    ResourcesServiceError,
     ValidationError,
 )
 from app.resources.models import Resource
+from app.resources.service import ResourcesService
 
 
 @pytest.fixture

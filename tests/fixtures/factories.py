@@ -1,12 +1,14 @@
-import factory
-from app.identity.models import User, UserStatus
-from app.roles.models import Role
-from app.permissions.models import Permission
-from app.approval_workflow.models import ApprovalWorkflow, ApprovalStatus, ApprovalLevel
-from app.notifications.models import Notification, NotificationType, NotificationStatus
-from app.access_requests.models import AccessRequest, AccessRequestStatus
-from app.shared.database import db
 import uuid
+
+import factory
+
+from app.access_requests.models import AccessRequest, AccessRequestStatus
+from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
+from app.identity.models import User, UserStatus
+from app.notifications.models import Notification, NotificationStatus, NotificationType
+from app.permissions.models import Permission
+from app.roles.models import Role
+from app.shared.database import db
 
 
 class BaseFactory(factory.alchemy.SQLAlchemyModelFactory):

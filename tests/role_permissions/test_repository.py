@@ -1,15 +1,16 @@
-import pytest
 from unittest.mock import patch
 from uuid import uuid4
+
+import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.permissions.models import Permission, PermissionAction, PermissionStatus
 from app.role_permissions.exceptions import (
     RolePermissionAlreadyExistsError,
     RolePermissionNotFoundError,
     RolePermissionsRepositoryError,
 )
-from app.roles.models import Role, RoleType, RoleStatus
-from app.permissions.models import Permission, PermissionAction, PermissionStatus
+from app.roles.models import Role, RoleStatus, RoleType
 
 
 def test_assign_permission_to_role(

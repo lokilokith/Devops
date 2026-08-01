@@ -1,22 +1,23 @@
 """Authentication Service."""
 
 from __future__ import annotations
+
 import datetime
 import logging
 from uuid import UUID
 
 import jwt
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask import current_app
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from app.identity.repository import IdentityRepository
 from app.auth.exceptions import (
     InvalidCredentialsError,
-    UserInactiveError,
     TokenError,
     TokenExpiredError,
     TokenRevokedError,
+    UserInactiveError,
 )
+from app.identity.repository import IdentityRepository
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +128,10 @@ class AuthService:
             jti = payload.get("jti")
             exp = payload.get("exp")
             if jti and exp:
+                from datetime import datetime, timezone
+
                 from app.auth.models import RevokedToken
                 from app.platform.extensions import db
-                from datetime import datetime, timezone
 
                 existing = db.session.query(RevokedToken).filter_by(jti=jti).first()
                 if not existing:
@@ -142,9 +144,10 @@ class AuthService:
             logger.error("Failed to revoke token: %s", exc)
 
     def purge_expired_revoked_tokens(self) -> int:
+        from datetime import datetime, timezone
+
         from app.auth.models import RevokedToken
         from app.platform.extensions import db
-        from datetime import datetime, timezone
 
         try:
             now = datetime.now(timezone.utc)

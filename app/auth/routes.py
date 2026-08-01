@@ -2,12 +2,14 @@
 
 import logging
 from uuid import UUID
-from flask import request, g
-from flask_restx import Resource
-from werkzeug.exceptions import Unauthorized, Forbidden
 
-from app.api.responses import success_response
+from flask import g, request
+from flask_restx import Resource
+from werkzeug.exceptions import Forbidden, Unauthorized
+
 from app.api.decorators import login_required
+from app.api.responses import success_response
+from app.auth.exceptions import InvalidCredentialsError, UserInactiveError
 from app.auth.schemas import (
     auth_ns,
     login_model,
@@ -16,9 +18,8 @@ from app.auth.schemas import (
     user_me_response_model,
 )
 from app.auth.service import AuthService
-from app.identity.repository import IdentityRepository
-from app.auth.exceptions import InvalidCredentialsError, UserInactiveError
 from app.extensions import db
+from app.identity.repository import IdentityRepository
 from app.platform.extensions import limiter
 
 logger = logging.getLogger(__name__)
@@ -130,8 +131,9 @@ class MeResource(Resource):
             raise Unauthorized("User not found")
 
         from sqlalchemy import select
-        from app.roles.models import Role, UserRole
+
         from app.authorization.service import AuthorizationService
+        from app.roles.models import Role, UserRole
 
         roles = list(
             db.session.scalars(

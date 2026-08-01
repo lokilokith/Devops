@@ -1,10 +1,12 @@
-import pytest
+from unittest.mock import MagicMock
 from uuid import uuid4
+
+import pytest
 from flask import Flask
 from flask_restx import Api
-from unittest.mock import MagicMock
-from app.extensions import db
+
 from app.api.errors import errors_bp
+from app.extensions import db
 from app.permissions.routes import permissions_ns
 
 
@@ -26,9 +28,9 @@ def app():
     db.init_app(flask_app)
     with flask_app.app_context():
         import app.identity.models
-        import app.roles.models
-        import app.resources.models
         import app.permissions.models
+        import app.resources.models
+        import app.roles.models
 
         db.create_all()
         yield flask_app

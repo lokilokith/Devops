@@ -5,19 +5,19 @@ from __future__ import annotations
 from typing import Sequence
 from uuid import UUID
 
-from app.role_permissions.repository import RolePermissionsRepository
-from app.role_permissions.models import RolePermission
-from app.roles.models import Role
 from app.permissions.models import Permission
-from app.roles.repository import RolesRepository
 from app.permissions.repository import PermissionsRepository
 from app.role_permissions.exceptions import (
-    RolePermissionsRepositoryError,
-    RolePermissionNotFoundError,
     RolePermissionAlreadyExistsError,
+    RolePermissionNotFoundError,
+    RolePermissionsRepositoryError,
     RolePermissionsServiceError,
     ValidationError,
 )
+from app.role_permissions.models import RolePermission
+from app.role_permissions.repository import RolePermissionsRepository
+from app.roles.models import Role
+from app.roles.repository import RolesRepository
 
 
 class RolePermissionService:
