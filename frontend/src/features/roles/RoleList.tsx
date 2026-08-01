@@ -1,5 +1,7 @@
 import * as React from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useAuth } from "@/features/authentication/AuthContext"
+import { PERMISSIONS } from "@/features/authentication/authorization"
 import { rolesService, Role } from "@/services/roles.service"
 import { DataTable } from "@/components/data-table/DataTable"
 import { SearchBar } from "@/components/data-table/SearchBar"
@@ -23,6 +25,7 @@ export function RoleList() {
   const [search, setSearch] = React.useState("")
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { hasPermission } = useAuth()
 
   const [roleToDelete, setRoleToDelete] = React.useState<Role | null>(null)
 
@@ -85,10 +88,12 @@ export function RoleList() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setRoleToDelete(role)} className="text-destructive">
-                <Trash className="mr-2 h-4 w-4" />
-                Delete Role
-              </DropdownMenuItem>
+              {hasPermission(PERMISSIONS.ROLES_DELETE) && (
+                <DropdownMenuItem onClick={() => setRoleToDelete(role)} className="text-destructive">
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete Role
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -108,7 +113,9 @@ export function RoleList() {
             setPage(1)
           }}
         />
-        <Button>Create Role</Button>
+        {hasPermission(PERMISSIONS.ROLES_CREATE) && (
+          <Button>Create Role</Button>
+        )}
       </div>
 
       <DataTable

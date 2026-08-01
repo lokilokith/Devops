@@ -1,6 +1,6 @@
 from enum import Enum
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.types import JSON
+from sqlalchemy.types import JSON, Uuid
 from typing import Any
 
 from app.platform.extensions import db
@@ -31,7 +31,7 @@ class NotificationPriority(str, Enum):
 class Notification(BaseModel):
     __tablename__ = "notifications"
 
-    recipient_user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
+    recipient_user_id = db.Column(Uuid(as_uuid=True), db.ForeignKey("users.id"), nullable=False, index=True)
     title = db.Column(db.String(255), nullable=False)
     message = db.Column(db.Text, nullable=False)
     

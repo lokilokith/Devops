@@ -1,5 +1,7 @@
 import * as React from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useAuth } from "@/features/authentication/AuthContext"
+import { PERMISSIONS } from "@/features/authentication/authorization"
 import { usersService, User } from "@/services/users.service"
 import { DataTable } from "@/components/data-table/DataTable"
 import { SearchBar } from "@/components/data-table/SearchBar"
@@ -23,6 +25,7 @@ export function UserList() {
   const [search, setSearch] = React.useState("")
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { hasPermission } = useAuth()
 
   const [userToToggleLock, setUserToToggleLock] = React.useState<User | null>(null)
 
@@ -108,10 +111,12 @@ export function UserList() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setUserToToggleLock(user)}>
-                {!isLocked ? <ShieldAlert className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                {!isLocked ? "Lock User" : "Unlock User"}
-              </DropdownMenuItem>
+              {hasPermission(PERMISSIONS.USERS_UPDATE) && (
+                <DropdownMenuItem onClick={() => setUserToToggleLock(user)}>
+                  {!isLocked ? <ShieldAlert className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                  {!isLocked ? "Lock User" : "Unlock User"}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -131,7 +136,9 @@ export function UserList() {
             setPage(0)
           }}
         />
-        <Button>Create User</Button>
+        {hasPermission(PERMISSIONS.USERS_CREATE) && (
+          <Button>Create User</Button>
+        )}
       </div>
 
       <DataTable

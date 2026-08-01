@@ -1,5 +1,7 @@
 import * as React from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useAuth } from "@/features/authentication/AuthContext"
+import { PERMISSIONS } from "@/features/authentication/authorization"
 import { resourcesService, Resource } from "@/services/resources.service"
 import { DataTable } from "@/components/data-table/DataTable"
 import { SearchBar } from "@/components/data-table/SearchBar"
@@ -23,6 +25,7 @@ export function ResourceList() {
   const [search, setSearch] = React.useState("")
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { hasPermission } = useAuth()
 
   const [resourceToDelete, setResourceToDelete] = React.useState<Resource | null>(null)
 
@@ -89,10 +92,12 @@ export function ResourceList() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setResourceToDelete(resource)} className="text-destructive">
-                <Trash className="mr-2 h-4 w-4" />
-                Delete Resource
-              </DropdownMenuItem>
+              {hasPermission(PERMISSIONS.RESOURCES_DELETE) && (
+                <DropdownMenuItem onClick={() => setResourceToDelete(resource)} className="text-destructive">
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete Resource
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -112,7 +117,9 @@ export function ResourceList() {
             setPage(0)
           }}
         />
-        <Button>Create Resource</Button>
+        {hasPermission(PERMISSIONS.RESOURCES_CREATE) && (
+          <Button>Create Resource</Button>
+        )}
       </div>
 
       <DataTable

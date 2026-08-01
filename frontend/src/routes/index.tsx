@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate } from "react-router-dom"
 import { DashboardLayout } from "@/layouts/DashboardLayout"
 import { ProtectedRoute } from "@/features/authentication/ProtectedRoute"
 import { Login } from "@/features/authentication/Login"
+import { AuthGuard } from "@/features/authentication/AuthGuard"
+import { PERMISSIONS } from "@/features/authentication/authorization"
 import { Dashboard } from "@/features/dashboard/Dashboard"
 import { UserList } from "@/features/users/UserList"
 import { RoleList } from "@/features/roles/RoleList"
@@ -39,35 +41,55 @@ export const router = createBrowserRouter([
           },
           {
             path: "users",
-            element: <UserList />,
+            element: (
+              <AuthGuard requiredPermission={PERMISSIONS.USERS_READ}>
+                <UserList />
+              </AuthGuard>
+            ),
           },
           {
             path: "roles",
-            element: <RoleList />,
+            element: (
+              <AuthGuard requiredPermission={PERMISSIONS.ROLES_READ}>
+                <RoleList />
+              </AuthGuard>
+            ),
           },
           {
             path: "permissions",
-            element: <PermissionList />,
+            element: (
+              <AuthGuard requiredPermission={PERMISSIONS.PERMISSIONS_READ}>
+                <PermissionList />
+              </AuthGuard>
+            ),
           },
           {
             path: "resources",
-            element: <ResourceList />,
+            element: (
+              <AuthGuard requiredPermission={PERMISSIONS.RESOURCES_READ}>
+                <ResourceList />
+              </AuthGuard>
+            ),
           },
           {
             path: "access-requests",
-            element: <AccessRequestList />,
+            element: <AccessRequestList />, // Can be read by anyone (their own requests) or guarded by backend
           },
           {
             path: "approvals",
-            element: <ApprovalWorkflowList />,
+            element: <ApprovalWorkflowList />, // Can be read by anyone (their own approvals)
           },
           {
             path: "notifications",
-            element: <NotificationList />,
+            element: <NotificationList />, // Everyone has notifications
           },
           {
             path: "audit",
-            element: <AuditLogList />,
+            element: (
+              <AuthGuard requiredPermission={PERMISSIONS.AUDIT_READ}>
+                <AuditLogList />
+              </AuthGuard>
+            ),
           },
           {
             path: "profile",

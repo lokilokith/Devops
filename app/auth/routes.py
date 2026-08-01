@@ -111,16 +111,33 @@ class MeResource(Resource):
 
         from sqlalchemy import select
         from app.roles.models import Role, UserRole
+        from app.authorization.service import AuthorizationService
 
         roles = list(db.session.scalars(
             select(Role.role_name)
             .join(UserRole, UserRole.role_id == Role.id)
             .where(UserRole.user_id == user_id)
         ).all())
+        
+        authz_svc = AuthorizationService(db.session)
+        raw_perms = authz_svc.get_user_permissions(user_id)
+        
+        # Map PERM_RESOURCE_ACTION to resource.action format
+        permissions = []
+        for p in raw_perms:
+            if p.permission_code.startswith("PERM_"):
+                # e.g., PERM_USERS_READ -> users.read
+                parts = p.permission_code[5:].lower().rsplit('_', 1)
+                if len(parts) == 2:
+                    permissions.append(f"{parts[0]}.{parts[1]}")
+                else:
+                    permissions.append(p.permission_code.lower())
+
         return success_response(data={
             "id": str(user.id),
             "username": user.username,
             "email": user.email,
             "full_name": user.full_name,
-            "roles": roles
+            "roles": roles,
+            "permissions": permissions
         })

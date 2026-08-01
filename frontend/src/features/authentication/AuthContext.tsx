@@ -11,6 +11,7 @@ export interface User {
   email: string
   full_name: string
   roles: string[]
+  permissions: string[]
 }
 
 interface AuthContextType {
@@ -21,6 +22,9 @@ interface AuthContextType {
   login: (token: string, refreshToken: string, user: User) => void
   logout: () => void
   hasRole: (role: string) => boolean
+  hasPermission: (permission: string) => boolean
+  hasAnyPermission: (permissions: string[]) => boolean
+  hasAllPermissions: (permissions: string[]) => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -87,6 +91,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user?.roles.includes(role) ?? false
   }
 
+  const hasPermission = (permission: string): boolean => {
+    return user?.permissions?.includes(permission) ?? false
+  }
+
+  const hasAnyPermission = (permissions: string[]): boolean => {
+    return permissions.some(p => hasPermission(p))
+  }
+
+  const hasAllPermissions = (permissions: string[]): boolean => {
+    return permissions.every(p => hasPermission(p))
+  }
+
   if (isInitializing) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -105,6 +121,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         hasRole,
+        hasPermission,
+        hasAnyPermission,
+        hasAllPermissions,
       }}
     >
       {children}

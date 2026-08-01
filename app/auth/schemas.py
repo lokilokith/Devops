@@ -30,7 +30,8 @@ user_me_data_model = auth_ns.model("UserMeData", {
     "username": fields.String(description="Username"),
     "email": fields.String(description="Email"),
     "full_name": fields.String(description="Full Name"),
-    "roles": fields.List(fields.String, description="List of assigned roles")
+    "roles": fields.List(fields.String, description="List of assigned roles"),
+    "permissions": fields.List(fields.String, description="List of assigned permissions")
 })
 
 user_me_response_model = auth_ns.model("UserMeResponse", {

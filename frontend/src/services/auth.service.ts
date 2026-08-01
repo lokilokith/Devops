@@ -39,9 +39,10 @@ export const authService = {
     email: string
     full_name: string
     roles: string[]
+    permissions: string[]
   }> {
     const response = await apiClient.get("/auth/me")
-    // Backend envelope: { success, message, data: { id, username, email, full_name, roles } }
+    // Backend envelope: { success, message, data: { id, username, email, full_name, roles, permissions } }
     return response.data.data
   },
 }

@@ -11,25 +11,21 @@ import {
   ScrollText,
 } from "lucide-react"
 import { useAuth } from "@/features/authentication/AuthContext"
+import { PERMISSIONS } from "@/features/authentication/authorization"
 
 export function Sidebar() {
-  const { hasRole } = useAuth()
-  const isAdmin = hasRole("Admin")
+  const { hasPermission } = useAuth()
 
   const navItems = [
     { name: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-    ...(isAdmin
-      ? [
-          { name: "Users", to: "/users", icon: Users },
-          { name: "Roles", to: "/roles", icon: ShieldCheck },
-          { name: "Permissions", to: "/permissions", icon: Key },
-          { name: "Resources", to: "/resources", icon: FolderOpen },
-        ]
-      : []),
+    ...(hasPermission(PERMISSIONS.USERS_READ) ? [{ name: "Users", to: "/users", icon: Users }] : []),
+    ...(hasPermission(PERMISSIONS.ROLES_READ) ? [{ name: "Roles", to: "/roles", icon: ShieldCheck }] : []),
+    ...(hasPermission(PERMISSIONS.PERMISSIONS_READ) ? [{ name: "Permissions", to: "/permissions", icon: Key }] : []),
+    ...(hasPermission(PERMISSIONS.RESOURCES_READ) ? [{ name: "Resources", to: "/resources", icon: FolderOpen }] : []),
     { name: "Access Requests", to: "/access-requests", icon: ClipboardList },
     { name: "Approvals", to: "/approvals", icon: CheckSquare },
     { name: "Notifications", to: "/notifications", icon: Bell },
-    ...(isAdmin ? [{ name: "Audit Logs", to: "/audit", icon: ScrollText }] : []),
+    ...(hasPermission(PERMISSIONS.AUDIT_READ) ? [{ name: "Audit Logs", to: "/audit", icon: ScrollText }] : []),
   ]
 
   return (
@@ -47,8 +43,7 @@ export function Sidebar() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${
-                  isActive ? "bg-muted text-primary" : "text-muted-foreground"
+                `flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary ${isActive ? "bg-muted text-primary" : "text-muted-foreground"
                 }`
               }
             >
