@@ -217,7 +217,7 @@ def _assign_role_to_admin_user(role: Role) -> None:
                 raise RBACSeedError(
                     "ADMIN_DEFAULT_PASSWORD must be set in production environments."
                 )
-            admin_pass = "secret123"
+            admin_pass = "secret123"  # nosec - Dummy seed password
 
         admin_user.password_hash = auth_svc.hash_password(admin_pass)
         db.session.add(admin_user)

@@ -21,7 +21,7 @@ try:
         with open(version_path, "r") as f:
             version = f.read().strip()
 except Exception:
-    pass
+    pass  # nosec - Missing version file is not fatal
 
 
 def register_middleware(app: Flask) -> None:

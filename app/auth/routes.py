@@ -51,7 +51,7 @@ class LoginResource(Resource):
                 data={
                     "access_token": tokens["access_token"],
                     "refresh_token": tokens["refresh_token"],
-                    "token_type": "Bearer",
+                    "token_type": "Bearer",  # nosec - Token type is an HTTP standard prefix, not a secret
                     "expires_in": tokens["expires_in"],
                 },
                 message="Login successful",
@@ -103,7 +103,7 @@ class RefreshResource(Resource):
             return success_response(
                 data={
                     "access_token": tokens["access_token"],
-                    "token_type": "Bearer",
+                    "token_type": "Bearer",  # nosec - Token type is an HTTP standard prefix, not a secret
                     "expires_in": tokens["expires_in"],
                 },
                 message="Token refreshed successfully",
