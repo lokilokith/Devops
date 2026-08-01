@@ -151,8 +151,7 @@ class AccessRequestService:
                 "actor_id": str(approver_id),
                 "recipient_id": str(approved_req.requester_id),
                 "title": "Access Request Approved",
-                "message": f"Your access request {
-                    approved_req.request_number} has been approved.",
+                "message": f"Your access request {approved_req.request_number} has been approved.",
                 "type": "request_approved",
                 "priority": "high",
             },
@@ -179,8 +178,7 @@ class AccessRequestService:
                 "actor_id": str(rejecter_id) if rejecter_id else "system",
                 "recipient_id": str(rejected_req.requester_id),
                 "title": "Access Request Rejected",
-                "message": f"Your access request {
-                    rejected_req.request_number} has been rejected.",
+                "message": f"Your access request {rejected_req.request_number} has been rejected.",
                 "type": "request_rejected",
                 "priority": "high",
             },
@@ -205,8 +203,7 @@ class AccessRequestService:
                 "request_id": str(cancelled_req.id),
                 "recipient_id": str(cancelled_req.requester_id),
                 "title": "Access Request Cancelled",
-                "message": f"Your access request {
-                    cancelled_req.request_number} has been cancelled.",
+                "message": f"Your access request {cancelled_req.request_number} has been cancelled.",
                 "type": "request_cancelled",
                 "priority": "normal",
             },
