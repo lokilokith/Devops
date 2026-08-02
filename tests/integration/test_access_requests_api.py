@@ -1,9 +1,9 @@
-from sqlalchemy import select
 """Integration tests for the Access Requests API."""
 
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 
 from app.auth.service import AuthService
 from app.identity.models import User, UserStatus
@@ -30,18 +30,26 @@ def auth_setup(db_session, app):
     db_session.add(user)
 
     # Create Role
-    role = Role(role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}", role_type=RoleType.CUSTOM)
+    role = Role(
+        role_code=f"R_{uuid4().hex[:8]}",
+        role_name=f"Role {uuid4().hex[:8]}",
+        role_type=RoleType.CUSTOM,
+    )
     db_session.add(role)
     db_session.flush()
 
     perms = ["create", "read", "approve", "reject", "cancel"]
     for p in perms:
-        perm = db_session.scalar(select(Permission).where(Permission.permission_code == f"PERM_ACCESS_REQUESTS_{p.upper()}"))
+        perm = db_session.scalar(
+            select(Permission).where(
+                Permission.permission_code == f"PERM_ACCESS_REQUESTS_{p.upper()}"
+            )
+        )
         if not perm:
             perm = Permission(
                 permission_code=f"PERM_ACCESS_REQUESTS_{p.upper()}",
-            permission_name=f"access_requests.{p}",
-            action=PermissionAction(p),
+                permission_name=f"access_requests.{p}",
+                action=PermissionAction(p),
             )
             db_session.add(perm)
             db_session.flush()

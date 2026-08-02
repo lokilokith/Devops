@@ -1,98 +1,76 @@
-# OpsForge
+﻿# OpsForge 🛡️
 
-OpsForge is a production-quality Flask backend foundation for future enterprise feature work. The repository is intentionally architecture-first: it preserves a clean route -> service -> repository -> model -> database flow while keeping infrastructure, shared utilities, and business concepts separated.
+[![CI Pipeline](https://img.shields.io/github/actions/workflow/status/lokilokith/Devops/ci.yml?branch=main&label=CI%2FCD&style=flat-square)](https://github.com/lokilokith/Devops/actions)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/lokilokith/Devops/main/coverage.json&style=flat-square)](#)
+[![Python Version](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue?style=flat-square)](#)
+[![Flask](https://img.shields.io/badge/Framework-Flask-black?style=flat-square&logo=flask)](#)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square)](https://github.com/astral-sh/ruff)
+[![Security: Bandit](https://img.shields.io/badge/security-bandit-yellow.svg?style=flat-square)](https://github.com/PyCQA/bandit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-## Architecture Overview
+**OpsForge** is a mature, enterprise-grade DevSecOps Threat Intelligence Management Platform. Designed for modern security operations centers (SOCs) and infrastructure teams, OpsForge provides centralized resource governance, strict Role-Based Access Control (RBAC), and automated approval workflows.
 
-The frozen package layout is:
+## 🚀 Features
+- **Strict RBAC & Governance**: Granular, role-based access to security resources and API endpoints.
+- **DevSecOps Integrations**: Native threat intelligence workflow handling.
+- **Enterprise Security**: Production-ready JWT authentication, CORS, rate limiting, and SAST/SCA hardening.
+- **Audit Logging & Notifications**: Complete observability of system mutations.
 
-```text
-app/
-core/ or platform/   # Infrastructure only: config, extensions, logging, middleware, security, lifecycle
-shared/              # Reusable helpers, database access, exceptions, validators, schemas, responses
-domain/              # Business concepts only: constants, enums, events, interfaces, policies
-identity/            # Feature boundary
-roles/               # Feature boundary
-resources/           # Feature boundary
-access/              # Feature boundary
-approval/            # Feature boundary
+## 🏗 Architecture
+OpsForge follows a clean architecture pattern within a modular Flask monorepo.
 
-tests/
-docs/
-```
+<!-- Architecture diagram goes here -->
 
-`platform/` is the canonical name in this repository. `core/` is documented as an acceptable synonym, but renaming would add churn without improving runtime behavior.
+## 🛠 Tech Stack
+- **Backend**: Python 3.11+, Flask, Flask-RESTX, SQLAlchemy
+- **Database**: SQLite (Development) / PostgreSQL (Production)
+- **CI/CD**: GitHub Actions (Pytest, Mutmut, Bandit, Safety, Ruff)
+- **Infrastructure**: Docker & Docker Compose
 
-## Folder Responsibilities
+## 📚 Documentation
+Comprehensive documentation is available in the docs/ directory:
+- [System Architecture](docs/Architecture.md)
+- [API Design & Swagger](docs/API.md)
+- [Local Development Guide](docs/Development.md)
+- [Testing & Mutation Strategies](docs/Testing.md)
+- [Deployment Guide](docs/Deployment.md)
+- [Security Model & RBAC](docs/Security.md)
 
-- `app/`: application bootstrap and API assembly.
-- `platform/`: infrastructure only, including configuration, extension setup, logging, middleware, lifecycle hooks, and security scaffolding.
-- `shared/`: reusable cross-cutting code shared across features.
-- `domain/`: pure business concepts with no Flask, SQLAlchemy, or RESTX dependencies.
-- `identity/`, `roles/`, `resources/`, `access/`, `approval/`, `audit/`: isolated feature packages.
-- `tests/`: integration and unit tests for the current architecture.
-- `docs/`: architecture and development documentation.
+## ⚙️ Installation & Local Development
 
-## Dependency Rules
+### Using Docker (Recommended)
+`ash
+git clone https://github.com/lokilokith/Devops.git
+cd Devops/opsforge
+docker-compose up --build
+`
+The API will be available at http://localhost:5000/api/v1/.
 
-Allowed flow:
+### Manual Setup
+`ash
+python -m venv venv
+source venv/bin/activate
+pip install -e .[dev]
+flask run
+`
 
-Routes -> Services -> Repositories -> Models -> Database
+## 🧪 Testing & CI/CD
+OpsForge maintains >85% code coverage and utilizes mutation testing for strict security guarantees.
+`ash
+pytest --cov=app tests/
+mutmut run
+`
 
-Feature packages may depend on `shared/`, `platform/`, and `domain/`, but never on another feature package’s internal implementation.
+## 🛡 Security Scanning
+`ash
+bandit -r app/
+safety check -r requirements.txt
+pip-audit -r requirements.txt
+`
 
-## Development Guidelines
+## 🤝 Contributing
+Please review our [Contributing Guidelines](docs/Contributing.md) before submitting pull requests.
 
-- Keep one responsibility per package.
-- Prefer singular file names such as `service.py`, `repository.py`, `routes.py`, `schemas.py`, `validators.py`, and `exceptions.py` inside each feature.
-- Centralize reusable logic in `shared/`.
-- Keep infrastructure code in `platform/`.
-- Keep business concepts in `domain/`.
-- Preserve the existing layered flow and avoid feature-to-feature imports.
-
-## Feature Module Template
-
-```text
-feature_name/
-    __init__.py
-    models.py
-    repository.py
-    service.py
-    routes.py
-    schemas.py
-    validators.py
-    exceptions.py
-```
-
-## Validation
-
-The repository is validated through the full pytest suite and startup checks under `APP_ENV=testing`. Any architecture change should be followed by the same validation sequence before further edits.
-- `APP_ENV`: Set to `development`, `testing`, or `production`.
-
-## Docker Deployment (v0.6.0)
-
-OpsForge is fully containerized for both development and production environments.
-
-### Prerequisites
-- Docker
-- Docker Compose
-
-### Local Development
-To run OpsForge with live-reloading and direct PostgreSQL access (port 5432):
-```bash
-cp .env.example .env
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
-```
-
-### Production Deployment
-To run OpsForge in a production-like environment (Gunicorn, internal DB, optimized image):
-```bash
-cp .env.production.example .env
-docker compose up -d --build
-```
-
-### Useful Commands
-- **View logs:** `docker compose logs -f api`
-- **Run tests:** `docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm api pytest`
-- **Check health:** `curl http://localhost:8000/health/ready`
-- **Check version metadata:** `curl http://localhost:8000/version`
+## 📝 License
+Distributed under the MIT License. See LICENSE for more information.

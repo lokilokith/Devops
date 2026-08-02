@@ -61,7 +61,10 @@ def mock_service(monkeypatch):
 
 
 def test_list_users(client, mock_auth, mock_service):
-    mock_service.list_users.return_value = ([{"id": str(uuid4()), "username": "test"}], 1)
+    mock_service.list_users.return_value = (
+        [{"id": str(uuid4()), "username": "test"}],
+        1,
+    )
     res = client.get(
         "/users?skip=0&limit=10", headers={"Authorization": "Bearer token"}
     )

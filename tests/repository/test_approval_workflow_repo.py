@@ -1,5 +1,6 @@
-from uuid import uuid4
 """Tests for ApprovalWorkflow Repository."""
+
+from uuid import uuid4
 
 import pytest
 

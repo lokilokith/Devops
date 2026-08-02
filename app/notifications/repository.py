@@ -110,9 +110,7 @@ class NotificationRepository:
             query = self._session.query(Notification)
 
             if recipient_id:
-                query = query.filter(
-                    Notification.recipient_user_id == recipient_id
-                )
+                query = query.filter(Notification.recipient_user_id == recipient_id)
             if status:
                 query = query.filter(Notification.status == status)
             if type_:

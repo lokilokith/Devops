@@ -1,4 +1,5 @@
 from uuid import uuid4
+
 from app.identity.models import User, UserStatus
 from app.notifications.models import Notification, NotificationStatus, NotificationType
 from tests.api.test_decorators import create_mock_token

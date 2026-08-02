@@ -3,12 +3,11 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from flask_restx import Api
-from app.routes import CustomApi
 
 from app.api.errors import errors_bp
 from app.extensions import db
 from app.roles.routes import roles_ns
+from app.routes import CustomApi
 
 
 @pytest.fixture
@@ -62,7 +61,10 @@ def mock_service(monkeypatch):
 
 
 def test_list_roles(client, mock_auth, mock_service):
-    mock_service.list_roles.return_value = ([{"id": str(uuid4()), "role_name": "test"}], 1)
+    mock_service.list_roles.return_value = (
+        [{"id": str(uuid4()), "role_name": "test"}],
+        1,
+    )
     res = client.get(
         "/roles?skip=0&limit=10", headers={"Authorization": "Bearer token"}
     )

@@ -61,9 +61,10 @@ def mock_service(monkeypatch):
 
 
 def test_list_resources(client, mock_auth, mock_service):
-    mock_service.list_resources.return_value = ([
-        {"id": str(uuid4()), "resource_name": "test"}
-    ], 1)
+    mock_service.list_resources.return_value = (
+        [{"id": str(uuid4()), "resource_name": "test"}],
+        1,
+    )
     res = client.get(
         "/resources?skip=0&limit=10", headers={"Authorization": "Bearer token"}
     )

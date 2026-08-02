@@ -1,5 +1,7 @@
 from uuid import uuid4
+
 from sqlalchemy import select
+
 from app.identity.models import User, UserStatus
 from app.permissions.models import Permission, PermissionAction
 from app.role_permissions.models import RolePermission
@@ -24,12 +26,16 @@ def setup_admin_user(db_session, app):
     )
     db_session.add(r)
 
-    p1 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_ROLE_PERMISSIONS_MANAGE"))
+    p1 = db_session.scalar(
+        select(Permission).where(
+            Permission.permission_code == "PERM_ROLE_PERMISSIONS_MANAGE"
+        )
+    )
     if not p1:
         p1 = Permission(
             permission_code="PERM_ROLE_PERMISSIONS_MANAGE",
-        permission_name="role_permissions.manage",
-        action=PermissionAction.MANAGE,
+            permission_name="role_permissions.manage",
+            action=PermissionAction.MANAGE,
         )
         db_session.add(p1)
         db_session.flush()
@@ -68,12 +74,14 @@ def test_role_permissions_crud(client, db_session, app):
     headers = {"Authorization": f"Bearer {token}"}
 
     # Need a permission to assign
-    perm = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_TO_ASSIGN"))
+    perm = db_session.scalar(
+        select(Permission).where(Permission.permission_code == "PERM_TO_ASSIGN")
+    )
     if not perm:
         perm = Permission(
             permission_code="PERM_TO_ASSIGN",
-        permission_name="assign.me",
-        action=PermissionAction.READ,
+            permission_name="assign.me",
+            action=PermissionAction.READ,
         )
         db_session.add(perm)
         db_session.flush()

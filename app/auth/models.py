@@ -5,10 +5,10 @@ from datetime import datetime, timezone
 from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.platform.extensions import db
+from app.shared.database import Base
 
 
-class RevokedToken(db.Model):
+class RevokedToken(Base):
     """Represents a revoked JWT token."""
 
     __tablename__ = "revoked_tokens"

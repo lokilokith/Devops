@@ -1,8 +1,9 @@
-from uuid import uuid4
-from sqlalchemy import select
 """Integration tests for Approval Workflow API."""
 
+from uuid import uuid4
+
 import pytest
+from sqlalchemy import select
 
 from app.access_requests.models import AccessRequest, AccessRequestPriority
 from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
@@ -43,18 +44,26 @@ def auth_headers(test_user, db_session):
     # We must give the user permissions to pass the @requires_permission decorator
     from app.roles.models import Role, RoleType, UserRole
 
-    role = Role(role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}", role_type=RoleType.CUSTOM)
+    role = Role(
+        role_code=f"R_{uuid4().hex[:8]}",
+        role_name=f"Role {uuid4().hex[:8]}",
+        role_type=RoleType.CUSTOM,
+    )
     db_session.add(role)
     db_session.flush()
 
     perms = ["read", "approve", "reject", "cancel"]
     for p in perms:
-        perm = db_session.scalar(select(Permission).where(Permission.permission_code == f"PERM_APPROVAL_WORKFLOWS_{p.upper()}"))
+        perm = db_session.scalar(
+            select(Permission).where(
+                Permission.permission_code == f"PERM_APPROVAL_WORKFLOWS_{p.upper()}"
+            )
+        )
         if not perm:
             perm = Permission(
                 permission_code=f"PERM_APPROVAL_WORKFLOWS_{p.upper()}",
-            permission_name=f"approval_workflows.{p}",
-            action=PermissionAction(p),
+                permission_name=f"approval_workflows.{p}",
+                action=PermissionAction(p),
             )
             db_session.add(perm)
             db_session.flush()
@@ -62,12 +71,16 @@ def auth_headers(test_user, db_session):
         db_session.flush()
         db_session.add(RolePermission(role_id=role.id, permission_id=perm.id))
 
-    ar_perm = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_ACCESS_REQUESTS_READ"))
+    ar_perm = db_session.scalar(
+        select(Permission).where(
+            Permission.permission_code == "PERM_ACCESS_REQUESTS_READ"
+        )
+    )
     if not ar_perm:
         ar_perm = Permission(
             permission_code="PERM_ACCESS_REQUESTS_READ",
-        permission_name="access_requests.read",
-        action=PermissionAction("read"),
+            permission_name="access_requests.read",
+            action=PermissionAction("read"),
         )
         db_session.add(ar_perm)
         db_session.flush()

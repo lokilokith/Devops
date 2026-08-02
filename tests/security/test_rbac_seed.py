@@ -1,5 +1,7 @@
 """Tests for the RBAC Bootstrap Service."""
 
+import logging
+
 from sqlalchemy import select
 
 from app.identity.models import User
@@ -75,7 +77,9 @@ def test_seed_rbac_on_empty_tables(app, db_session):
         select(RolePermission).where(RolePermission.role_id == admin_role.id)
     ).all()
     assigned_perm_ids = {rp.permission_id for rp in role_perms}
-    default_perm_ids = {p.id for p in permissions if p.permission_code in expected_codes}
+    default_perm_ids = {
+        p.id for p in permissions if p.permission_code in expected_codes
+    }
     assert default_perm_ids.issubset(assigned_perm_ids)
 
     # Validate user role
@@ -117,12 +121,16 @@ def test_seed_rbac_partial_state(app, db_session):
     """Verify that if some resources or roles exist, it only creates the missing ones."""
     _create_admin_user(db_session)
 
-    partial_role = db_session.scalar(select(Role).where(Role.role_code == "SOC_ANALYST"))
+    partial_role = db_session.scalar(
+        select(Role).where(Role.role_code == "SOC_ANALYST")
+    )
     if not partial_role:
         partial_role = Role(role_code="SOC_ANALYST", role_name="SOC Analyst")
         db_session.add(partial_role)
 
-    partial_res = db_session.scalar(select(Resource).where(Resource.resource_code == "RESOURCE_USERS"))
+    partial_res = db_session.scalar(
+        select(Resource).where(Resource.resource_code == "RESOURCE_USERS")
+    )
     if not partial_res:
         partial_res = Resource(
             resource_code="RESOURCE_USERS", resource_name="User Management"
@@ -143,3 +151,136 @@ def test_seed_rbac_partial_state(app, db_session):
         select(Resource).where(Resource.resource_code == "RESOURCE_USERS")
     ).all()
     assert len(users_res) == 1
+
+
+def test_seed_verifies_data_integrity(app, db_session):
+    """Verify role/resource attributes are properly set (description, types, etc)."""
+    _create_admin_user(db_session)
+    seed_rbac()
+
+    # Check roles
+    from app.security.bootstrap.default_roles import DEFAULT_ROLES
+
+    for role_def in DEFAULT_ROLES:
+        role = db_session.scalar(
+            select(Role).where(Role.role_code == role_def["role_code"])
+        )
+        assert role is not None
+        assert role.role_name == role_def["role_name"]
+        assert role.description == role_def["description"]
+        from app.roles.models import RoleType
+
+        assert role.role_type == RoleType.SYSTEM
+
+    # Check resources
+    from app.security.bootstrap.default_resources import DEFAULT_RESOURCES
+
+    for res_def in DEFAULT_RESOURCES:
+        res = db_session.scalar(
+            select(Resource).where(Resource.resource_code == res_def["resource_code"])
+        )
+        assert res is not None
+        assert res.resource_name == res_def["resource_name"]
+        assert res.description == res_def["description"]
+        from app.resources.models import ResourceType
+
+        assert res.resource_type == ResourceType.APPLICATION
+
+
+def test_validate_bootstrap_fails_without_admin_role(app, db_session):
+    """Verify that validation fails if ADMIN role is removed after seed."""
+    import pytest
+
+    from app.security.bootstrap.rbac_seed_service import (
+        RBACSeedError,
+        _validate_bootstrap,
+    )
+
+    admin_role = db_session.scalar(select(Role).where(Role.role_code == "ADMIN"))
+    admin_role.role_code = "NOT_ADMIN"
+    db_session.flush()
+
+    try:
+        with pytest.raises(
+            RBACSeedError, match="Validation failed: Role 'ADMIN' not found"
+        ):
+            _validate_bootstrap()
+    finally:
+        admin_role.role_code = "ADMIN"
+        db_session.flush()
+
+
+def test_validate_bootstrap_fails_without_admin_user(app, db_session):
+    """Verify that validation fails if admin user is removed after seed."""
+    import pytest
+
+    from app.security.bootstrap.rbac_seed_service import (
+        RBACSeedError,
+        _validate_bootstrap,
+    )
+
+    admin_user = db_session.scalar(select(User).where(User.username == "admin"))
+    admin_user.username = "not_admin"
+    db_session.flush()
+
+    try:
+        with pytest.raises(
+            RBACSeedError, match="Validation failed: User 'admin' not found"
+        ):
+            _validate_bootstrap()
+    finally:
+        admin_user.username = "admin"
+        db_session.flush()
+
+
+def test_validate_bootstrap_fails_without_admin_assignment(app, db_session):
+    """Verify that validation fails if admin user loses ADMIN role."""
+    import pytest
+
+    from app.security.bootstrap.rbac_seed_service import (
+        RBACSeedError,
+        _validate_bootstrap,
+    )
+
+    admin_user = db_session.scalar(select(User).where(User.username == "admin"))
+    admin_role = db_session.scalar(select(Role).where(Role.role_code == "ADMIN"))
+    ur = db_session.scalar(
+        select(UserRole).where(
+            UserRole.user_id == admin_user.id, UserRole.role_id == admin_role.id
+        )
+    )
+
+    db_session.delete(ur)
+    db_session.flush()
+
+    try:
+        with pytest.raises(
+            RBACSeedError,
+            match="Validation failed: 'admin' user does not have 'ADMIN' role",
+        ):
+            _validate_bootstrap()
+    finally:
+        db_session.rollback()
+
+
+def test_seed_rbac_logging(app, db_session, caplog):
+    """Verify RBAC bootstrap emits important security logs."""
+
+    _create_admin_user(db_session)
+
+    with app.app_context():
+        caplog.set_level(logging.INFO, logger="opsforge.security.bootstrap")
+
+        success = seed_rbac()
+
+    assert success is True
+
+    messages = [
+        record.message
+        for record in caplog.records
+        if record.name == "opsforge.security.bootstrap"
+    ]
+
+    assert "Starting RBAC bootstrap..." in messages
+    assert "OK - RBAC bootstrap completed successfully" in messages
+    assert "OK - Bootstrap Validation Passed" in messages

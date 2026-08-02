@@ -52,6 +52,8 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(500)
     def handle_internal_server_error(error):
+        import traceback
+        traceback.print_exception(type(error), error, error.__traceback__)
         description = getattr(
             error, "description", "An unexpected system error occurred."
         )
@@ -68,6 +70,8 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(Exception)
     def handle_unexpected_exception(error):
+        import traceback
+        traceback.print_exception(type(error), error, error.__traceback__)
         app.logger.error(f"Unexpected Exception: {str(error)}", exc_info=True)
         return (
             jsonify(

@@ -61,7 +61,6 @@ def seed_rbac() -> bool:
         # 6. Validate the outcome after commit
         _validate_bootstrap()
 
-        print("RBAC Bootstrap Successful")
         return True
 
     except Exception as e:

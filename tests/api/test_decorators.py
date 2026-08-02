@@ -64,6 +64,7 @@ def test_login_required_invalid_format(app, client):
 
 
 def test_login_required_success(app, client, db_session):
+    app.config['PROPAGATE_EXCEPTIONS'] = True
     setup_app_routes(app)
     from uuid import uuid4
 

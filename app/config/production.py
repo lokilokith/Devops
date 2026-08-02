@@ -14,13 +14,16 @@ class ProductionConfig(BaseConfig):
 
     # Enforce secrets
     SECRET_KEY = os.environ.get("SECRET_KEY")
-    if os.environ.get("APP_ENV", "").lower() == "production" and (not SECRET_KEY or SECRET_KEY == "default-dev-key"):  # nosec - Checking for insecure default key
+    if os.environ.get("APP_ENV", "").lower() == "production" and (
+        not SECRET_KEY or SECRET_KEY == "default-dev-key"
+    ):  # nosec - Checking for insecure default key
         raise RuntimeError("SECRET_KEY must be set securely in production.")
 
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
     if os.environ.get("APP_ENV", "").lower() == "production" and (
         not JWT_SECRET_KEY
-        or JWT_SECRET_KEY == "super-secret-default-key-at-least-32-bytes"  # nosec - Checking for insecure default key
+        or JWT_SECRET_KEY
+        == "super-secret-default-key-at-least-32-bytes"  # nosec - Checking for insecure default key
     ):
         raise RuntimeError("JWT_SECRET_KEY must be set securely in production.")
 

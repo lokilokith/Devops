@@ -189,4 +189,7 @@ def test_role_permission_repr(sample_role, sample_permission):
     from app.role_permissions.models import RolePermission
 
     rp = RolePermission(role_id=sample_role.id, permission_id=sample_permission.id)
-    assert repr(rp) == f"<RolePermission(role_id={sample_role.id!r}, permission_id={sample_permission.id!r})>"
+    assert (
+        repr(rp)
+        == f"<RolePermission(role_id={sample_role.id!r}, permission_id={sample_permission.id!r})>"
+    )

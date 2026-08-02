@@ -55,7 +55,7 @@ def app():
 
     db.init_app(flask_app)
     with flask_app.app_context():
-        from app.auth.models import RevokedToken
+
         db.create_all()
         yield flask_app
         db.session.remove()

@@ -1,6 +1,6 @@
-from uuid import uuid4
+from uuid import UUID, uuid4
+
 from sqlalchemy import select
-from uuid import UUID
 
 from app.identity.models import User, UserStatus
 from app.permissions.models import Permission, PermissionAction
@@ -27,39 +27,47 @@ def setup_admin_user(db_session, app):
     )
     db_session.add(r)
 
-    p1 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_RESOURCES_READ"))
+    p1 = db_session.scalar(
+        select(Permission).where(Permission.permission_code == "PERM_RESOURCES_READ")
+    )
     if not p1:
         p1 = Permission(
             permission_code="PERM_RESOURCES_READ",
-        permission_name="resources.read",
-        action=PermissionAction.READ,
+            permission_name="resources.read",
+            action=PermissionAction.READ,
         )
         db_session.add(p1)
         db_session.flush()
-    p2 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_RESOURCES_CREATE"))
+    p2 = db_session.scalar(
+        select(Permission).where(Permission.permission_code == "PERM_RESOURCES_CREATE")
+    )
     if not p2:
         p2 = Permission(
             permission_code="PERM_RESOURCES_CREATE",
-        permission_name="resources.create",
-        action=PermissionAction.CREATE,
+            permission_name="resources.create",
+            action=PermissionAction.CREATE,
         )
         db_session.add(p2)
         db_session.flush()
-    p3 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_RESOURCES_UPDATE"))
+    p3 = db_session.scalar(
+        select(Permission).where(Permission.permission_code == "PERM_RESOURCES_UPDATE")
+    )
     if not p3:
         p3 = Permission(
             permission_code="PERM_RESOURCES_UPDATE",
-        permission_name="resources.update",
-        action=PermissionAction.UPDATE,
+            permission_name="resources.update",
+            action=PermissionAction.UPDATE,
         )
         db_session.add(p3)
         db_session.flush()
-    p4 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_RESOURCES_DELETE"))
+    p4 = db_session.scalar(
+        select(Permission).where(Permission.permission_code == "PERM_RESOURCES_DELETE")
+    )
     if not p4:
         p4 = Permission(
             permission_code="PERM_RESOURCES_DELETE",
-        permission_name="resources.delete",
-        action=PermissionAction.DELETE,
+            permission_name="resources.delete",
+            action=PermissionAction.DELETE,
         )
         db_session.add(p4)
         db_session.flush()

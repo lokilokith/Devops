@@ -62,9 +62,10 @@ def mock_service(monkeypatch):
 
 def test_list_permissions_for_role(client, mock_auth, mock_service):
     role_id = str(uuid4())
-    mock_service.list_permissions_for_role.return_value = ([
-        {"id": str(uuid4()), "permission_name": "test"}
-    ], 1)
+    mock_service.list_permissions_for_role.return_value = (
+        [{"id": str(uuid4()), "permission_name": "test"}],
+        1,
+    )
     res = client.get(
         f"/roles/{role_id}/permissions", headers={"Authorization": "Bearer token"}
     )
@@ -200,9 +201,10 @@ def test_remove_permission_not_found(client, mock_auth, mock_service):
 
 def test_list_roles_for_permission(client, mock_auth, mock_service):
     perm_id = str(uuid4())
-    mock_service.list_roles_for_permission.return_value = ([
-        {"id": str(uuid4()), "role_name": "test"}
-    ], 1)
+    mock_service.list_roles_for_permission.return_value = (
+        [{"id": str(uuid4()), "role_name": "test"}],
+        1,
+    )
     res = client.get(
         f"/permissions/{perm_id}/roles", headers={"Authorization": "Bearer token"}
     )

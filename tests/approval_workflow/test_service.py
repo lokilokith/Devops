@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+from werkzeug.exceptions import Forbidden
 
 from app.access_requests.models import AccessRequestStatus
 from app.approval_workflow.exceptions import (
@@ -10,8 +11,6 @@ from app.approval_workflow.exceptions import (
 from app.approval_workflow.models import ApprovalStatus
 from app.user_roles.exceptions import UserRoleAlreadyExistsError
 
-
-from werkzeug.exceptions import Forbidden
 
 def test_create_initial_workflow(approval_service, sample_users, sample_request):
     u1, u2 = sample_users

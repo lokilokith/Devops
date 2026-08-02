@@ -18,6 +18,8 @@ from app.auth.exceptions import (
     UserInactiveError,
 )
 from app.identity.repository import IdentityRepository
+from app.auth.models import RevokedToken
+from app.platform.extensions import db
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +101,6 @@ class AuthService:
     def verify_token(self, token: str, expected_type: str = "access") -> dict:
         try:
             payload = jwt.decode(token, self._get_secret(), algorithms=["HS256"])
-
-            from app.auth.models import RevokedToken
-            from app.platform.extensions import db
 
             jti = payload.get("jti")
             if jti:

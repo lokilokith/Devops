@@ -125,16 +125,19 @@ def test_revoke_token_exception(auth_service, monkeypatch, db_session):
         raise Exception("DB Error")
 
     monkeypatch.setattr(db_session, "add", mock_add)
-    
+
     # We need a valid JWT token payload to get past the decode check
+    import datetime
+
     import jwt
     from flask import current_app
-    import datetime
+
     payload = {
         "jti": "fake-jti",
         "sub": "user_id",
         "type": "access",
-        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1),
+        "exp": datetime.datetime.now(datetime.timezone.utc)
+        + datetime.timedelta(hours=1),
         "iat": datetime.datetime.now(datetime.timezone.utc),
     }
     secret = current_app.config.get("JWT_SECRET_KEY")

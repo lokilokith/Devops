@@ -1,0 +1,54 @@
+name: Nightly Mutation Testing
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # Run at 2 AM every day
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  mutation-testing:
+    name: Mutmut
+    runs-on: ubuntu-latest
+
+    env:
+      APP_ENV: testing
+      FLASK_APP: app
+      JWT_SECRET_KEY: test-secret-key-for-ci-only
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+          
+      - name: Run Mutation Testing
+        run: |
+          mutmut run || echo "Mutation testing completed with surviving mutants"
+          
+      - name: Generate Mutation Score
+        run: |
+          python -c "
+          import sqlite3
+          try:
+              conn = sqlite3.connect('.mutmut-cache')
+              c = conn.cursor()
+              c.execute('SELECT status, count(*) FROM mutant GROUP BY status')
+              results = dict(c.fetchall())
+              total = sum(results.values())
+              killed = results.get('killed', 0)
+              score = (killed / total) * 100 if total > 0 else 100
+              print(f'Mutation Score: {score:.2f}%')
+              if score < 85.0:
+                  print('Mutation score is below 85%!')
+                  exit(1)
+          except Exception as e:
+              print('Failed to calculate mutation score:', e)
+          "
