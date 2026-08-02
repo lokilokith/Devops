@@ -269,9 +269,17 @@ def test_seed_rbac_logging(app, db_session, caplog):
     _create_admin_user(db_session)
 
     with app.app_context():
+        # Temporarily enable propagation for caplog
+        opsforge_logger = logging.getLogger("opsforge")
+        original_propagate = opsforge_logger.propagate
+        opsforge_logger.propagate = True
+
         caplog.set_level(logging.INFO, logger="opsforge.security.bootstrap")
 
-        success = seed_rbac()
+        try:
+            success = seed_rbac()
+        finally:
+            opsforge_logger.propagate = original_propagate
 
     assert success is True
 
