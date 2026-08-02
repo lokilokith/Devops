@@ -15,7 +15,7 @@ from app.notifications.repository import (
 
 def test_create_notification(app, db_session: Session):
     repo = NotificationRepository(db_session)
-    user_id = str(uuid.uuid4())
+    user_id = uuid.uuid4()
 
     n = Notification(
         recipient_user_id=user_id,
@@ -35,7 +35,7 @@ def test_create_notification(app, db_session: Session):
 
 def test_get_by_id(app, db_session: Session):
     repo = NotificationRepository(db_session)
-    user_id = str(uuid.uuid4())
+    user_id = uuid.uuid4()
 
     n = Notification(
         recipient_user_id=user_id,
@@ -53,7 +53,7 @@ def test_get_by_id(app, db_session: Session):
 
 def test_count_unread_and_mark_read(app, db_session: Session):
     repo = NotificationRepository(db_session)
-    user_id = str(uuid.uuid4())
+    user_id = uuid.uuid4()
 
     for i in range(3):
         repo.create_notification(
@@ -66,10 +66,10 @@ def test_count_unread_and_mark_read(app, db_session: Session):
         )
     db_session.commit()
 
-    assert repo.count_unread(uuid.UUID(user_id)) == 3
+    assert repo.count_unread(user_id) == 3
 
-    count = repo.mark_all_as_read(uuid.UUID(user_id))
+    count = repo.mark_all_as_read(user_id)
     db_session.commit()
     assert count == 3
 
-    assert repo.count_unread(uuid.UUID(user_id)) == 0
+    assert repo.count_unread(user_id) == 0

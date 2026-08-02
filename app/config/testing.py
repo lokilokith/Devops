@@ -1,5 +1,8 @@
 """OpsForge Testing Configuration."""
 
+import os
+import tempfile
+
 from app.config.base import BaseConfig
 
 
@@ -8,4 +11,7 @@ class TestingConfig(BaseConfig):
 
     TESTING = True
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(
+        tempfile.gettempdir(), "opsforge_test.db"
+    )
+    SQLALCHEMY_ENGINE_OPTIONS = {}

@@ -1,3 +1,5 @@
+from uuid import uuid4
+from sqlalchemy import select
 """End-to-End Test for Approval Workflow using Pytest."""
 
 from uuid import UUID
@@ -21,34 +23,34 @@ def test_e2e_approval_workflow_full_lifecycle(client, db_session):
 
     # Create Admin/Approver user
     admin_user = User(
-        username="e2e_admin",
-        email="admin@e2e.com",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Admin E2E",
-        employee_id="A01",
+        employee_id=f"E_{uuid4().hex[:8]}",
     )
     db_session.add(admin_user)
 
     # Create standard user
     standard_user = User(
-        username="e2e_user",
-        email="user@e2e.com",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Standard E2E",
-        employee_id="S01",
+        employee_id=f"E_{uuid4().hex[:8]}",
     )
     db_session.add(standard_user)
 
     # Create role that standard user will request
-    target_role = Role(role_code="E2E_TARGET_ROLE", role_name="E2E Target Role")
+    target_role = Role(role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}")
     db_session.add(target_role)
 
     # Create roles with permissions for the tests
     admin_role = Role(
-        role_code="E2E_ADMIN_ROLE",
-        role_name="E2E Admin Role",
+        role_code=f"R_{uuid4().hex[:8]}",
+        role_name=f"Role {uuid4().hex[:8]}",
         role_type=RoleType.CUSTOM,
     )
     user_role = Role(
-        role_code="E2E_USER_ROLE", role_name="E2E User Role", role_type=RoleType.CUSTOM
+        role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}", role_type=RoleType.CUSTOM
     )
     db_session.add(admin_role)
     db_session.add(user_role)
@@ -57,25 +59,37 @@ def test_e2e_approval_workflow_full_lifecycle(client, db_session):
     # Add permissions to admin role
     perms = ["read", "approve", "reject", "cancel"]
     for p in perms:
-        perm = Permission(
-            permission_code=f"PERM_APPROVAL_WORKFLOWS_{p.upper()}",
+        perm = db_session.scalar(select(Permission).where(Permission.permission_code == f"PERM_APPROVAL_WORKFLOWS_{p.upper()}"))
+        if not perm:
+            perm = Permission(
+                permission_code=f"PERM_APPROVAL_WORKFLOWS_{p.upper()}",
             permission_name=f"approval_workflows.{p}",
             action=PermissionAction(p),
-        )
+            )
+            db_session.add(perm)
+            db_session.flush()
         db_session.add(perm)
         db_session.flush()
         db_session.add(RolePermission(role_id=admin_role.id, permission_id=perm.id))
 
-    ar_read_perm = Permission(
-        permission_code="PERM_ACCESS_REQUESTS_READ",
+    ar_read_perm = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_ACCESS_REQUESTS_READ"))
+    if not ar_read_perm:
+        ar_read_perm = Permission(
+            permission_code="PERM_ACCESS_REQUESTS_READ",
         permission_name="access_requests.read",
         action=PermissionAction("read"),
-    )
-    ar_create_perm = Permission(
-        permission_code="PERM_ACCESS_REQUESTS_CREATE",
+        )
+        db_session.add(ar_read_perm)
+        db_session.flush()
+    ar_create_perm = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_ACCESS_REQUESTS_CREATE"))
+    if not ar_create_perm:
+        ar_create_perm = Permission(
+            permission_code="PERM_ACCESS_REQUESTS_CREATE",
         permission_name="access_requests.create",
         action=PermissionAction("create"),
-    )
+        )
+        db_session.add(ar_create_perm)
+        db_session.flush()
     db_session.add(ar_read_perm)
     db_session.add(ar_create_perm)
     db_session.flush()

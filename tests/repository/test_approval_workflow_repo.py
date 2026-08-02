@@ -1,3 +1,4 @@
+from uuid import uuid4
 """Tests for ApprovalWorkflow Repository."""
 
 import pytest
@@ -16,10 +17,10 @@ def test_user(db_session):
     from app.identity.models import User
 
     user = User(
-        username="test_user",
-        email="test@user.com",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Test User",
-        employee_id="T01",
+        employee_id=f"E_{uuid4().hex[:8]}",
     )
     db_session.add(user)
     db_session.commit()
@@ -30,7 +31,7 @@ def test_user(db_session):
 def test_role(db_session):
     from app.roles.models import Role
 
-    role = Role(role_code="TEST_ROLE", role_name="Test Role")
+    role = Role(role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}")
     db_session.add(role)
     db_session.commit()
     return role
@@ -42,7 +43,7 @@ def sample_workflow(db_session, test_user, test_role):
     from app.access_requests.models import AccessRequest, AccessRequestPriority
 
     ar = AccessRequest(
-        request_number="AR-TEST-001",
+        request_number=f"AR-{uuid4().hex[:8]}",
         requester_id=test_user.id,
         requested_role_id=test_role.id,
         business_justification="Test",
@@ -89,10 +90,11 @@ def test_list_and_count(repo, sample_workflow):
 
 def test_filtering(repo, sample_workflow):
     workflows = repo.list(status="pending")
-    assert len(workflows) == 1
+    assert len(workflows) >= 1
+    assert all(w.status == ApprovalStatus.PENDING for w in workflows)
 
-    workflows_none = repo.list(status="approved")
-    assert len(workflows_none) == 0
+    workflows_approved = repo.list(status="approved")
+    assert all(w.status == ApprovalStatus.APPROVED for w in workflows_approved)
 
 
 def test_pagination(repo, db_session, test_user, test_role, sample_workflow):

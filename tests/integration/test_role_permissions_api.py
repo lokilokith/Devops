@@ -1,3 +1,5 @@
+from uuid import uuid4
+from sqlalchemy import select
 from app.identity.models import User, UserStatus
 from app.permissions.models import Permission, PermissionAction
 from app.role_permissions.models import RolePermission
@@ -6,27 +8,31 @@ from app.roles.models import Role, RoleStatus, RoleType, UserRole
 
 def setup_admin_user(db_session, app):
     u = User(
-        employee_id="ADM4",
-        username="admin_rp_int",
-        email="admin_rp@test.com",
+        employee_id=f"E_{uuid4().hex[:8]}",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Admin",
         status=UserStatus.ACTIVE,
     )
     db_session.add(u)
 
     r = Role(
-        role_code="ADMIN_RP_INT",
-        role_name="Admin RP Int",
+        role_code=f"R_{uuid4().hex[:8]}",
+        role_name=f"Role {uuid4().hex[:8]}",
         role_type=RoleType.SYSTEM,
         status=RoleStatus.ACTIVE,
     )
     db_session.add(r)
 
-    p1 = Permission(
-        permission_code="PERM_ROLE_PERMISSIONS_MANAGE",
+    p1 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_ROLE_PERMISSIONS_MANAGE"))
+    if not p1:
+        p1 = Permission(
+            permission_code="PERM_ROLE_PERMISSIONS_MANAGE",
         permission_name="role_permissions.manage",
         action=PermissionAction.MANAGE,
-    )
+        )
+        db_session.add(p1)
+        db_session.flush()
     db_session.add_all([p1])
 
     db_session.commit()
@@ -43,9 +49,9 @@ def setup_admin_user(db_session, app):
 
 def setup_limited_user(db_session, app):
     u = User(
-        employee_id="LIM4",
-        username="limited_rp_int",
-        email="lim_rp_int@test.com",
+        employee_id=f"E_{uuid4().hex[:8]}",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Limited",
         status=UserStatus.ACTIVE,
     )
@@ -62,11 +68,15 @@ def test_role_permissions_crud(client, db_session, app):
     headers = {"Authorization": f"Bearer {token}"}
 
     # Need a permission to assign
-    perm = Permission(
-        permission_code="PERM_TO_ASSIGN",
+    perm = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_TO_ASSIGN"))
+    if not perm:
+        perm = Permission(
+            permission_code="PERM_TO_ASSIGN",
         permission_name="assign.me",
         action=PermissionAction.READ,
-    )
+        )
+        db_session.add(perm)
+        db_session.flush()
     db_session.add(perm)
     db_session.commit()
 

@@ -29,7 +29,9 @@ def create_mock_token(
     if invalid:
         return "invalid.token.here"
 
+    from uuid import uuid4
     payload = {
+        "jti": str(uuid4()),
         "sub": str(user_id),
         "type": token_type,
         "exp": datetime.datetime.now(datetime.timezone.utc)
@@ -40,9 +42,11 @@ def create_mock_token(
     token = jwt.encode(payload, app.config["JWT_SECRET_KEY"], algorithm="HS256")
 
     if revoked:
-        from app.auth.service import _revoked_tokens
-
-        _revoked_tokens.add(token)
+        from app.auth.service import AuthService
+        from app.identity.repository import IdentityRepository
+        from app.platform.extensions import db
+        auth_service = AuthService(IdentityRepository(db.session))
+        auth_service.revoke_token(token)
 
     return token
 

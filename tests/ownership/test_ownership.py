@@ -3,7 +3,7 @@ def test_owner_can_read_notification_returns_200(
 ):
     from tests.fixtures.factories import NotificationFactory
 
-    notif = NotificationFactory(recipient_user_id=str(normal_user.id))
+    notif = NotificationFactory(recipient_user_id=normal_user.id)
     db_session.add(notif)
     db_session.commit()
 
@@ -20,7 +20,7 @@ def test_non_owner_cannot_read_notification_returns_403(
     from tests.fixtures.factories import NotificationFactory
 
     # Notif belongs to admin
-    notif = NotificationFactory(recipient_user_id=str(admin_user.id))
+    notif = NotificationFactory(recipient_user_id=admin_user.id)
     db_session.add(notif)
     db_session.commit()
 

@@ -34,11 +34,18 @@ notification_single_response_model = Model(
     },
 )
 
+unread_count_data_model = Model(
+    "UnreadCountData",
+    {
+        "unread_count": fields.Integer(description="Unread Count"),
+    },
+)
+
 notification_unread_count_model = Model(
     "NotificationUnreadCountResponse",
     {
         "success": fields.Boolean(default=True),
-        "data": fields.Integer(description="Unread Count"),
+        "data": fields.Nested(unread_count_data_model),
     },
 )
 

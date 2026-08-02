@@ -102,7 +102,8 @@ def test_get_role_repo_error(service, mock_repo):
 
 def test_list_roles_success(service, mock_repo):
     mock_repo.list.return_value = ["r1", "r2"]
-    assert service.list_roles(0, 10) == ["r1", "r2"]
+    mock_repo.count.return_value = 2
+    assert service.list_roles(0, 10) == (["r1", "r2"], 2)
 
 
 def test_list_roles_repo_error(service, mock_repo):

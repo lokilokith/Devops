@@ -44,8 +44,10 @@ class ResourceCollection(Resource):
             request.args.get("skip", 0), request.args.get("limit", DEFAULT_PAGE_SIZE)
         )
         service = get_service()
-        resources = service.list_resources(skip=skip, limit=limit)
-        return success_response(data=resources)
+        resources, total = service.list_resources(skip=skip, limit=limit)
+        return success_response(
+            data=resources, meta={"total": total, "skip": skip, "limit": limit}
+        )
 
     @resources_ns.doc(summary="Create resource", description="Create a new resource.")
     @resources_ns.expect(resource_create_model)

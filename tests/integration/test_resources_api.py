@@ -1,3 +1,5 @@
+from uuid import uuid4
+from sqlalchemy import select
 from uuid import UUID
 
 from app.identity.models import User, UserStatus
@@ -9,42 +11,58 @@ from app.roles.models import Role, RoleStatus, RoleType, UserRole
 
 def setup_admin_user(db_session, app):
     u = User(
-        employee_id="ADM2",
-        username="admin_res_int",
-        email="admin_res@test.com",
+        employee_id=f"E_{uuid4().hex[:8]}",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Admin",
         status=UserStatus.ACTIVE,
     )
     db_session.add(u)
 
     r = Role(
-        role_code="ADMIN_RES_INT",
-        role_name="Admin Res Int",
+        role_code=f"R_{uuid4().hex[:8]}",
+        role_name=f"Role {uuid4().hex[:8]}",
         role_type=RoleType.SYSTEM,
         status=RoleStatus.ACTIVE,
     )
     db_session.add(r)
 
-    p1 = Permission(
-        permission_code="PERM_RESOURCES_READ",
+    p1 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_RESOURCES_READ"))
+    if not p1:
+        p1 = Permission(
+            permission_code="PERM_RESOURCES_READ",
         permission_name="resources.read",
         action=PermissionAction.READ,
-    )
-    p2 = Permission(
-        permission_code="PERM_RESOURCES_CREATE",
+        )
+        db_session.add(p1)
+        db_session.flush()
+    p2 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_RESOURCES_CREATE"))
+    if not p2:
+        p2 = Permission(
+            permission_code="PERM_RESOURCES_CREATE",
         permission_name="resources.create",
         action=PermissionAction.CREATE,
-    )
-    p3 = Permission(
-        permission_code="PERM_RESOURCES_UPDATE",
+        )
+        db_session.add(p2)
+        db_session.flush()
+    p3 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_RESOURCES_UPDATE"))
+    if not p3:
+        p3 = Permission(
+            permission_code="PERM_RESOURCES_UPDATE",
         permission_name="resources.update",
         action=PermissionAction.UPDATE,
-    )
-    p4 = Permission(
-        permission_code="PERM_RESOURCES_DELETE",
+        )
+        db_session.add(p3)
+        db_session.flush()
+    p4 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_RESOURCES_DELETE"))
+    if not p4:
+        p4 = Permission(
+            permission_code="PERM_RESOURCES_DELETE",
         permission_name="resources.delete",
         action=PermissionAction.DELETE,
-    )
+        )
+        db_session.add(p4)
+        db_session.flush()
     db_session.add_all([p1, p2, p3, p4])
 
     db_session.commit()
@@ -64,9 +82,9 @@ def setup_admin_user(db_session, app):
 
 def setup_limited_user(db_session, app):
     u = User(
-        employee_id="LIM2",
-        username="limited_res_int",
-        email="lim_res_int@test.com",
+        employee_id=f"E_{uuid4().hex[:8]}",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Limited",
         status=UserStatus.ACTIVE,
     )

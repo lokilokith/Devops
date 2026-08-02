@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from flask_restx import Api
+from app.routes import CustomApi
 
 from app.api.errors import errors_bp
 from app.extensions import db
@@ -22,7 +23,7 @@ def app():
 
     flask_app.register_blueprint(errors_bp)
 
-    api = Api(flask_app)
+    api = CustomApi(flask_app)
     api.add_namespace(permissions_ns, path="/permissions")
 
     db.init_app(flask_app)
@@ -61,9 +62,9 @@ def mock_service(monkeypatch):
 
 
 def test_list_permissions(client, mock_auth, mock_service):
-    mock_service.list_permissions.return_value = [
+    mock_service.list_permissions.return_value = ([
         {"id": str(uuid4()), "permission_name": "test"}
-    ]
+    ], 1)
     res = client.get(
         "/permissions?skip=0&limit=10", headers={"Authorization": "Bearer token"}
     )
@@ -209,7 +210,7 @@ def test_invalid_uuid(client, mock_auth):
         "/permissions/invalid-uuid", headers={"Authorization": "Bearer token"}
     )
     assert res.status_code == 422
-    assert "Invalid UUID" in res.json["message"]
+    assert "Invalid UUID" in res.json["errors"][0]
 
 
 def test_validation_errors(client, mock_auth, mock_service):
@@ -219,6 +220,7 @@ def test_validation_errors(client, mock_auth, mock_service):
         json={"permission_code": "bad!", "permission_name": "Permission"},
         headers={"Authorization": "Bearer token"},
     )
+    print(res.json)
     assert res.status_code == 422
 
     # Permission name too short
@@ -264,10 +266,10 @@ def test_validation_errors(client, mock_auth, mock_service):
 
     # Pagination invalid
     res = client.get("/permissions?skip=-1", headers={"Authorization": "Bearer token"})
-    assert res.status_code == 422
+    assert res.status_code == 400
 
     res = client.get("/permissions?skip=abc", headers={"Authorization": "Bearer token"})
-    assert res.status_code == 422
+    assert res.status_code == 400
 
 
 def test_get_service(app):

@@ -102,7 +102,8 @@ def test_get_resource_repo_error(service, mock_repo):
 
 def test_list_resources_success(service, mock_repo):
     mock_repo.list.return_value = ["r1", "r2"]
-    assert service.list_resources(0, 10) == ["r1", "r2"]
+    mock_repo.count.return_value = 2
+    assert service.list_resources(0, 10) == (["r1", "r2"], 2)
 
 
 def test_list_resources_repo_error(service, mock_repo):

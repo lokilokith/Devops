@@ -7,7 +7,7 @@ from flask import Flask
 from app.api.errors import errors_bp
 from app.extensions import db
 from app.resources.routes import resources_ns
-from app.routes.__init__ import CustomApi as Api
+from app.routes.__init__ import CustomApi
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def app():
 
     flask_app.register_blueprint(errors_bp)
 
-    api = Api(flask_app)
+    api = CustomApi(flask_app)
     api.add_namespace(resources_ns, path="/resources")
 
     db.init_app(flask_app)
@@ -61,9 +61,9 @@ def mock_service(monkeypatch):
 
 
 def test_list_resources(client, mock_auth, mock_service):
-    mock_service.list_resources.return_value = [
+    mock_service.list_resources.return_value = ([
         {"id": str(uuid4()), "resource_name": "test"}
-    ]
+    ], 1)
     res = client.get(
         "/resources?skip=0&limit=10", headers={"Authorization": "Bearer token"}
     )
@@ -278,10 +278,10 @@ def test_validation_errors(client, mock_auth, mock_service):
 
     # Pagination invalid
     res = client.get("/resources?skip=-1", headers={"Authorization": "Bearer token"})
-    assert res.status_code == 422
+    assert res.status_code == 400
 
     res = client.get("/resources?skip=abc", headers={"Authorization": "Bearer token"})
-    assert res.status_code == 422
+    assert res.status_code == 400
 
 
 def test_get_service(app):

@@ -66,7 +66,7 @@ class NotificationRepository:
         try:
             return (
                 self._session.query(Notification)
-                .filter_by(recipient_user_id=str(user_id), is_read=False)
+                .filter_by(recipient_user_id=user_id, is_read=False)
                 .count()
             )
         except SQLAlchemyError as err:
@@ -78,7 +78,7 @@ class NotificationRepository:
         try:
             notifs = (
                 self._session.query(Notification)
-                .filter_by(recipient_user_id=str(user_id), is_read=False)
+                .filter_by(recipient_user_id=user_id, is_read=False)
                 .all()
             )
             count = len(notifs)
@@ -111,7 +111,7 @@ class NotificationRepository:
 
             if recipient_id:
                 query = query.filter(
-                    Notification.recipient_user_id == str(recipient_id)
+                    Notification.recipient_user_id == recipient_id
                 )
             if status:
                 query = query.filter(Notification.status == status)

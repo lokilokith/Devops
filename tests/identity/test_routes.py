@@ -61,10 +61,11 @@ def mock_service(monkeypatch):
 
 
 def test_list_users(client, mock_auth, mock_service):
-    mock_service.list_users.return_value = [{"id": str(uuid4()), "username": "test"}]
+    mock_service.list_users.return_value = ([{"id": str(uuid4()), "username": "test"}], 1)
     res = client.get(
         "/users?skip=0&limit=10", headers={"Authorization": "Bearer token"}
     )
+    print(res.json)
     assert res.status_code == 200
     assert res.json["success"] is True
     assert len(res.json["data"]) == 1

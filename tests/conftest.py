@@ -15,6 +15,17 @@ def app():
     os.environ["SECRET_KEY"] = "super-secret-key-for-testing-12345678"
     app = create_app()
     with app.app_context():
+        from app.identity.models import User
+        from app.roles.models import Role, UserRole
+        from app.permissions.models import Permission
+        from app.role_permissions.models import RolePermission
+        from app.resources.models import Resource
+        from app.auth.models import RevokedToken
+        from app.approval_workflow.models import ApprovalWorkflow
+        from app.access_requests.models import AccessRequest
+        from app.notifications.models import Notification
+        from app.audit.models import AuditLog
+        
         _db.create_all()
         # Ensure RBAC is seeded
         from app.security.bootstrap.rbac_seed_service import seed_rbac

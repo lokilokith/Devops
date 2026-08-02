@@ -1,3 +1,4 @@
+from sqlalchemy import select
 """Integration tests for the Access Requests API."""
 
 from uuid import uuid4
@@ -16,10 +17,11 @@ from app.roles.models import Role, RoleType, UserRole
 def auth_setup(db_session, app):
     """Setup a user with access_requests permissions and return their token."""
     # Create user
+    unique_id = uuid4().hex[:8]
     user = User(
-        employee_id="TEST_001",
-        username="testuser",
-        email="test@local",
+        employee_id=f"TEST_{unique_id}",
+        username=f"testuser_{unique_id}",
+        email=f"test_{unique_id}@local",
         full_name="Test User 1",
         status=UserStatus.ACTIVE,
     )
@@ -28,17 +30,21 @@ def auth_setup(db_session, app):
     db_session.add(user)
 
     # Create Role
-    role = Role(role_code="TEST_ROLE", role_name="Test Role", role_type=RoleType.CUSTOM)
+    role = Role(role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}", role_type=RoleType.CUSTOM)
     db_session.add(role)
     db_session.flush()
 
     perms = ["create", "read", "approve", "reject", "cancel"]
     for p in perms:
-        perm = Permission(
-            permission_code=f"PERM_ACCESS_REQUESTS_{p.upper()}",
+        perm = db_session.scalar(select(Permission).where(Permission.permission_code == f"PERM_ACCESS_REQUESTS_{p.upper()}"))
+        if not perm:
+            perm = Permission(
+                permission_code=f"PERM_ACCESS_REQUESTS_{p.upper()}",
             permission_name=f"access_requests.{p}",
             action=PermissionAction(p),
-        )
+            )
+            db_session.add(perm)
+            db_session.flush()
         db_session.add(perm)
         db_session.flush()
         db_session.add(RolePermission(role_id=role.id, permission_id=perm.id))
@@ -86,10 +92,11 @@ def test_list_access_requests(client, db_session, auth_setup):
 def test_approve_access_request_forbidden(client, db_session):
     """Test approving without approve permission."""
     # Create a user WITHOUT approve permission
+    unique_id = uuid4().hex[:8]
     user = User(
-        employee_id="TEST_002",
-        username="testuser2",
-        email="test2@local",
+        employee_id=f"TEST_{unique_id}",
+        username=f"testuser_{unique_id}",
+        email=f"test_{unique_id}@local",
         full_name="Test User 2",
         status=UserStatus.ACTIVE,
     )

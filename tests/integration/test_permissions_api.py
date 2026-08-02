@@ -1,3 +1,5 @@
+from uuid import uuid4
+from sqlalchemy import select
 from app.identity.models import User, UserStatus
 from app.permissions.models import Permission, PermissionAction, PermissionStatus
 from app.role_permissions.models import RolePermission
@@ -7,43 +9,59 @@ from app.roles.models import Role, RoleStatus, RoleType, UserRole
 def setup_admin_user(db_session, app):
     # Create an admin user with permission to hit the endpoint
     u = User(
-        employee_id="ADM1",
-        username="admin_int",
-        email="admin_int@test.com",
+        employee_id=f"E_{uuid4().hex[:8]}",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Admin",
         status=UserStatus.ACTIVE,
     )
     db_session.add(u)
 
     r = Role(
-        role_code="ADMIN_INT",
-        role_name="Admin Integration",
+        role_code=f"R_{uuid4().hex[:8]}",
+        role_name=f"Role {uuid4().hex[:8]}",
         role_type=RoleType.SYSTEM,
         status=RoleStatus.ACTIVE,
     )
     db_session.add(r)
 
     # We need permissions for "permissions" resource
-    p1 = Permission(
-        permission_code="PERM_PERMISSIONS_READ",
+    p1 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_PERMISSIONS_READ"))
+    if not p1:
+        p1 = Permission(
+            permission_code="PERM_PERMISSIONS_READ",
         permission_name="permissions.read",
         action=PermissionAction.READ,
-    )
-    p2 = Permission(
-        permission_code="PERM_PERMISSIONS_CREATE",
+        )
+        db_session.add(p1)
+        db_session.flush()
+    p2 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_PERMISSIONS_CREATE"))
+    if not p2:
+        p2 = Permission(
+            permission_code="PERM_PERMISSIONS_CREATE",
         permission_name="permissions.create",
         action=PermissionAction.CREATE,
-    )
-    p3 = Permission(
-        permission_code="PERM_PERMISSIONS_UPDATE",
+        )
+        db_session.add(p2)
+        db_session.flush()
+    p3 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_PERMISSIONS_UPDATE"))
+    if not p3:
+        p3 = Permission(
+            permission_code="PERM_PERMISSIONS_UPDATE",
         permission_name="permissions.update",
         action=PermissionAction.UPDATE,
-    )
-    p4 = Permission(
-        permission_code="PERM_PERMISSIONS_DELETE",
+        )
+        db_session.add(p3)
+        db_session.flush()
+    p4 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_PERMISSIONS_DELETE"))
+    if not p4:
+        p4 = Permission(
+            permission_code="PERM_PERMISSIONS_DELETE",
         permission_name="permissions.delete",
         action=PermissionAction.DELETE,
-    )
+        )
+        db_session.add(p4)
+        db_session.flush()
     db_session.add_all([p1, p2, p3, p4])
 
     db_session.commit()
@@ -63,9 +81,9 @@ def setup_admin_user(db_session, app):
 
 def setup_limited_user(db_session, app):
     u = User(
-        employee_id="LIM1",
-        username="limited_int",
-        email="lim_int@test.com",
+        employee_id=f"E_{uuid4().hex[:8]}",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Limited",
         status=UserStatus.ACTIVE,
     )

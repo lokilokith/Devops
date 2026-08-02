@@ -104,7 +104,8 @@ def test_get_permission_repo_error(service, mock_repo):
 
 def test_list_permissions_success(service, mock_repo):
     mock_repo.list.return_value = ["p1", "p2"]
-    assert service.list_permissions(0, 10) == ["p1", "p2"]
+    mock_repo.count.return_value = 2
+    assert service.list_permissions(0, 10) == (["p1", "p2"], 2)
 
 
 def test_list_permissions_repo_error(service, mock_repo):

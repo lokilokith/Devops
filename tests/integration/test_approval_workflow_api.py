@@ -1,3 +1,5 @@
+from uuid import uuid4
+from sqlalchemy import select
 """Integration tests for Approval Workflow API."""
 
 import pytest
@@ -11,10 +13,10 @@ def test_user(db_session):
     from app.identity.models import User
 
     user = User(
-        username="test_user",
-        email="test@user.com",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Test User",
-        employee_id="T01",
+        employee_id=f"E_{uuid4().hex[:8]}",
     )
     db_session.add(user)
     db_session.commit()
@@ -25,7 +27,7 @@ def test_user(db_session):
 def test_role(db_session):
     from app.roles.models import Role
 
-    role = Role(role_code="TEST_ROLE", role_name="Test Role")
+    role = Role(role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}")
     db_session.add(role)
     db_session.commit()
     return role
@@ -41,26 +43,34 @@ def auth_headers(test_user, db_session):
     # We must give the user permissions to pass the @requires_permission decorator
     from app.roles.models import Role, RoleType, UserRole
 
-    role = Role(role_code="AUTH_ROLE", role_name="Auth Role", role_type=RoleType.CUSTOM)
+    role = Role(role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}", role_type=RoleType.CUSTOM)
     db_session.add(role)
     db_session.flush()
 
     perms = ["read", "approve", "reject", "cancel"]
     for p in perms:
-        perm = Permission(
-            permission_code=f"PERM_APPROVAL_WORKFLOWS_{p.upper()}",
+        perm = db_session.scalar(select(Permission).where(Permission.permission_code == f"PERM_APPROVAL_WORKFLOWS_{p.upper()}"))
+        if not perm:
+            perm = Permission(
+                permission_code=f"PERM_APPROVAL_WORKFLOWS_{p.upper()}",
             permission_name=f"approval_workflows.{p}",
             action=PermissionAction(p),
-        )
+            )
+            db_session.add(perm)
+            db_session.flush()
         db_session.add(perm)
         db_session.flush()
         db_session.add(RolePermission(role_id=role.id, permission_id=perm.id))
 
-    ar_perm = Permission(
-        permission_code="PERM_ACCESS_REQUESTS_READ",
+    ar_perm = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_ACCESS_REQUESTS_READ"))
+    if not ar_perm:
+        ar_perm = Permission(
+            permission_code="PERM_ACCESS_REQUESTS_READ",
         permission_name="access_requests.read",
         action=PermissionAction("read"),
-    )
+        )
+        db_session.add(ar_perm)
+        db_session.flush()
     db_session.add(ar_perm)
     db_session.flush()
     db_session.add(RolePermission(role_id=role.id, permission_id=ar_perm.id))
@@ -76,7 +86,7 @@ def auth_headers(test_user, db_session):
 @pytest.fixture
 def test_workflow(app, db_session, test_user, test_role):
     ar = AccessRequest(
-        request_number="AR-INT-001",
+        request_number=f"AR-{uuid4().hex[:8]}",
         requester_id=test_user.id,
         requested_role_id=test_role.id,
         business_justification="Test",

@@ -17,7 +17,7 @@ from app.access_requests.models import (
 
 def test_create_and_get(ar_repo, sample_user, sample_role):
     req = AccessRequest(
-        request_number="REQ-123456",
+        request_number=f"AR-{uuid4().hex[:8]}",
         requester_id=sample_user.id,
         requested_role_id=sample_role.id,
         business_justification="Need access.",
@@ -28,15 +28,15 @@ def test_create_and_get(ar_repo, sample_user, sample_role):
     assert created.id is not None
 
     fetched = ar_repo.get_by_id(created.id)
-    assert fetched.request_number == "REQ-123456"
+    assert fetched.request_number == req.request_number
 
-    fetched_num = ar_repo.get_by_request_number("REQ-123456")
+    fetched_num = ar_repo.get_by_request_number(req.request_number)
     assert fetched_num.id == created.id
 
 
 def test_update_status(ar_repo, sample_user, sample_role):
     req = AccessRequest(
-        request_number="REQ-2",
+        request_number=f"AR-{uuid4().hex[:8]}",
         requester_id=sample_user.id,
         requested_role_id=sample_role.id,
         business_justification="Need access.",
@@ -51,7 +51,7 @@ def test_update_status(ar_repo, sample_user, sample_role):
 def test_approve_reject_cancel(ar_repo, sample_user, sample_role):
     req1 = ar_repo.create_request(
         AccessRequest(
-            request_number="REQ-A1",
+            request_number=f"AR-{uuid4().hex[:8]}",
             requester_id=sample_user.id,
             requested_role_id=sample_role.id,
             business_justification="Test",
@@ -64,7 +64,7 @@ def test_approve_reject_cancel(ar_repo, sample_user, sample_role):
 
     req2 = ar_repo.create_request(
         AccessRequest(
-            request_number="REQ-A2",
+            request_number=f"AR-{uuid4().hex[:8]}",
             requester_id=sample_user.id,
             requested_role_id=sample_role.id,
             business_justification="Test",
@@ -76,7 +76,7 @@ def test_approve_reject_cancel(ar_repo, sample_user, sample_role):
 
     req3 = ar_repo.create_request(
         AccessRequest(
-            request_number="REQ-A3",
+            request_number=f"AR-{uuid4().hex[:8]}",
             requester_id=sample_user.id,
             requested_role_id=sample_role.id,
             business_justification="Test",
@@ -89,21 +89,20 @@ def test_approve_reject_cancel(ar_repo, sample_user, sample_role):
 def test_list_and_count_and_search(ar_repo, sample_user, sample_role, sample_resource):
     ar_repo.create_request(
         AccessRequest(
-            request_number="REQ-L1",
+            request_number=f"AR-{uuid4().hex[:8]}",
             requester_id=sample_user.id,
             requested_role_id=sample_role.id,
             business_justification="Test",
         )
     )
-    ar_repo.create_request(
-        AccessRequest(
-            request_number="REQ-L2",
-            requester_id=sample_user.id,
-            requested_resource_id=sample_resource.id,
-            business_justification="Test",
-            status=AccessRequestStatus.APPROVED,
-        )
+    req2 = AccessRequest(
+        request_number=f"AR-{uuid4().hex[:8]}",
+        requester_id=sample_user.id,
+        requested_resource_id=sample_resource.id,
+        business_justification="Test",
+        status=AccessRequestStatus.APPROVED,
     )
+    ar_repo.create_request(req2)
 
     assert ar_repo.count() >= 2
     assert ar_repo.count(status=AccessRequestStatus.APPROVED) >= 1
@@ -113,8 +112,8 @@ def test_list_and_count_and_search(ar_repo, sample_user, sample_role, sample_res
     assert len(lst) >= 2
 
     srch = ar_repo.search(requested_resource_id=sample_resource.id)
-    assert len(srch) == 1
-    assert srch[0].request_number == "REQ-L2"
+    assert len(srch) >= 1
+    assert any(s.request_number == req2.request_number for s in srch)
 
 
 def test_not_found(ar_repo):
@@ -128,7 +127,7 @@ def test_not_found(ar_repo):
 
 def test_sqlalchemy_errors(ar_repo, sample_user, sample_role):
     req = AccessRequest(
-        request_number="REQ-ERR",
+        request_number=f"AR-{uuid4().hex[:8]}",
         requester_id=sample_user.id,
         requested_role_id=sample_role.id,
         business_justification="Need access.",
@@ -172,7 +171,7 @@ def test_sqlalchemy_errors(ar_repo, sample_user, sample_role):
 
     req2 = ar_repo.create_request(
         AccessRequest(
-            request_number="REQ-ERR2",
+            request_number=f"AR-{uuid4().hex[:8]}",
             requester_id=sample_user.id,
             requested_role_id=sample_role.id,
             business_justification="Test",

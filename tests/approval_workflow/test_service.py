@@ -11,6 +11,8 @@ from app.approval_workflow.models import ApprovalStatus
 from app.user_roles.exceptions import UserRoleAlreadyExistsError
 
 
+from werkzeug.exceptions import Forbidden
+
 def test_create_initial_workflow(approval_service, sample_users, sample_request):
     u1, u2 = sample_users
     wf = approval_service.create_initial_workflow(sample_request.id, u2.id)
@@ -69,7 +71,7 @@ def test_approve_workflow(
         approval_service.approve(wf.id, u2.id)
 
     wf3 = approval_service.create_initial_workflow(sample_request.id, u2.id)
-    with pytest.raises(ApprovalWorkflowValidationError, match="Approver mismatch"):
+    with pytest.raises(Forbidden, match="Approver mismatch"):
         approval_service.approve(wf3.id, u1.id)
 
 
@@ -107,7 +109,7 @@ def test_reject_workflow(approval_service, ar_repo, sample_users, sample_request
         approval_service.reject(wf.id, u2.id)
 
     wf3 = approval_service.create_initial_workflow(sample_request.id, u2.id)
-    with pytest.raises(ApprovalWorkflowValidationError, match="Approver mismatch"):
+    with pytest.raises(Forbidden, match="Approver mismatch"):
         approval_service.reject(wf3.id, u1.id)
 
 

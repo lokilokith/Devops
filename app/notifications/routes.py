@@ -14,6 +14,7 @@ from app.notifications.schemas import (
     notification_response_model,
     notification_single_response_model,
     notification_unread_count_model,
+    unread_count_data_model,
 )
 from app.notifications.validators import validate_filter_params
 from app.permissions.models import PermissionAction
@@ -39,6 +40,7 @@ notifications_ns.models[notification_unread_count_model.name] = (
 notifications_ns.models[notification_mark_all_response_model.name] = (
     notification_mark_all_response_model
 )
+notifications_ns.models[unread_count_data_model.name] = unread_count_data_model
 
 
 def get_service():

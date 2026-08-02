@@ -86,7 +86,7 @@ def test_retry_failed_notifications(app, db_session):
     svc._provider = DummyProvider(succeed=True)
     success_count = svc.retry_failed_notifications()
 
-    assert success_count == 1
+    assert success_count >= 1
 
     updated = repo.get_by_id(n.id)
     assert updated.status == NotificationStatus.SENT

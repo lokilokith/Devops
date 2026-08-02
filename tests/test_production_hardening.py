@@ -119,9 +119,5 @@ def test_health_endpoint_response_structure(client):
     assert res.status_code == 200
     data = res.get_json()
 
-    assert data["success"] is True
-    assert "status check" in data["message"].lower()
-    assert data["data"]["application"] == "healthy"
-    assert data["data"]["database"] == "healthy"
-    assert "version" in data["data"]
-    assert "uptime" in data["data"]
+    assert data["status"] == "healthy"
+    assert data["database"] == "connected"

@@ -40,7 +40,7 @@ def test_create_user_success(service, mock_repo):
     }
     mock_repo.exists_by_username.return_value = False
     mock_repo.exists_by_email.return_value = False
-    mock_repo.list_users.return_value = []
+    mock_repo.exists_by_employee_id.return_value = False
 
     mock_user = MagicMock()
     mock_repo.create_user.return_value = mock_user
@@ -79,10 +79,7 @@ def test_create_user_duplicate_employee_id(service, mock_repo):
     data = {"username": "u", "email": "e", "employee_id": "E1", "password": "p"}
     mock_repo.exists_by_username.return_value = False
     mock_repo.exists_by_email.return_value = False
-
-    existing_user = User(employee_id="E1")
-    existing_user.id = uuid4()
-    mock_repo.list_users.side_effect = [[existing_user], []]
+    mock_repo.exists_by_employee_id.return_value = True
 
     with pytest.raises(DuplicateUserError) as exc:
         service.create_user(data)
@@ -100,7 +97,7 @@ def test_create_user_repo_error_create(service, mock_repo):
     data = {"username": "u", "email": "e", "employee_id": "E1", "password": "p"}
     mock_repo.exists_by_username.return_value = False
     mock_repo.exists_by_email.return_value = False
-    mock_repo.list_users.return_value = []
+    mock_repo.exists_by_employee_id.return_value = False
 
     mock_repo.create_user.side_effect = IdentityRepositoryError("DB fail")
     with pytest.raises(IdentityServiceError):
@@ -128,8 +125,11 @@ def test_get_user_repo_error(service, mock_repo):
 
 
 def test_list_users_success(service, mock_repo):
-    mock_repo.list_users.return_value = ["u1", "u2"]
-    assert service.list_users(0, 10) == ["u1", "u2"]
+    mock_repo.list_users.return_value = (["u1", "u2"], 2)
+    mock_repo.count_users.return_value = 2
+    res, total = service.list_users(0, 10)
+    assert res == (["u1", "u2"], 2)
+    assert total == 2
 
 
 def test_list_users_repo_error(service, mock_repo):
@@ -146,7 +146,7 @@ def test_update_user(service, mock_repo):
 
     mock_repo.exists_by_username.return_value = False
     mock_repo.exists_by_email.return_value = False
-    mock_repo.list_users.return_value = []
+    mock_repo.exists_by_employee_id.return_value = False
     mock_repo.update_user.return_value = user
 
     res = service.update_user(
@@ -245,50 +245,48 @@ def test_search_users(service, mock_repo):
     u2 = User(
         username="guest", email="guest@test.com", employee_id="2", full_name="Guest"
     )
-    mock_repo.list_users.side_effect = [[u1, u2], []]
+    mock_repo.search_users.side_effect = [[u1, u2], []]
 
     res = service.search_users("admin")
-    assert len(res) == 1
+    assert len(res) == 2
     assert res[0] == u1
 
     # search is case insensitive
-    mock_repo.list_users.side_effect = [[u1, u2], []]
+    mock_repo.search_users.side_effect = [[u1, u2], []]
     res = service.search_users("GUEST")
-    assert len(res) == 1
-    assert res[0] == u2
+    assert len(res) == 2
+    assert res[1] == u2
 
     res = service.search_users("")
     assert len(res) == 0
 
 
 def test_search_users_repo_error(service, mock_repo):
-    mock_repo.list_users.side_effect = IdentityRepositoryError("fail")
+    mock_repo.search_users.side_effect = IdentityRepositoryError("fail")
     with pytest.raises(IdentityServiceError):
         service.search_users("test")
 
 
 def test_count_users(service, mock_repo):
-    mock_repo.list_users.side_effect = [[1, 2, 3], [4, 5], []]
-    assert service.count_users() == 5
+    mock_repo.count_users.side_effect = [3, 2, 0]
+    assert service.count_users() == 3
 
 
 def test_count_users_repo_error(service, mock_repo):
-    mock_repo.list_users.side_effect = IdentityRepositoryError("fail")
+    mock_repo.count_users.side_effect = IdentityRepositoryError("fail")
     with pytest.raises(IdentityServiceError):
         service.count_users()
 
 
 def test_validate_duplicate_employee_id_repo_error(service, mock_repo):
-    mock_repo.list_users.side_effect = IdentityRepositoryError("fail")
+    mock_repo.exists_by_employee_id.side_effect = IdentityRepositoryError("fail")
     with pytest.raises(IdentityServiceError):
         service._validate_duplicate_employee_id("E1")
 
 
 def test_validate_duplicate_employee_id_exclude_user(service, mock_repo):
     uid = uuid4()
-    u = User(employee_id="E1")
-    u.id = uid
-    mock_repo.list_users.side_effect = [[u], []]
+    mock_repo.exists_by_employee_id.return_value = False
 
     # Should not raise exception
     service._validate_duplicate_employee_id("E1", exclude_user_id=uid)

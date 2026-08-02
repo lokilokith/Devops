@@ -120,10 +120,25 @@ def test_refresh_inactive_user(auth_service, sample_user, db_session):
         auth_service.refresh(refresh_token)
 
 
-def test_revoke_token_exception(auth_service, monkeypatch):
-    import app.auth.service
+def test_revoke_token_exception(auth_service, monkeypatch, db_session):
+    def mock_add(*args, **kwargs):
+        raise Exception("DB Error")
 
-    monkeypatch.setattr(app.auth.service, "_revoked_tokens", None)
-    # This will raise AttributeError inside revoke_token, which should be
-    # caught and passed
-    auth_service.revoke_token("some_token")
+    monkeypatch.setattr(db_session, "add", mock_add)
+    
+    # We need a valid JWT token payload to get past the decode check
+    import jwt
+    from flask import current_app
+    import datetime
+    payload = {
+        "jti": "fake-jti",
+        "sub": "user_id",
+        "type": "access",
+        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1),
+        "iat": datetime.datetime.now(datetime.timezone.utc),
+    }
+    secret = current_app.config.get("JWT_SECRET_KEY")
+    valid_token = jwt.encode(payload, secret, algorithm="HS256")
+
+    # This will raise Exception inside revoke_token, which should be caught and passed
+    auth_service.revoke_token(valid_token)

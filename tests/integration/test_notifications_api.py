@@ -1,3 +1,4 @@
+from uuid import uuid4
 from app.identity.models import User, UserStatus
 from app.notifications.models import Notification, NotificationStatus, NotificationType
 from tests.api.test_decorators import create_mock_token
@@ -5,9 +6,9 @@ from tests.api.test_decorators import create_mock_token
 
 def setup_admin_user(db_session, app):
     u = User(
-        employee_id="NOTIF_ADM",
-        username="notif_admin",
-        email="notif@test.com",
+        employee_id=f"E_{uuid4().hex[:8]}",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Admin",
         status=UserStatus.ACTIVE,
     )
@@ -21,7 +22,7 @@ def test_get_notifications(client, db_session, app):
     token, admin_id = setup_admin_user(db_session, app)
     # Setup some notifications
     n1 = Notification(
-        recipient_user_id=str(admin_id),
+        recipient_user_id=admin_id,
         title="Admin Alert",
         message="System alert",
         type=NotificationType.SYSTEM,
@@ -42,7 +43,7 @@ def test_unread_count(client, db_session, app):
     token, admin_id = setup_admin_user(db_session, app)
 
     n1 = Notification(
-        recipient_user_id=str(admin_id),
+        recipient_user_id=admin_id,
         title="Unread Alert",
         message="System alert",
         type=NotificationType.SYSTEM,

@@ -58,7 +58,7 @@ class NotificationService:
 
         try:
             notification = Notification(
-                recipient_user_id=str(recipient_user_id),
+                recipient_user_id=recipient_user_id,
                 title=title,
                 message=message,
                 type=type_,

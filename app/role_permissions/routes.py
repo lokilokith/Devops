@@ -46,7 +46,7 @@ class RolePermissionsCollection(Resource):
         uid = validate_uuid(role_id)
         service = get_service()
         try:
-            permissions = service.list_permissions_for_role(uid)
+            permissions, total = service.list_permissions_for_role(uid)
             return success_response(data=permissions)
         except Exception:
             raise NotFound("Role not found")
@@ -117,10 +117,7 @@ class PermissionRolesCollection(Resource):
         uid = validate_uuid(permission_id)
         service = get_service()
         try:
-            roles = service.list_roles_for_permission(uid)
-            print("Route received:", roles, flush=True)
-            print("Type of roles:", type(roles), flush=True)
-            print("Item types:", [type(r) for r in roles], flush=True)
+            roles, total = service.list_roles_for_permission(uid)
             return success_response(data=roles)
         except Exception:
             raise NotFound("Permission not found")

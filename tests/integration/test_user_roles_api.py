@@ -1,3 +1,5 @@
+from uuid import uuid4
+from sqlalchemy import select
 from app.identity.models import User, UserStatus
 from app.permissions.models import Permission, PermissionAction
 from app.role_permissions.models import RolePermission
@@ -6,27 +8,31 @@ from app.roles.models import Role, RoleStatus, RoleType, UserRole
 
 def setup_admin_user(db_session, app):
     u = User(
-        employee_id="ADM3",
-        username="admin_ur_int",
-        email="admin_ur@test.com",
+        employee_id=f"E_{uuid4().hex[:8]}",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Admin",
         status=UserStatus.ACTIVE,
     )
     db_session.add(u)
 
     r = Role(
-        role_code="ADMIN_UR_INT",
-        role_name="Admin UR Int",
+        role_code=f"R_{uuid4().hex[:8]}",
+        role_name=f"Role {uuid4().hex[:8]}",
         role_type=RoleType.SYSTEM,
         status=RoleStatus.ACTIVE,
     )
     db_session.add(r)
 
-    p1 = Permission(
-        permission_code="PERM_USER_ROLES_MANAGE",
+    p1 = db_session.scalar(select(Permission).where(Permission.permission_code == "PERM_USER_ROLES_MANAGE"))
+    if not p1:
+        p1 = Permission(
+            permission_code="PERM_USER_ROLES_MANAGE",
         permission_name="user_roles.manage",
         action=PermissionAction.MANAGE,
-    )
+        )
+        db_session.add(p1)
+        db_session.flush()
     db_session.add_all([p1])
 
     db_session.commit()
@@ -43,9 +49,9 @@ def setup_admin_user(db_session, app):
 
 def setup_limited_user(db_session, app):
     u = User(
-        employee_id="LIM3",
-        username="limited_ur_int",
-        email="lim_ur_int@test.com",
+        employee_id=f"E_{uuid4().hex[:8]}",
+        username=f"U_{uuid4().hex[:8]}",
+        email=f"{uuid4().hex[:8]}@test.local",
         full_name="Limited",
         status=UserStatus.ACTIVE,
     )
@@ -64,8 +70,8 @@ def test_user_roles_crud(client, db_session, app):
 
     # Need a role to assign
     role = Role(
-        role_code="ASSIGN_ROLE",
-        role_name="Assign Role",
+        role_code=f"R_{uuid4().hex[:8]}",
+        role_name=f"Role {uuid4().hex[:8]}",
         role_type=RoleType.CUSTOM,
         status=RoleStatus.ACTIVE,
     )

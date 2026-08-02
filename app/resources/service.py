@@ -65,9 +65,13 @@ class ResourcesService:
                 raise
             raise ResourcesServiceError(f"Failed to retrieve resource: {e}") from e
 
-    def list_resources(self, skip: int = 0, limit: int = 100) -> Sequence[Resource]:
+    def list_resources(
+        self, skip: int = 0, limit: int = 100, search: str = ""
+    ) -> tuple[Sequence[Resource], int]:
         try:
-            return self._repository.list(offset=skip, limit=limit)
+            resources = self._repository.list(offset=skip, limit=limit)
+            total = self._repository.count()
+            return resources, total
         except ResourcesRepositoryError as e:
             raise ResourcesServiceError(f"Failed to list resources: {e}") from e
 

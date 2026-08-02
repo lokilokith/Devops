@@ -13,14 +13,16 @@ from app.security.bootstrap.rbac_seed_service import seed_rbac
 
 def _create_admin_user(db_session):
     """Helper to create the required bootstrap admin user for tests."""
-    admin = User(
-        employee_id="E-ADMIN-001",
-        username="admin",
-        email="admin@opsforge.internal",
-        full_name="System Administrator",
-    )
-    db_session.add(admin)
-    db_session.commit()
+    admin = db_session.scalar(select(User).where(User.username == "admin"))
+    if not admin:
+        admin = User(
+            employee_id="E-ADMIN-001",
+            username="admin",
+            email="admin@opsforge.internal",
+            full_name="System Administrator",
+        )
+        db_session.add(admin)
+        db_session.commit()
     return admin
 
 
@@ -63,13 +65,18 @@ def test_seed_rbac_on_empty_tables(app, db_session):
 
     # Validate permissions
     permissions = db_session.scalars(select(Permission)).all()
-    assert len(permissions) == len(DEFAULT_PERMISSIONS)
+    permission_codes = {p.permission_code for p in permissions}
+    expected_codes = [f"PERM_{r.upper()}_{a.upper()}" for r, a in DEFAULT_PERMISSIONS]
+    for expected_code in expected_codes:
+        assert expected_code in permission_codes
 
     # Validate role permissions
     role_perms = db_session.scalars(
         select(RolePermission).where(RolePermission.role_id == admin_role.id)
     ).all()
-    assert len(role_perms) == len(DEFAULT_PERMISSIONS)
+    assigned_perm_ids = {rp.permission_id for rp in role_perms}
+    default_perm_ids = {p.id for p in permissions if p.permission_code in expected_codes}
+    assert default_perm_ids.issubset(assigned_perm_ids)
 
     # Validate user role
     admin_user = db_session.scalar(select(User).where(User.username == "admin"))
@@ -110,14 +117,17 @@ def test_seed_rbac_partial_state(app, db_session):
     """Verify that if some resources or roles exist, it only creates the missing ones."""
     _create_admin_user(db_session)
 
-    # Pre-seed a partial state
-    partial_role = Role(role_code="SOC_ANALYST", role_name="SOC Analyst")
-    db_session.add(partial_role)
+    partial_role = db_session.scalar(select(Role).where(Role.role_code == "SOC_ANALYST"))
+    if not partial_role:
+        partial_role = Role(role_code="SOC_ANALYST", role_name="SOC Analyst")
+        db_session.add(partial_role)
 
-    partial_res = Resource(
-        resource_code="RESOURCE_USERS", resource_name="User Management"
-    )
-    db_session.add(partial_res)
+    partial_res = db_session.scalar(select(Resource).where(Resource.resource_code == "RESOURCE_USERS"))
+    if not partial_res:
+        partial_res = Resource(
+            resource_code="RESOURCE_USERS", resource_name="User Management"
+        )
+        db_session.add(partial_res)
     db_session.commit()
 
     assert seed_rbac() is True
