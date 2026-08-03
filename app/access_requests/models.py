@@ -7,7 +7,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
 from app.shared.database import BaseModel
@@ -21,6 +21,11 @@ class AccessRequestStatus(str, enum.Enum):
     REJECTED = "rejected"
     CANCELLED = "cancelled"
     EXPIRED = "expired"
+
+
+# Backwards-compatible alias for legacy tests/integrations.
+# New code should use AccessRequestStatus.
+RequestStatus = AccessRequestStatus
 
 
 class AccessRequestPriority(str, enum.Enum):
@@ -38,27 +43,38 @@ class AccessRequest(BaseModel):
     __tablename__ = "access_requests"
 
     request_number: Mapped[str] = mapped_column(
-        String(50), nullable=False, unique=True, index=True
+        String(50),
+        nullable=False,
+        unique=True,
+        index=True,
     )
+
     requester_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )
+
     requested_role_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("roles.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
     )
+
     requested_resource_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("resources.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
     )
-    business_justification: Mapped[str] = mapped_column(Text, nullable=False)
+
+    business_justification: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
     status: Mapped[AccessRequestStatus] = mapped_column(
         Enum(
             AccessRequestStatus,
@@ -66,12 +82,15 @@ class AccessRequest(BaseModel):
             native_enum=False,
             create_constraint=True,
             validate_strings=True,
-            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            values_callable=lambda enum_cls: [
+                member.value for member in enum_cls
+            ],
         ),
         nullable=False,
         index=True,
         default=AccessRequestStatus.PENDING,
     )
+
     priority: Mapped[AccessRequestPriority] = mapped_column(
         Enum(
             AccessRequestPriority,
@@ -79,39 +98,64 @@ class AccessRequest(BaseModel):
             native_enum=False,
             create_constraint=True,
             validate_strings=True,
-            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            values_callable=lambda enum_cls: [
+                member.value for member in enum_cls
+            ],
         ),
         nullable=False,
         index=True,
         default=AccessRequestPriority.LOW,
     )
+
     requested_start: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
+        DateTime(timezone=True),
+        nullable=True,
     )
+
     requested_end: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
+        DateTime(timezone=True),
+        nullable=True,
     )
+
     approved_by: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
     )
+
     approved_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
+        DateTime(timezone=True),
+        nullable=True,
     )
-    rejected_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    rejected_reason: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
 
     __table_args__ = (
         CheckConstraint(
-            "(requested_role_id IS NOT NULL) OR (requested_resource_id IS NOT NULL)",
+            "(requested_role_id IS NOT NULL) OR "
+            "(requested_resource_id IS NOT NULL)",
             name="ck_ar_role_or_resource",
         ),
     )
 
-    from sqlalchemy.orm import relationship
-    role = relationship("Role", lazy="joined")
-    resource = relationship("Resource", lazy="joined")
+    role = relationship(
+        "Role",
+        lazy="joined",
+    )
+
+    resource = relationship(
+        "Resource",
+        lazy="joined",
+    )
 
 
-__all__ = ["AccessRequest", "AccessRequestStatus", "AccessRequestPriority"]
+__all__ = [
+    "AccessRequest",
+    "AccessRequestStatus",
+    "AccessRequestPriority",
+    "RequestStatus",
+]
