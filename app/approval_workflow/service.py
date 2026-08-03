@@ -153,6 +153,19 @@ class ApprovalWorkflowService:
             req = self._ar_repo.get_by_id(wf.access_request_id)
             if req:
                 self._ar_repo.approve(req.id, approver_id)  # repo handles flush inside
+                from app.notifications.events import request_approved
+                request_approved.send(
+                    self,
+                    payload={
+                        "event": "request_approved",
+                        "recipient_id": str(req.requester_id),
+                        "title": "Access Request Approved",
+                        "message": f"Your access request {req.request_number} has been approved.",
+                        "type": "request_approved",
+                        "priority": "normal",
+                        "metadata": {"request_id": str(req.id)},
+                    },
+                )
                 if req.requested_role_id:
                     try:
                         self._ur_repo.assign_role_to_user(

@@ -246,7 +246,7 @@ class AccessRequestApprove(Resource):
             workflows = wf_svc._repo.get_by_request(request_id)
             pending_wf = next((wf for wf in workflows if wf.status.value == "pending"), None)
             if not pending_wf:
-                raise BadRequest("No pending approval workflow found for this request.")
+                raise Conflict("No pending approval workflow found for this request.")
 
             try:
                 wf_svc.approve(pending_wf.id, UUID(g.user_id))
@@ -255,7 +255,7 @@ class AccessRequestApprove(Resource):
             except ApprovalWorkflowValidationError as e:
                 raise UnprocessableEntity(str(e))
             except ApprovalWorkflowInvalidStateError as e:
-                raise BadRequest(str(e))
+                raise Conflict(str(e))
 
             req = service._repo.get_by_id(request_id)
             return {

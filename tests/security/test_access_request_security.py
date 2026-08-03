@@ -100,7 +100,7 @@ def test_duplicate_approval(client, db_session, normal_user, approver_user, appr
         headers={"Authorization": f"Bearer {approver_token}"}
     )
     # Should be rejected because it's already approved
-    assert res2.status_code in (400, 422)
+    assert res2.status_code == 409
 
 def test_requester_cancels_own_pending_request(client, db_session, normal_user, normal_token):
     req = AccessRequestFactory(requester=normal_user, status=AccessRequestStatus.PENDING)
