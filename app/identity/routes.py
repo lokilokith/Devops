@@ -9,7 +9,7 @@ from app.api.pagination import DEFAULT_PAGE_SIZE, validate_pagination
 from app.api.responses import success_response
 from app.auth.service import AuthService
 from app.extensions import db
-from app.identity.exceptions import DuplicateUserError
+from app.identity.exceptions import DuplicateUserError, UserNotFoundError
 from app.identity.repository import IdentityRepository
 from app.identity.schemas import (
     identity_ns,
@@ -135,39 +135,44 @@ class UserResource(Resource):
         user = service.get_user(uid)
         if not user:
             raise NotFound("User not found")
-        service.delete_user(uid)
+        # BUGFIX-003: Check return value — delete_user returns False if already archived
+        deleted = service.delete_user(uid)
+        if not deleted:
+            raise NotFound("User not found or already deleted")
         return success_response(message="User deleted successfully")
 
 
-@identity_ns.route("/<string:user_id>/lock")
-class UserLockResource(Resource):
-    @identity_ns.doc(summary="Lock user", description="Lock a user account by UUID.")
+@identity_ns.route("/<string:user_id>/disable")
+class UserDisableResource(Resource):
+    @identity_ns.doc(summary="Disable user", description="Disable a user account by UUID.")
     @identity_ns.marshal_with(user_response_model)
     @login_required
     @requires_permission("users", "update")
     def post(self, user_id):
         uid = validate_uuid(user_id)
-        repo = IdentityRepository(db.session)
+        service = get_service()
+        # BUGFIX-007: Properly distinguish UserNotFoundError from other errors
         try:
-            user = repo.lock_user(uid)
-        except Exception:
+            user = service.deactivate_user(uid)
+        except UserNotFoundError:
             raise NotFound("User not found")
-        return success_response(data=user, message="User locked successfully")
+        return success_response(data=user, message="User disabled successfully")
 
 
-@identity_ns.route("/<string:user_id>/unlock")
-class UserUnlockResource(Resource):
+@identity_ns.route("/<string:user_id>/enable")
+class UserEnableResource(Resource):
     @identity_ns.doc(
-        summary="Unlock user", description="Unlock a user account by UUID."
+        summary="Enable user", description="Enable a user account by UUID."
     )
     @identity_ns.marshal_with(user_response_model)
     @login_required
     @requires_permission("users", "update")
     def post(self, user_id):
         uid = validate_uuid(user_id)
-        repo = IdentityRepository(db.session)
+        service = get_service()
+        # BUGFIX-007: Properly distinguish UserNotFoundError from other errors
         try:
-            user = repo.unlock_user(uid)
-        except Exception:
+            user = service.activate_user(uid)
+        except UserNotFoundError:
             raise NotFound("User not found")
-        return success_response(data=user, message="User unlocked successfully")
+        return success_response(data=user, message="User enabled successfully")

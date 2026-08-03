@@ -8,16 +8,19 @@ import { SearchBar } from "@/components/data-table/SearchBar"
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Trash } from "lucide-react"
+import { MoreHorizontal, Trash, Edit, PlusCircle } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { RoleCreateModal } from "./RoleCreateModal"
+import { RoleEditModal } from "./RoleEditModal"
 
 export function RoleList() {
   const [page, setPage] = React.useState(0)
@@ -27,6 +30,9 @@ export function RoleList() {
   const { toast } = useToast()
   const { hasPermission } = useAuth()
 
+  // Modal state
+  const [createModalOpen, setCreateModalOpen] = React.useState(false)
+  const [roleToEdit, setRoleToEdit] = React.useState<Role | null>(null)
   const [roleToDelete, setRoleToDelete] = React.useState<Role | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -58,6 +64,15 @@ export function RoleList() {
 
   const columns: ColumnDef<Role>[] = [
     {
+      accessorKey: "role_code",
+      header: "Code",
+      cell: ({ row }) => (
+        <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
+          {row.getValue("role_code")}
+        </code>
+      ),
+    },
+    {
       accessorKey: "role_name",
       header: "Name",
       cell: ({ row }) => <span className="font-medium">{row.getValue("role_name")}</span>,
@@ -65,13 +80,22 @@ export function RoleList() {
     {
       accessorKey: "description",
       header: "Description",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-sm">
+          {row.getValue("description") || "—"}
+        </span>
+      ),
     },
     {
-      accessorKey: "permissions",
-      header: "Permissions Count",
+      accessorKey: "status",
+      header: "Status",
       cell: ({ row }) => {
-        const perms = row.getValue<string[]>("permissions") || []
-        return <Badge variant="secondary">{perms.length} Permissions</Badge>
+        const status = row.getValue<string>("status")
+        return (
+          <Badge variant={status === "active" ? "default" : "secondary"}>
+            {status || "active"}
+          </Badge>
+        )
       },
     },
     {
@@ -88,11 +112,23 @@ export function RoleList() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              {hasPermission(PERMISSIONS.ROLES_DELETE) && (
-                <DropdownMenuItem onClick={() => setRoleToDelete(role)} className="text-destructive">
-                  <Trash className="mr-2 h-4 w-4" />
-                  Delete Role
+              {hasPermission(PERMISSIONS.ROLES_UPDATE) && (
+                <DropdownMenuItem onClick={() => setRoleToEdit(role)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Role
                 </DropdownMenuItem>
+              )}
+              {hasPermission(PERMISSIONS.ROLES_DELETE) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setRoleToDelete(role)}
+                    className="text-destructive"
+                  >
+                    <Trash className="mr-2 h-4 w-4" />
+                    Delete Role
+                  </DropdownMenuItem>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -110,11 +146,15 @@ export function RoleList() {
           placeholder="Search roles..."
           onSearch={(v) => {
             setSearch(v)
-            setPage(1)
+            setPage(0) // BUGFIX-006: reset to page 0 (zero-based), not page 1
           }}
         />
         {hasPermission(PERMISSIONS.ROLES_CREATE) && (
-          <Button>Create Role</Button>
+          // BUGFIX-004: Wire up Create Role button to modal
+          <Button onClick={() => setCreateModalOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Role
+          </Button>
         )}
       </div>
 
@@ -132,6 +172,17 @@ export function RoleList() {
         }}
       />
 
+      {/* Create Role Modal */}
+      <RoleCreateModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
+
+      {/* Edit Role Modal */}
+      <RoleEditModal
+        role={roleToEdit}
+        open={!!roleToEdit}
+        onOpenChange={(o) => !o && setRoleToEdit(null)}
+      />
+
+      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={!!roleToDelete}
         onOpenChange={(o) => !o && setRoleToDelete(null)}

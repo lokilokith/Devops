@@ -27,6 +27,14 @@ approval_workflow_response_model = approval_workflows_ns.model(
         "approval_level": EnumField(description="Approval level required"),
         "status": EnumField(description="Current status of the workflow"),
         "comments": fields.String(description="Optional comments left by approver"),
+        "requested_role_name": fields.String(
+            attribute=lambda x: x.access_request.role.role_name if x.access_request and x.access_request.role else None,
+            description="Name of the requested role"
+        ),
+        "requested_resource_name": fields.String(
+            attribute=lambda x: x.access_request.resource.resource_name if x.access_request and x.access_request.resource else None,
+            description="Name of the requested resource"
+        ),
         "approved_at": fields.DateTime(description="Time of approval"),
         "created_at": fields.DateTime(description="Creation time"),
         "updated_at": fields.DateTime(description="Update time"),

@@ -16,7 +16,6 @@ def app():
     app = create_app()
     with app.app_context():
 
-        from app.auth.models import RevokedToken
         _db.create_all()
         # Ensure RBAC is seeded
         from app.security.bootstrap.rbac_seed_service import seed_rbac

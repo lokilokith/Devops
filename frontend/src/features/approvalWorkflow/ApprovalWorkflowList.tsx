@@ -16,33 +16,38 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { Textarea } from "@/components/ui/textarea"
 
 export function ApprovalWorkflowList() {
   const [page, setPage] = React.useState(0)
   const [pageSize, setPageSize] = React.useState(10)
   const [search, setSearch] = React.useState("")
+  const [statusFilter] = React.useState("pending") // Hardcode to pending for now, or use a dropdown later
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   const [workflowToActOn, setWorkflowToActOn] = React.useState<{ wf: ApprovalWorkflow; action: "approve" | "reject" } | null>(null)
+  const [comments, setComments] = React.useState("")
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["approval-workflows", page, pageSize, search],
+    queryKey: ["approval-workflows", page, pageSize, search, statusFilter],
     queryFn: () =>
       approvalWorkflowsService.listWorkflows({
         skip: page * pageSize,
         limit: pageSize,
-        status: undefined,
+        status: statusFilter === "all" ? undefined : statusFilter,
+        search,
       }),
   })
 
   const actMutation = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: "approve" | "reject" }) =>
-      action === "approve" ? approvalWorkflowsService.approve(id) : approvalWorkflowsService.reject(id),
+    mutationFn: ({ id, action, comments }: { id: string; action: "approve" | "reject", comments?: string }) =>
+      action === "approve" ? approvalWorkflowsService.approve(id, comments) : approvalWorkflowsService.reject(id, comments),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["approval-workflows"] })
       toast({ title: "Success", description: `Request ${variables.action}d.` })
       setWorkflowToActOn(null)
+      setComments("")
     },
     onError: (error: any) => {
       toast({
@@ -50,15 +55,25 @@ export function ApprovalWorkflowList() {
         description: error.response?.data?.message || "Action failed.",
         variant: "destructive",
       })
-      setWorkflowToActOn(null)
     },
   })
 
   const columns: ColumnDef<ApprovalWorkflow>[] = [
     {
-      accessorKey: "id",
-      header: "Workflow ID",
-      cell: ({ row }) => <span className="font-mono text-xs">{row.getValue("id")}</span>,
+      accessorKey: "access_request_id",
+      header: "Req ID",
+      cell: ({ row }) => <span className="font-mono text-xs">{String(row.getValue("access_request_id")).substring(0, 8)}...</span>,
+    },
+    {
+      accessorKey: "requested",
+      header: "Requested",
+      cell: ({ row }) => {
+        const role = row.original.requested_role_name
+        const resource = row.original.requested_resource_name
+        if (role) return <Badge variant="outline">Role: {role}</Badge>
+        if (resource) return <Badge variant="outline">Resource: {resource}</Badge>
+        return <span className="text-muted-foreground italic">Unknown</span>
+      },
     },
     {
       accessorKey: "status",
@@ -141,13 +156,30 @@ export function ApprovalWorkflowList() {
 
       <ConfirmDialog
         open={!!workflowToActOn}
-        onOpenChange={(o) => !o && setWorkflowToActOn(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setWorkflowToActOn(null)
+            setComments("")
+          }
+        }}
         title={workflowToActOn?.action === "approve" ? "Approve Request" : "Reject Request"}
-        description={`Are you sure you want to ${workflowToActOn?.action} this request?`}
+        description={
+          <div className="space-y-4 pt-4">
+            <p>Are you sure you want to {workflowToActOn?.action} this request?</p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Comments (Optional for Approve, Required for Reject if frontend enforces it)</label>
+              <Textarea
+                value={comments}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setComments(e.target.value)}
+                placeholder="Enter justification..."
+              />
+            </div>
+          </div>
+        }
         isDestructive={workflowToActOn?.action === "reject"}
         confirmText={workflowToActOn?.action === "approve" ? "Approve" : "Reject"}
         isLoading={actMutation.isPending}
-        onConfirm={() => workflowToActOn && actMutation.mutate({ id: workflowToActOn.wf.id, action: workflowToActOn.action })}
+        onConfirm={() => workflowToActOn && actMutation.mutate({ id: workflowToActOn.wf.id, action: workflowToActOn.action, comments })}
       />
     </div>
   )

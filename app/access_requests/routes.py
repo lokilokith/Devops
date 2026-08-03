@@ -50,6 +50,8 @@ class AccessRequestList(Resource):
     @access_requests_ns.param(
         "limit", "Number of records to return", type=int, default=50
     )
+    @access_requests_ns.param("search", "Text search (request_number, justification)", type=str)
+    @access_requests_ns.param("status", "Filter by status (pending/approved/rejected/cancelled/expired)", type=str)
     @access_requests_ns.marshal_with(access_requests_list_response_model)
     @login_required
     def get(self):
@@ -57,6 +59,8 @@ class AccessRequestList(Resource):
         skip, limit = validate_pagination(
             request.args.get("skip", 0), request.args.get("limit", 50)
         )
+        search = request.args.get("search", "").strip() or None
+        status_filter = request.args.get("status", "").strip() or None
 
         authz = AuthorizationService(db.session)
         is_admin_or_auditor = authz.has_permission(
@@ -70,13 +74,26 @@ class AccessRequestList(Resource):
         page_size = limit
 
         if is_admin_or_auditor:
-            requests = service._repo.list_requests(page=page, page_size=page_size)
-            total = service._repo.count()
+            requests = service._repo.search(
+                page=page,
+                page_size=page_size,
+                search=search,
+                status=status_filter,
+            )
+            total = service._repo.count(search=search, status=status_filter)
         else:
             requests = service._repo.search(
-                page=page, page_size=page_size, requester_id=UUID(g.user_id)
+                page=page,
+                page_size=page_size,
+                requester_id=UUID(g.user_id),
+                search=search,
+                status=status_filter,
             )
-            total = service._repo.count(requester_id=UUID(g.user_id))
+            total = service._repo.count(
+                requester_id=UUID(g.user_id),
+                search=search,
+                status=status_filter,
+            )
 
         return {
             "success": True,
@@ -88,7 +105,7 @@ class AccessRequestList(Resource):
     @access_requests_ns.doc("create_access_request")
     @access_requests_ns.expect(access_request_create_model)
     @access_requests_ns.marshal_with(access_request_single_response_model, code=201)
-    @requires_permission("access_requests", "create")
+    @login_required
     def post(self):
         """Submit a new access request."""
         data = request.json or {}
@@ -257,7 +274,7 @@ class AccessRequestReject(Resource):
 class AccessRequestCancel(Resource):
     @access_requests_ns.doc("cancel_access_request")
     @access_requests_ns.marshal_with(access_request_single_response_model)
-    @requires_permission("access_requests", "cancel")
+    @login_required
     def post(self, request_id):
         """Cancel an access request."""
         service = get_service()

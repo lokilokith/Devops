@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Sequence
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -167,6 +167,15 @@ class AccessRequestRepository:
         if "requested_resource_id" in filters and filters["requested_resource_id"]:
             stmt = stmt.where(
                 AccessRequest.requested_resource_id == filters["requested_resource_id"]
+            )
+        if "search" in filters and filters["search"]:
+            # BUG-AR-07 FIX: Text search across request_number and business_justification
+            term = f"%{filters['search']}%"
+            stmt = stmt.where(
+                or_(
+                    AccessRequest.request_number.ilike(term),
+                    AccessRequest.business_justification.ilike(term),
+                )
             )
         return stmt
 

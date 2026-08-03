@@ -46,10 +46,12 @@ def ar_repo(db_session):
 
 @pytest.fixture
 def ar_service(db_session, ar_repo):
+    from app.user_roles.repository import UserRolesRepository
     user_repo = IdentityRepository(db_session)
     role_repo = RolesRepository(db_session)
     resource_repo = ResourcesRepository(db_session)
-    return AccessRequestService(ar_repo, user_repo, role_repo, resource_repo)
+    user_roles_repo = UserRolesRepository(db_session)
+    return AccessRequestService(ar_repo, user_repo, role_repo, resource_repo, user_roles_repo)
 
 
 @pytest.fixture

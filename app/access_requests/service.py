@@ -102,6 +102,28 @@ class AccessRequestService:
         )
         created = self._repo.create_request(req)
 
+        # Create the initial approval workflow assigned to an admin
+        from app.approval_workflow.repository import ApprovalWorkflowRepository
+        from app.approval_workflow.service import ApprovalWorkflowService
+        from app.audit.repository import AuditRepository
+        from app.audit.service import AuditService
+        from app.identity.models import User
+        from app.platform.extensions import db
+
+        admin = db.session.query(User).filter_by(username="admin").first()
+        if admin:
+            wf_service = ApprovalWorkflowService(
+                ApprovalWorkflowRepository(db.session),
+                self._repo,
+                self._user_roles_repo,
+                AuditService(AuditRepository(db.session)),
+                db.session,
+            )
+            wf_service.create_initial_workflow(
+                access_request_id=created.id,
+                approver_id=admin.id
+            )
+
         access_request_created.send(
             self,
             payload={

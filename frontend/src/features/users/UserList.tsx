@@ -8,16 +8,19 @@ import { SearchBar } from "@/components/data-table/SearchBar"
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, ShieldAlert, ShieldCheck } from "lucide-react"
+import { MoreHorizontal, ShieldAlert, ShieldCheck, Edit, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { UserCreateModal } from "./UserCreateModal"
+import { UserEditModal } from "./UserEditModal"
 
 export function UserList() {
   const [page, setPage] = React.useState(0)
@@ -27,7 +30,10 @@ export function UserList() {
   const { toast } = useToast()
   const { hasPermission } = useAuth()
 
+  const [createModalOpen, setCreateModalOpen] = React.useState(false)
+  const [userToEdit, setUserToEdit] = React.useState<User | null>(null)
   const [userToToggleLock, setUserToToggleLock] = React.useState<User | null>(null)
+  const [userToDelete, setUserToDelete] = React.useState<User | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["users", page, pageSize, search],
@@ -41,12 +47,12 @@ export function UserList() {
 
   const toggleLockMutation = useMutation({
     mutationFn: (user: User) => 
-      user.status === "locked" || user.status === "disabled" 
-        ? usersService.unlockUser(user.id) 
-        : usersService.lockUser(user.id),
+      user.status === "disabled" || user.status === "locked"
+        ? usersService.enableUser(user.id) 
+        : usersService.disableUser(user.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] })
-      toast({ title: "Success", description: "User lock status updated." })
+      toast({ title: "Success", description: "User status updated." })
       setUserToToggleLock(null)
     },
     onError: (error: any) => {
@@ -59,6 +65,23 @@ export function UserList() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => usersService.deleteUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+      toast({ title: "Success", description: "User deleted successfully." })
+      setUserToDelete(null)
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to delete user.",
+        variant: "destructive",
+      })
+      setUserToDelete(null)
+    },
+  })
+
   const columns: ColumnDef<User>[] = [
     {
       accessorKey: "username",
@@ -67,6 +90,14 @@ export function UserList() {
     {
       accessorKey: "email",
       header: "Email",
+    },
+    {
+      accessorKey: "full_name",
+      header: "Full Name",
+    },
+    {
+      accessorKey: "employee_id",
+      header: "Employee ID",
     },
     {
       accessorKey: "status",
@@ -81,26 +112,10 @@ export function UserList() {
       },
     },
     {
-      accessorKey: "roles",
-      header: "Roles",
-      cell: ({ row }) => {
-        const roles = row.getValue<string[]>("roles") || []
-        return (
-          <div className="flex gap-1 flex-wrap">
-            {roles.map((role) => (
-              <Badge key={role} variant="outline">
-                {role}
-              </Badge>
-            ))}
-          </div>
-        )
-      },
-    },
-    {
       id: "actions",
       cell: ({ row }) => {
         const user = row.original
-        const isLocked = user.status === "locked" || user.status === "disabled"
+        const isDisabled = user.status === "disabled" || user.status === "locked"
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -112,10 +127,23 @@ export function UserList() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               {hasPermission(PERMISSIONS.USERS_UPDATE) && (
-                <DropdownMenuItem onClick={() => setUserToToggleLock(user)}>
-                  {!isLocked ? <ShieldAlert className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                  {!isLocked ? "Lock User" : "Unlock User"}
+                <DropdownMenuItem onClick={() => setUserToEdit(user)}>
+                  <Edit className="mr-2 h-4 w-4" /> Edit User
                 </DropdownMenuItem>
+              )}
+              {hasPermission(PERMISSIONS.USERS_UPDATE) && (
+                <DropdownMenuItem onClick={() => setUserToToggleLock(user)}>
+                  {!isDisabled ? <ShieldAlert className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                  {!isDisabled ? "Disable User" : "Enable User"}
+                </DropdownMenuItem>
+              )}
+              {hasPermission(PERMISSIONS.USERS_DELETE) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setUserToDelete(user)} className="text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete User
+                  </DropdownMenuItem>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -137,7 +165,7 @@ export function UserList() {
           }}
         />
         {hasPermission(PERMISSIONS.USERS_CREATE) && (
-          <Button>Create User</Button>
+          <Button onClick={() => setCreateModalOpen(true)}>Create User</Button>
         )}
       </div>
 
@@ -155,17 +183,31 @@ export function UserList() {
         }}
       />
 
+      <UserCreateModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
+      <UserEditModal user={userToEdit} open={!!userToEdit} onOpenChange={(o) => !o && setUserToEdit(null)} />
+
       <ConfirmDialog
         open={!!userToToggleLock}
         onOpenChange={(o) => !o && setUserToToggleLock(null)}
-        title={userToToggleLock?.status !== "locked" && userToToggleLock?.status !== "disabled" ? "Lock User" : "Unlock User"}
+        title={userToToggleLock?.status !== "disabled" && userToToggleLock?.status !== "locked" ? "Disable User" : "Enable User"}
         description={`Are you sure you want to ${
-          userToToggleLock?.status !== "locked" && userToToggleLock?.status !== "disabled" ? "lock" : "unlock"
+          userToToggleLock?.status !== "disabled" && userToToggleLock?.status !== "locked" ? "disable" : "enable"
         } ${userToToggleLock?.username}?`}
-        isDestructive={userToToggleLock?.status !== "locked" && userToToggleLock?.status !== "disabled"}
-        confirmText={userToToggleLock?.status !== "locked" && userToToggleLock?.status !== "disabled" ? "Lock" : "Unlock"}
+        isDestructive={userToToggleLock?.status !== "disabled" && userToToggleLock?.status !== "locked"}
+        confirmText={userToToggleLock?.status !== "disabled" && userToToggleLock?.status !== "locked" ? "Disable" : "Enable"}
         isLoading={toggleLockMutation.isPending}
         onConfirm={() => userToToggleLock && toggleLockMutation.mutate(userToToggleLock)}
+      />
+
+      <ConfirmDialog
+        open={!!userToDelete}
+        onOpenChange={(o) => !o && setUserToDelete(null)}
+        title="Delete User"
+        description={`Are you sure you want to permanently delete ${userToDelete?.username}?`}
+        isDestructive={true}
+        confirmText="Delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => userToDelete && deleteMutation.mutate(userToDelete.id)}
       />
     </div>
   )

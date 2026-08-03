@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { AccessRequestCreateModal } from "./AccessRequestCreateModal"
 
 export function AccessRequestList() {
   const [page, setPage] = React.useState(0)
@@ -25,6 +26,7 @@ export function AccessRequestList() {
   const { toast } = useToast()
 
   const [requestToCancel, setRequestToCancel] = React.useState<AccessRequest | null>(null)
+  const [createModalOpen, setCreateModalOpen] = React.useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["access-requests", page, pageSize, search],
@@ -55,14 +57,19 @@ export function AccessRequestList() {
 
   const columns: ColumnDef<AccessRequest>[] = [
     {
-      accessorKey: "resource_name",
-      header: "Resource",
-      cell: ({ row }) => <span className="font-medium">{row.getValue("resource_name")}</span>,
+      accessorKey: "request_number",
+      header: "Req #",
+      cell: ({ row }) => <span className="font-mono text-xs">{row.getValue("request_number")}</span>,
     },
     {
-      accessorKey: "permission_name",
-      header: "Permission",
-      cell: ({ row }) => <Badge variant="outline">{row.getValue("permission_name")}</Badge>,
+      accessorKey: "business_justification",
+      header: "Justification",
+      cell: ({ row }) => <span className="truncate max-w-xs block" title={row.getValue("business_justification")}>{row.getValue("business_justification")}</span>,
+    },
+    {
+      accessorKey: "priority",
+      header: "Priority",
+      cell: ({ row }) => <Badge variant="outline">{row.getValue("priority")}</Badge>,
     },
     {
       accessorKey: "status",
@@ -123,7 +130,7 @@ export function AccessRequestList() {
             setPage(0)
           }}
         />
-        <Button>Request Access</Button>
+        <Button onClick={() => setCreateModalOpen(true)}>Request Access</Button>
       </div>
 
       <DataTable
@@ -150,6 +157,8 @@ export function AccessRequestList() {
         isLoading={cancelRequestMutation.isPending}
         onConfirm={() => requestToCancel && cancelRequestMutation.mutate(requestToCancel.id)}
       />
+      
+      <AccessRequestCreateModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
     </div>
   )
 }

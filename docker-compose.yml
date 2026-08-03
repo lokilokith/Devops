@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-opsforge}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opsforge_pass}
       POSTGRES_DB: ${POSTGRES_DB:-opsforge_db}
+    ports:
+      - "5432:5432"
     volumes:
       - opsforge_postgres_data:/var/lib/postgresql/data
     networks:

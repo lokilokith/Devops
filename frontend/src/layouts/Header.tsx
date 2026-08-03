@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/authentication/AuthContext"
 import { LogOut, User as UserIcon } from "lucide-react"
 
+import { ThemeToggle } from "@/components/theme-toggle"
+
 export function Header() {
   const { user, logout } = useAuth()
 
@@ -11,6 +13,7 @@ export function Header() {
         {/* Placeholder for Breadcrumbs or Search */}
       </div>
       <div className="flex items-center gap-4">
+        <ThemeToggle />
         <span className="text-sm font-medium">
           {user?.username || "Guest"}
         </span>

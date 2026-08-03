@@ -17,8 +17,8 @@ from app.auth.exceptions import (
     TokenRevokedError,
     UserInactiveError,
 )
-from app.identity.repository import IdentityRepository
 from app.auth.models import RevokedToken
+from app.identity.repository import IdentityRepository
 from app.platform.extensions import db
 
 logger = logging.getLogger(__name__)

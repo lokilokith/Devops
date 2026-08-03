@@ -13,7 +13,7 @@ from app.identity.exceptions import (
     UserNotFoundError,
     ValidationError,
 )
-from app.identity.models import User
+from app.identity.models import User, UserStatus
 from app.identity.repository import IdentityRepository
 
 
@@ -127,8 +127,14 @@ class IdentityService:
         if "title" in data:
             user.title = data["title"]
         if "status" in data:
-            # Assuming enum mapping happens elsewhere or we just assign string
-            user.status = data["status"]
+            # BUGFIX-002: Convert raw string to proper UserStatus enum
+            try:
+                user.status = UserStatus(data["status"])
+            except ValueError:
+                raise ValidationError(
+                    f"Invalid status value: '{data['status']}'. "
+                    f"Must be one of: {[s.value for s in UserStatus]}"
+                )
 
         if "password" in data and data["password"]:
             user.password_hash = self._auth_service.hash_password(data["password"])
@@ -146,6 +152,18 @@ class IdentityService:
             return self._repository.delete_user(user_id)
         except IdentityRepositoryError as e:
             raise IdentityServiceError(f"Failed to delete user: {e}") from e
+
+    def activate_user(self, user_id: UUID) -> User:
+        try:
+            return self._repository.activate_user(user_id)
+        except IdentityRepositoryError as e:
+            raise IdentityServiceError(f"Failed to activate user: {e}") from e
+
+    def deactivate_user(self, user_id: UUID) -> User:
+        try:
+            return self._repository.deactivate_user(user_id)
+        except IdentityRepositoryError as e:
+            raise IdentityServiceError(f"Failed to deactivate user: {e}") from e
 
     def search_users(self, query: str) -> list[User]:
         if not query:

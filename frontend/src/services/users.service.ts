@@ -84,13 +84,13 @@ export const usersService = {
     await apiClient.delete(`/users/${id}`)
   },
 
-  async lockUser(id: string): Promise<User> {
-    const response = await apiClient.post(`/users/${id}/lock`)
+  async disableUser(id: string): Promise<User> {
+    const response = await apiClient.post(`/users/${id}/disable`)
     return unwrap<User>(response)
   },
 
-  async unlockUser(id: string): Promise<User> {
-    const response = await apiClient.post(`/users/${id}/unlock`)
+  async enableUser(id: string): Promise<User> {
+    const response = await apiClient.post(`/users/${id}/enable`)
     return unwrap<User>(response)
   },
 }

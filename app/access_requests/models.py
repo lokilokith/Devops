@@ -109,5 +109,9 @@ class AccessRequest(BaseModel):
         ),
     )
 
+    from sqlalchemy.orm import relationship
+    role = relationship("Role", lazy="joined")
+    resource = relationship("Resource", lazy="joined")
+
 
 __all__ = ["AccessRequest", "AccessRequestStatus", "AccessRequestPriority"]

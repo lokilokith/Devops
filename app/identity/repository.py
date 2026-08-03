@@ -95,6 +95,8 @@ class IdentityRepository:
         try:
             return self._session.get(User, user_id)
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError("Failed to retrieve user by ID.") from err
 
     def get_by_username(self, username: str) -> User | None:
@@ -113,6 +115,8 @@ class IdentityRepository:
             stmt = select(User).where(User.username == username)
             return self._session.scalar(stmt)
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError(
                 "Failed to retrieve user by username."
             ) from err
@@ -133,6 +137,8 @@ class IdentityRepository:
             stmt = select(User).where(User.email == email)
             return self._session.scalar(stmt)
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError("Failed to retrieve user by email.") from err
 
     def list_users(
@@ -163,6 +169,8 @@ class IdentityRepository:
             stmt = stmt.order_by(User.username.asc()).offset(skip).limit(bounded_limit)
             return self._session.scalars(stmt).all()
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError("Failed to list users.") from err
 
     def update_user(self, user: User) -> User:
@@ -189,6 +197,10 @@ class IdentityRepository:
     def delete_user(self, user_id: UUID) -> bool:
         """Soft-delete a User entity by ID.
 
+        The user's email and username are anonymized on archive so that the same
+        credentials can be reused for new registrations. Audit history is preserved
+        via the ARCHIVED status and the user's ID remaining in the database.
+
         Args:
             user_id: Unique user identifier.
 
@@ -203,6 +215,12 @@ class IdentityRepository:
             if not user or user.status == UserStatus.ARCHIVED:
                 return False
 
+            # Anonymize to free up the unique constraints on email/username.
+            # This allows new users to register with the same credentials after deletion.
+            suffix = str(user_id).replace("-", "")[:12]
+            user.username = f"_archived_{suffix}_{user.username}"[:80]
+            user.email = f"_archived_{suffix}_{user.email}"[:254]
+            user.employee_id = f"_archived_{suffix}_{user.employee_id}"[:50]
             user.status = UserStatus.ARCHIVED
             self._commit_and_refresh(user)
             return True
@@ -210,11 +228,13 @@ class IdentityRepository:
             self._session.rollback()
             raise IdentityRepositoryError("Failed to soft-delete user record.") from err
 
-    def exists_by_username(self, username: str) -> bool:
+    def exists_by_username(self, username: str, exclude_archived: bool = True) -> bool:
         """Check if a user exists with the given username.
 
         Args:
             username: Username to check.
+            exclude_archived: Whether to exclude archived (soft-deleted) users.
+                              Default True — archived users do NOT block re-registration.
 
         Returns:
             True if exists, False otherwise.
@@ -223,18 +243,29 @@ class IdentityRepository:
             IdentityRepositoryError: If the database query fails.
         """
         try:
-            stmt = select(exists().where(User.username == username))
+            # BUGFIX-008: Exclude archived users by default so deleted usernames can be reused
+            if exclude_archived:
+                stmt = select(exists().where(
+                    User.username == username,
+                    User.status != UserStatus.ARCHIVED,
+                ))
+            else:
+                stmt = select(exists().where(User.username == username))
             return bool(self._session.scalar(stmt))
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError(
                 "Failed to check username existence."
             ) from err
 
-    def exists_by_email(self, email: str) -> bool:
+    def exists_by_email(self, email: str, exclude_archived: bool = True) -> bool:
         """Check if a user exists with the given email address.
 
         Args:
             email: Email address to check.
+            exclude_archived: Whether to exclude archived (soft-deleted) users.
+                              Default True — archived users do NOT block re-registration.
 
         Returns:
             True if exists, False otherwise.
@@ -243,9 +274,18 @@ class IdentityRepository:
             IdentityRepositoryError: If the database query fails.
         """
         try:
-            stmt = select(exists().where(User.email == email))
+            # BUGFIX-008: Exclude archived users by default so deleted emails can be reused
+            if exclude_archived:
+                stmt = select(exists().where(
+                    User.email == email,
+                    User.status != UserStatus.ARCHIVED,
+                ))
+            else:
+                stmt = select(exists().where(User.email == email))
             return bool(self._session.scalar(stmt))
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError("Failed to check email existence.") from err
 
     def exists_by_employee_id(
@@ -266,12 +306,17 @@ class IdentityRepository:
         try:
             from sqlalchemy import and_
 
-            conditions = [User.employee_id == employee_id]
+            conditions = [
+                User.employee_id == employee_id,
+                User.status != UserStatus.ARCHIVED,  # BUGFIX-008: exclude archived
+            ]
             if exclude_user_id:
                 conditions.append(User.id != exclude_user_id)
             stmt = select(exists().where(and_(*conditions)))
             return bool(self._session.scalar(stmt))
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError(
                 "Failed to check employee_id existence."
             ) from err
@@ -300,12 +345,13 @@ class IdentityRepository:
             stmt = (
                 select(User)
                 .where(
+                    User.status != UserStatus.ARCHIVED,
                     or_(
                         User.username.ilike(pattern),
                         User.email.ilike(pattern),
                         User.employee_id.ilike(pattern),
                         User.full_name.ilike(pattern),
-                    )
+                    ),
                 )
                 .order_by(User.username.asc())
                 .offset(skip)
@@ -313,10 +359,12 @@ class IdentityRepository:
             )
             return self._session.scalars(stmt).all()
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError("Failed to search users.") from err
 
     def count_users(self) -> int:
-        """Count total users in the database.
+        """Count total active (non-archived) users in the database.
 
         Returns:
             Total number of users.
@@ -327,9 +375,15 @@ class IdentityRepository:
         try:
             from sqlalchemy import func
 
-            stmt = select(func.count()).select_from(User)
+            stmt = (
+                select(func.count())
+                .select_from(User)
+                .where(User.status != UserStatus.ARCHIVED)
+            )
             return self._session.scalar(stmt) or 0
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError("Failed to count users.") from err
 
     def activate_user(self, user_id: UUID) -> User:
@@ -349,6 +403,8 @@ class IdentityRepository:
             user = self._get_user_or_raise(user_id)
             user.status = UserStatus.ACTIVE
             return self._commit_and_refresh(user)
+        except UserNotFoundError:
+            raise
         except SQLAlchemyError as err:
             self._session.rollback()
             raise IdentityRepositoryError("Failed to activate user.") from err
@@ -370,6 +426,8 @@ class IdentityRepository:
             user = self._get_user_or_raise(user_id)
             user.status = UserStatus.DISABLED
             return self._commit_and_refresh(user)
+        except UserNotFoundError:
+            raise
         except SQLAlchemyError as err:
             self._session.rollback()
             raise IdentityRepositoryError("Failed to deactivate user.") from err
@@ -391,6 +449,8 @@ class IdentityRepository:
             user = self._get_user_or_raise(user_id)
             user.status = UserStatus.LOCKED
             return self._commit_and_refresh(user)
+        except UserNotFoundError:
+            raise
         except SQLAlchemyError as err:
             self._session.rollback()
             raise IdentityRepositoryError("Failed to lock user.") from err
@@ -412,6 +472,8 @@ class IdentityRepository:
             user = self._get_user_or_raise(user_id)
             user.status = UserStatus.ACTIVE
             return self._commit_and_refresh(user)
+        except UserNotFoundError:
+            raise
         except SQLAlchemyError as err:
             self._session.rollback()
             raise IdentityRepositoryError("Failed to unlock user.") from err
@@ -425,16 +487,19 @@ class IdentityRepository:
                 select(func.count())
                 .select_from(User)
                 .where(
+                    User.status != UserStatus.ARCHIVED,
                     or_(
                         User.username.ilike(pattern),
                         User.email.ilike(pattern),
                         User.employee_id.ilike(pattern),
                         User.full_name.ilike(pattern),
-                    )
+                    ),
                 )
             )
             return self._session.scalar(stmt) or 0
         except SQLAlchemyError as err:
+            # BUGFIX-001: Always rollback on read failure to prevent session corruption
+            self._session.rollback()
             raise IdentityRepositoryError("Failed to count searched users.") from err
 
 
