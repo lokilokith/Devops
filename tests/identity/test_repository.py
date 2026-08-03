@@ -18,7 +18,7 @@ def test_exists_by_employee_id(db_session):
     )
     db_session.add(user1)
     db_session.add(user2)
-    db_session.commit()
+    db_session.flush()
 
     assert repo.exists_by_employee_id("EMP-TEST-001") is True
     assert repo.exists_by_employee_id("EMP-TEST-002") is True
@@ -50,7 +50,7 @@ def test_search_users(db_session):
         full_name="Gamma Squad",
     )
     db_session.add_all([user1, user2, user3])
-    db_session.commit()
+    db_session.flush()
 
     # search by username
     results = repo.search_users("alpha")
@@ -84,6 +84,6 @@ def test_count_users(db_session):
         full_name="Count 2",
     )
     db_session.add_all([user1, user2])
-    db_session.commit()
+    db_session.flush()
 
     assert repo.count_users() == count_before + 2

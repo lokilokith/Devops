@@ -66,7 +66,7 @@ class NotificationService:
                 metadata_payload=metadata_payload or {},
             )
             created = self._repo.create_notification(notification)
-            self._session.commit()
+            self._session.flush()
 
             self._audit.log_event(
                 action="notification.created",
@@ -101,7 +101,7 @@ class NotificationService:
                     notif.status = NotificationStatus.SENT
                     notif.last_error = None
                     self._repo.update_notification(notif)
-                    self._session.commit()
+                    self._session.flush()
 
                     self._audit.log_event(
                         action="notification.sent",
@@ -118,7 +118,7 @@ class NotificationService:
                 notif.status = NotificationStatus.FAILED
                 notif.last_error = str(e)
                 self._repo.update_notification(notif)
-                self._session.commit()
+                self._session.flush()
 
                 self._audit.log_event(
                     action="notification.failed",
@@ -151,7 +151,7 @@ class NotificationService:
                 notif.read_at = datetime.utcnow()
                 notif.status = NotificationStatus.READ
                 self._repo.update_notification(notif)
-                self._session.commit()
+                self._session.flush()
 
                 self._audit.log_event(
                     action="notification.read",
@@ -172,7 +172,7 @@ class NotificationService:
     def mark_all_as_read(self, user_id: UUID) -> int:
         try:
             count = self._repo.mark_all_as_read(user_id)
-            self._session.commit()
+            self._session.flush()
             if count > 0:
                 self._audit.log_event(
                     action="notification.read_all",
@@ -226,7 +226,7 @@ class NotificationService:
             # Ownership will be handled by the route, but double check here or trust
             # the caller.
             self._repo.delete_notification(notification_id)
-            self._session.commit()
+            self._session.flush()
 
             self._audit.log_event(
                 action="notification.deleted",

@@ -214,7 +214,7 @@ class TestDeleteRole:
             role_type=RoleType.SYSTEM,
         )
         db_session.add(sys_role)
-        db_session.commit()
+        db_session.flush()
         db_session.refresh(sys_role)
 
         with pytest.raises(ValidationError) as exc:

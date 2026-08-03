@@ -52,8 +52,8 @@ class AuditService:
             )
             return self._repo.create_log(audit_log)
         except Exception as err:
-            logger.error(f"Audit logging failed: {err}")
-            return None
+            logger.error(f"Audit logging failed: {err}", exc_info=True)
+            raise
 
     def log_login(
         self, actor_user_id: UUID, status: AuditStatus, ip_address: str | None = None
@@ -70,6 +70,20 @@ class AuditService:
             ),
             ip_address=ip_address,
         )
+        if status == AuditStatus.FAILED:
+            from app.notifications.events import audit_alert
+            audit_alert.send(
+                self,
+                payload={
+                    "event": "audit_alert",
+                    "actor_id": str(actor_user_id),
+                    "recipient_id": str(actor_user_id),  # Usually admin, but we just use actor_id or system admin later
+                    "title": "Failed Login Attempt",
+                    "message": f"Failed login attempt from IP {ip_address}",
+                    "type": "system",
+                    "priority": "high",
+                }
+            )
 
     def log_role_assignment(
         self,
@@ -142,6 +156,19 @@ class AuditService:
             status=AuditStatus.DENIED,
             severity=AuditSeverity.HIGH,
             details={"permission_action": permission_action},
+        )
+        from app.notifications.events import audit_alert
+        audit_alert.send(
+            self,
+            payload={
+                "event": "audit_alert",
+                "actor_id": str(actor_user_id),
+                "recipient_id": str(actor_user_id),
+                "title": "Authorization Denied",
+                "message": f"Authorization denied for action {permission_action} on resource {resource_id}",
+                "type": "system",
+                "priority": "high",
+            }
         )
 
 

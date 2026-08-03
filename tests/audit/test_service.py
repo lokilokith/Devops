@@ -1,6 +1,8 @@
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
+
 from app.audit.models import AuditSeverity, AuditStatus
 
 
@@ -74,8 +76,8 @@ def test_log_authorization_denied(audit_service, audit_repo):
     assert logs[0].details["permission_action"] == "READ"
 
 
-def test_log_event_swallows_exception(audit_service, audit_repo):
-    # Ensure it doesn't raise exception
+def test_log_event_raises_exception(audit_service, audit_repo):
+    # Ensure it raises exception
     with patch.object(audit_repo, "create_log", side_effect=Exception("mocked error")):
-        res = audit_service.log_login(uuid4(), AuditStatus.SUCCESS)
-        assert res is None
+        with pytest.raises(Exception, match="mocked error"):
+            audit_service.log_login(uuid4(), AuditStatus.SUCCESS)

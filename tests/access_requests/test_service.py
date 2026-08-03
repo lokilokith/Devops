@@ -86,7 +86,7 @@ def test_approve_request(ar_service, sample_user, sample_role, db_session):
         status=ResourceStatus.ACTIVE,
     )
     db_session.add(res1)
-    db_session.commit()
+    db_session.flush()
 
     req1 = ar_service.submit_request(
         sample_user.id, "T1", requested_role_id=sample_role.id
@@ -108,7 +108,7 @@ def test_reject_request(ar_service, sample_user, sample_role, db_session):
         status=ResourceStatus.ACTIVE,
     )
     db_session.add(res2)
-    db_session.commit()
+    db_session.flush()
 
     req2 = ar_service.submit_request(
         sample_user.id, "T2", requested_resource_id=res2.id
@@ -130,7 +130,7 @@ def test_cancel_request(ar_service, sample_user, sample_role, db_session):
         status=ResourceStatus.ACTIVE,
     )
     db_session.add(res3)
-    db_session.commit()
+    db_session.flush()
 
     req3 = ar_service.submit_request(
         sample_user.id, "T3", requested_resource_id=res3.id

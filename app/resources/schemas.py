@@ -14,6 +14,14 @@ resource_base = {
     ),
     "resource_type": fields.String(description="Resource Type", example="database"),
     "status": fields.String(description="Status", example="active"),
+    "hostname_ip": fields.String(description="Hostname or IP Address", example="10.0.0.5"),
+    "protocol": fields.String(description="Protocol", example="tcp"),
+    "port": fields.Integer(description="Port", example=5432),
+    "environment": fields.String(description="Environment", example="prod"),
+    "criticality": fields.String(description="Criticality", example="high"),
+    "connection_method": fields.String(description="Connection Method", example="ssh"),
+    "owner_id": fields.String(description="Owner User UUID", required=False),
+    "created_by": fields.String(description="Creator User UUID", required=False),
 }
 
 resource_model = resources_ns.model(
@@ -35,6 +43,13 @@ resource_create_model = resources_ns.model(
         "resource_type": fields.String(
             required=False, description="Resource Type", example="database"
         ),
+        "hostname_ip": fields.String(required=False, description="Hostname or IP"),
+        "protocol": fields.String(required=False, description="Protocol"),
+        "port": fields.Integer(required=False, description="Port"),
+        "environment": fields.String(required=False, description="Environment"),
+        "criticality": fields.String(required=False, description="Criticality"),
+        "connection_method": fields.String(required=False, description="Connection Method"),
+        "owner_id": fields.String(required=False, description="Owner User UUID"),
     },
 )
 
@@ -47,6 +62,13 @@ resource_update_model = resources_ns.model(
             required=True, description="Resource Type", example="database"
         ),
         "status": fields.String(required=True, description="Status", example="active"),
+        "hostname_ip": fields.String(required=False, description="Hostname or IP"),
+        "protocol": fields.String(required=False, description="Protocol"),
+        "port": fields.Integer(required=False, description="Port"),
+        "environment": fields.String(required=False, description="Environment"),
+        "criticality": fields.String(required=False, description="Criticality"),
+        "connection_method": fields.String(required=False, description="Connection Method"),
+        "owner_id": fields.String(required=False, description="Owner User UUID"),
     },
 )
 
@@ -57,6 +79,13 @@ resource_patch_model = resources_ns.model(
         "description": fields.String(description="Description"),
         "resource_type": fields.String(description="Resource Type", example="database"),
         "status": fields.String(description="Status", example="active"),
+        "hostname_ip": fields.String(description="Hostname or IP"),
+        "protocol": fields.String(description="Protocol"),
+        "port": fields.Integer(description="Port"),
+        "environment": fields.String(description="Environment"),
+        "criticality": fields.String(description="Criticality"),
+        "connection_method": fields.String(description="Connection Method"),
+        "owner_id": fields.String(description="Owner User UUID"),
     },
 )
 

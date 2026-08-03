@@ -19,7 +19,7 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="opsforge-theme">
+    <ThemeProvider defaultTheme="system" storageKey="opsforge-theme" attribute="class">
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <RouterProvider router={router} />

@@ -15,7 +15,11 @@ from app.notifications.repository import (
 
 def test_create_notification(app, db_session: Session):
     repo = NotificationRepository(db_session)
-    user_id = uuid.uuid4()
+    from tests.fixtures.factories import UserFactory
+    test_user = UserFactory()
+    db_session.add(test_user)
+    db_session.flush()
+    user_id = test_user.id
 
     n = Notification(
         recipient_user_id=user_id,
@@ -26,7 +30,7 @@ def test_create_notification(app, db_session: Session):
     )
 
     created = repo.create_notification(n)
-    db_session.commit()
+    db_session.flush()
 
     assert created.id is not None
     assert created.title == "Test Notification"
@@ -35,7 +39,11 @@ def test_create_notification(app, db_session: Session):
 
 def test_get_by_id(app, db_session: Session):
     repo = NotificationRepository(db_session)
-    user_id = uuid.uuid4()
+    from tests.fixtures.factories import UserFactory
+    test_user = UserFactory()
+    db_session.add(test_user)
+    db_session.flush()
+    user_id = test_user.id
 
     n = Notification(
         recipient_user_id=user_id,
@@ -44,7 +52,7 @@ def test_get_by_id(app, db_session: Session):
         type=NotificationType.SYSTEM,
     )
     created = repo.create_notification(n)
-    db_session.commit()
+    db_session.flush()
 
     fetched = repo.get_by_id(created.id)
     assert fetched is not None
@@ -53,7 +61,11 @@ def test_get_by_id(app, db_session: Session):
 
 def test_count_unread_and_mark_read(app, db_session: Session):
     repo = NotificationRepository(db_session)
-    user_id = uuid.uuid4()
+    from tests.fixtures.factories import UserFactory
+    test_user = UserFactory()
+    db_session.add(test_user)
+    db_session.flush()
+    user_id = test_user.id
 
     for i in range(3):
         repo.create_notification(
@@ -64,12 +76,12 @@ def test_count_unread_and_mark_read(app, db_session: Session):
                 type=NotificationType.SYSTEM,
             )
         )
-    db_session.commit()
+    db_session.flush()
 
     assert repo.count_unread(user_id) == 3
 
     count = repo.mark_all_as_read(user_id)
-    db_session.commit()
+    db_session.flush()
     assert count == 3
 
     assert repo.count_unread(user_id) == 0

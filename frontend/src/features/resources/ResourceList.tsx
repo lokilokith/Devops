@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { ResourceDialog } from "./ResourceDialog"
 
 export function ResourceList() {
   const [page, setPage] = React.useState(0)
@@ -28,6 +29,8 @@ export function ResourceList() {
   const { hasPermission } = useAuth()
 
   const [resourceToDelete, setResourceToDelete] = React.useState<Resource | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+  const [resourceToEdit, setResourceToEdit] = React.useState<Resource | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["resources", page, pageSize, search],
@@ -60,11 +63,39 @@ export function ResourceList() {
     {
       accessorKey: "resource_name",
       header: "Name",
-      cell: ({ row }) => <span className="font-medium">{row.getValue("resource_name")}</span>,
+      cell: ({ row }) => (
+        <div>
+          <span className="font-medium block">{row.getValue("resource_name")}</span>
+          <span className="text-xs text-muted-foreground block">{row.original.resource_code}</span>
+        </div>
+      ),
     },
     {
-      accessorKey: "description",
-      header: "Description",
+      accessorKey: "type_env",
+      header: "Type & Env",
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-1">
+          <Badge variant="outline" className="w-fit">{row.original.resource_type}</Badge>
+          {row.original.environment && <Badge variant="secondary" className="w-fit">{row.original.environment}</Badge>}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "connection",
+      header: "Connection",
+      cell: ({ row }) => (
+        <div className="text-sm">
+          {row.original.hostname_ip ? (
+            <>
+              {row.original.hostname_ip}{row.original.port ? `:${row.original.port}` : ''}
+              <br />
+              <span className="text-muted-foreground">{row.original.connection_method}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground italic">None</span>
+          )}
+        </div>
+      )
     },
     {
       accessorKey: "status",
@@ -92,6 +123,14 @@ export function ResourceList() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              {hasPermission(PERMISSIONS.RESOURCES_UPDATE) && (
+                <DropdownMenuItem onClick={() => {
+                  setResourceToEdit(resource)
+                  setIsDialogOpen(true)
+                }}>
+                  Edit Resource
+                </DropdownMenuItem>
+              )}
               {hasPermission(PERMISSIONS.RESOURCES_DELETE) && (
                 <DropdownMenuItem onClick={() => setResourceToDelete(resource)} className="text-destructive">
                   <Trash className="mr-2 h-4 w-4" />
@@ -118,7 +157,10 @@ export function ResourceList() {
           }}
         />
         {hasPermission(PERMISSIONS.RESOURCES_CREATE) && (
-          <Button>Create Resource</Button>
+          <Button onClick={() => {
+            setResourceToEdit(null)
+            setIsDialogOpen(true)
+          }}>Create Resource</Button>
         )}
       </div>
 
@@ -145,6 +187,12 @@ export function ResourceList() {
         confirmText="Delete"
         isLoading={deleteResourceMutation.isPending}
         onConfirm={() => resourceToDelete && deleteResourceMutation.mutate(resourceToDelete.id)}
+      />
+
+      <ResourceDialog 
+        open={isDialogOpen} 
+        onOpenChange={setIsDialogOpen} 
+        resource={resourceToEdit} 
       />
     </div>
   )

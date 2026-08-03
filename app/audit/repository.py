@@ -28,7 +28,7 @@ class AuditRepository:
     def create_log(self, audit_log: AuditLog) -> AuditLog:
         try:
             self._session.add(audit_log)
-            self._session.commit()
+            self._session.flush()
             self._session.refresh(audit_log)
             return audit_log
         except SQLAlchemyError as err:

@@ -24,7 +24,7 @@ def _create_admin_user(db_session):
             full_name="System Administrator",
         )
         db_session.add(admin)
-        db_session.commit()
+        db_session.flush()
     return admin
 
 
@@ -136,7 +136,7 @@ def test_seed_rbac_partial_state(app, db_session):
             resource_code="RESOURCE_USERS", resource_name="User Management"
         )
         db_session.add(partial_res)
-    db_session.commit()
+    db_session.flush()
 
     assert seed_rbac() is True
 

@@ -35,6 +35,10 @@ def client(app):
 def db_session(app):
     session = _db.session
     session.begin_nested()
+    # Patch commit to flush to prevent test data from leaking
+    original_commit = session.commit
+    session.commit = session.flush
+
 
     from tests.fixtures import factories
 
@@ -68,7 +72,7 @@ def admin_user(db_session):
     if not user:
         user = UserFactory(username="admin")
         db_session.add(user)
-        db_session.commit()
+        db_session.flush()
     return user
 
 
@@ -81,7 +85,7 @@ def admin_token(security_auth_service, admin_user):
 def normal_user(db_session):
     user = UserFactory()
     db_session.add(user)
-    db_session.commit()
+    db_session.flush()
     return user
 
 
@@ -98,7 +102,7 @@ def user_token(security_auth_service, normal_user):
 def approver_user(db_session):
     user = UserFactory(username="approver")
     db_session.add(user)
-    db_session.commit()
+    db_session.flush()
     return user
 
 
@@ -118,7 +122,7 @@ def sec_admin_user(db_session):
 
         db_session.add(UserRole(user_id=user.id, role_id=sec_admin_role.id))
     db_session.add(user)
-    db_session.commit()
+    db_session.flush()
     return user
 
 
@@ -129,12 +133,12 @@ def sec_admin_token(security_auth_service, sec_admin_user):
 def test_role(db_session):
     role = RoleFactory()
     db_session.add(role)
-    db_session.commit()
+    db_session.flush()
     return role
 
 @pytest.fixture
 def test_user(db_session):
     user = UserFactory()
     db_session.add(user)
-    db_session.commit()
+    db_session.flush()
     return user

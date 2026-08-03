@@ -137,7 +137,7 @@ def test_requires_permission_success(app, client, db_session):
     rp = RolePermission(role_id=r.id, permission_id=perm.id)
     ur = UserRole(user_id=u.id, role_id=r.id)
     db_session.add_all([rp, ur])
-    db_session.commit()
+    db_session.flush()
 
     token = create_mock_token(app, u.id)
     res = client.get("/admin", headers={"Authorization": f"Bearer {token}"})
@@ -154,7 +154,7 @@ def test_requires_permission_denied(app, client, db_session):
         status=UserStatus.ACTIVE,
     )
     db_session.add(u)
-    db_session.commit()
+    db_session.flush()
 
     token = create_mock_token(app, u.id)
     res = client.get("/admin", headers={"Authorization": f"Bearer {token}"})

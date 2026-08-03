@@ -4,9 +4,9 @@ def test_approver_can_read_own_workflow_returns_200(
     # This proves the BOLA vulnerability is fixed.
     from tests.fixtures.factories import WorkflowFactory
 
-    wf = WorkflowFactory(approver_id=approver_user.id)
+    wf = WorkflowFactory(approver=approver_user)
     db_session.add(wf)
-    db_session.commit()
+    db_session.flush()
 
     resp = client.get(
         "/approval-workflows", headers={"Authorization": f"Bearer {approver_token}"}

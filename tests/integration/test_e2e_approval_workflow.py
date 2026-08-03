@@ -120,7 +120,7 @@ def test_e2e_approval_workflow_full_lifecycle(client, db_session):
     # Assign roles to users
     db_session.add(UserRole(user_id=admin_user.id, role_id=admin_role.id))
     db_session.add(UserRole(user_id=standard_user.id, role_id=user_role.id))
-    db_session.commit()
+    db_session.flush()
 
     auth_svc = AuthService(IdentityRepository(db_session))
     admin_token = auth_svc.generate_access_token(admin_user.id)

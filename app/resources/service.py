@@ -26,6 +26,15 @@ class ResourcesService:
         description = data.get("description")
         resource_type = data.get("resource_type") or ResourceType.SERVER
 
+        # PAM extended fields
+        hostname_ip = data.get("hostname_ip")
+        protocol = data.get("protocol")
+        port = data.get("port")
+        environment = data.get("environment")
+        criticality = data.get("criticality")
+        connection_method = data.get("connection_method")
+        owner_id = data.get("owner_id")
+
         if not resource_code or not resource_name:
             raise ValidationError(
                 "Missing required fields: resource_code and resource_name"
@@ -50,6 +59,20 @@ class ResourcesService:
                 description=description,
                 resource_type=resource_type,
             )
+            if hostname_ip:
+                resource.hostname_ip = hostname_ip
+            if protocol:
+                resource.protocol = protocol
+            if port:
+                resource.port = port
+            if environment:
+                resource.environment = environment
+            if criticality:
+                resource.criticality = criticality
+            if connection_method:
+                resource.connection_method = connection_method
+            if owner_id:
+                resource.owner_id = owner_id
             return self._repository.create(resource)
         except ResourcesRepositoryError as e:
             raise ResourcesServiceError(f"Failed to create resource: {e}") from e
@@ -94,6 +117,21 @@ class ResourcesService:
 
         if "status" in data:
             resource.status = data["status"]
+
+        if "hostname_ip" in data:
+            resource.hostname_ip = data["hostname_ip"]
+        if "protocol" in data:
+            resource.protocol = data["protocol"]
+        if "port" in data:
+            resource.port = data["port"]
+        if "environment" in data:
+            resource.environment = data["environment"]
+        if "criticality" in data:
+            resource.criticality = data["criticality"]
+        if "connection_method" in data:
+            resource.connection_method = data["connection_method"]
+        if "owner_id" in data:
+            resource.owner_id = data["owner_id"]
 
         try:
             return self._repository.update(resource)

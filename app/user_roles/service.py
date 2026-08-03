@@ -80,7 +80,22 @@ class UserRoleService:
 
     def remove_role(self, user_id: UUID, role_id: UUID) -> bool:
         try:
-            return self._repository.remove_role_from_user(user_id, role_id)
+            result = self._repository.remove_role_from_user(user_id, role_id)
+            if result:
+                from app.notifications.events import permission_revoked
+                permission_revoked.send(
+                    self,
+                    payload={
+                        "event": "permission_revoked",
+                        "actor_id": "system",
+                        "recipient_id": str(user_id),
+                        "title": "Permission Revoked",
+                        "message": "A role has been removed from your account.",
+                        "type": "system",
+                        "priority": "high",
+                    },
+                )
+            return result
         except UserRoleNotFoundError as e:
             raise ValidationError(str(e)) from e
         except UserRolesRepositoryError as e:

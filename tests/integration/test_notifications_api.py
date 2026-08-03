@@ -14,7 +14,7 @@ def setup_admin_user(db_session, app):
         status=UserStatus.ACTIVE,
     )
     db_session.add(u)
-    db_session.commit()
+    db_session.flush()
     token = create_mock_token(app, u.id)
     return token, u.id
 
@@ -30,7 +30,7 @@ def test_get_notifications(client, db_session, app):
         status=NotificationStatus.SENT,
     )
     db_session.add(n1)
-    db_session.commit()
+    db_session.flush()
 
     resp = client.get("/notifications", headers={"Authorization": f"Bearer {token}"})
 
@@ -51,7 +51,7 @@ def test_unread_count(client, db_session, app):
         status=NotificationStatus.SENT,
     )
     db_session.add(n1)
-    db_session.commit()
+    db_session.flush()
 
     resp = client.get(
         "/notifications/unread-count", headers={"Authorization": f"Bearer {token}"}

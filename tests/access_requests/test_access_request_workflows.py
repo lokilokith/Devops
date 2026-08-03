@@ -55,7 +55,7 @@ def test_approve_request_success(ar_service, normal_user, sample_role, db_sessio
     admin = admin_user
     
     # Must use actual user with a valid role (if we're assigning one)
-    db_session.commit()
+    db_session.flush()
 
     approved_req = ar_service.approve_request(req.id, approver_id=admin.id)
     assert approved_req.status == AccessRequestStatus.APPROVED

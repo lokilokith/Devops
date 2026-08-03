@@ -72,7 +72,7 @@ def test_list_permissions_for_role(role_permissions_repo, sample_role, db_sessio
         status=PermissionStatus.ACTIVE,
     )
     db_session.add_all([p1, p2])
-    db_session.commit()
+    db_session.flush()
 
     role_permissions_repo.assign_permission_to_role(sample_role.id, p1.id)
     role_permissions_repo.assign_permission_to_role(sample_role.id, p2.id)
@@ -98,7 +98,7 @@ def test_list_roles_for_permission(
         status=RoleStatus.ACTIVE,
     )
     db_session.add_all([r1, r2])
-    db_session.commit()
+    db_session.flush()
 
     role_permissions_repo.assign_permission_to_role(r1.id, sample_permission.id)
     role_permissions_repo.assign_permission_to_role(r2.id, sample_permission.id)

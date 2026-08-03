@@ -61,7 +61,7 @@ def test_list_roles_for_user(user_roles_repo, sample_user, db_session):
         status=RoleStatus.ACTIVE,
     )
     db_session.add_all([r1, r2])
-    db_session.commit()
+    db_session.flush()
 
     user_roles_repo.assign_role_to_user(sample_user.id, r1.id)
     user_roles_repo.assign_role_to_user(sample_user.id, r2.id)
@@ -75,7 +75,7 @@ def test_list_users_for_role(user_roles_repo, sample_role, db_session):
     u1 = User(employee_id="U1", username="usr1", email="usr1@e.com", full_name="u1")
     u2 = User(employee_id="U2", username="usr2", email="usr2@e.com", full_name="u2")
     db_session.add_all([u1, u2])
-    db_session.commit()
+    db_session.flush()
 
     user_roles_repo.assign_role_to_user(u1.id, sample_role.id)
     user_roles_repo.assign_role_to_user(u2.id, sample_role.id)
@@ -93,7 +93,7 @@ def test_count_roles_for_user(user_roles_repo, sample_user, db_session):
         status=RoleStatus.ACTIVE,
     )
     db_session.add(r1)
-    db_session.commit()
+    db_session.flush()
 
     user_roles_repo.assign_role_to_user(sample_user.id, r1.id)
     assert user_roles_repo.count_roles_for_user(sample_user.id) == 1
@@ -102,7 +102,7 @@ def test_count_roles_for_user(user_roles_repo, sample_user, db_session):
 def test_count_users_for_role(user_roles_repo, sample_role, db_session):
     u1 = User(employee_id="CU1", username="cusr1", email="cusr1@e.com", full_name="u1")
     db_session.add(u1)
-    db_session.commit()
+    db_session.flush()
 
     user_roles_repo.assign_role_to_user(u1.id, sample_role.id)
     assert user_roles_repo.count_users_for_role(sample_role.id) == 1

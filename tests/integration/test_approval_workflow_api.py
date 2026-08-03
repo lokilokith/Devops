@@ -20,7 +20,7 @@ def test_user(db_session):
         employee_id=f"E_{uuid4().hex[:8]}",
     )
     db_session.add(user)
-    db_session.commit()
+    db_session.flush()
     return user
 
 
@@ -30,7 +30,7 @@ def test_role(db_session):
 
     role = Role(role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}")
     db_session.add(role)
-    db_session.commit()
+    db_session.flush()
     return role
 
 
@@ -89,7 +89,7 @@ def auth_headers(test_user, db_session):
     db_session.add(RolePermission(role_id=role.id, permission_id=ar_perm.id))
 
     db_session.add(UserRole(user_id=test_user.id, role_id=role.id))
-    db_session.commit()
+    db_session.flush()
 
     auth_svc = AuthService(IdentityRepository(db_session))
     token = auth_svc.generate_access_token(test_user.id)
@@ -115,7 +115,7 @@ def test_workflow(app, db_session, test_user, test_role):
         status=ApprovalStatus.PENDING,
     )
     db_session.add(wf)
-    db_session.commit()
+    db_session.flush()
     return wf
 
 

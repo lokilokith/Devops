@@ -58,7 +58,7 @@ def auth_setup(db_session, app):
         db_session.add(RolePermission(role_id=role.id, permission_id=perm.id))
 
     db_session.add(UserRole(user_id=user.id, role_id=role.id))
-    db_session.commit()
+    db_session.flush()
 
     token = auth_svc.generate_access_token(user.id)
     return user, token, role
@@ -111,7 +111,7 @@ def test_approve_access_request_forbidden(client, db_session):
     auth_svc = AuthService(IdentityRepository(db_session))
     user.password_hash = auth_svc.hash_password("secret")
     db_session.add(user)
-    db_session.commit()
+    db_session.flush()
     token = auth_svc.generate_access_token(user.id)
 
     fake_id = str(uuid4())

@@ -11,7 +11,11 @@ class TestingConfig(BaseConfig):
 
     TESTING = True
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(
-        tempfile.gettempdir(), "opsforge_test.db"
-    )
+    _db_url = os.environ.get("DATABASE_URL")
+    if _db_url:
+        SQLALCHEMY_DATABASE_URI = _db_url
+    else:
+        SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(
+            tempfile.gettempdir(), "opsforge_test.db"
+        )
     SQLALCHEMY_ENGINE_OPTIONS = {}

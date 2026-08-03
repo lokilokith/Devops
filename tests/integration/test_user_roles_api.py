@@ -39,11 +39,11 @@ def setup_admin_user(db_session, app):
         db_session.flush()
     db_session.add_all([p1])
 
-    db_session.commit()
+    db_session.flush()
 
     db_session.add(UserRole(user_id=u.id, role_id=r.id))
     db_session.add(RolePermission(role_id=r.id, permission_id=p1.id))
-    db_session.commit()
+    db_session.flush()
 
     from tests.api.test_decorators import create_mock_token
 
@@ -60,7 +60,7 @@ def setup_limited_user(db_session, app):
         status=UserStatus.ACTIVE,
     )
     db_session.add(u)
-    db_session.commit()
+    db_session.flush()
     from tests.api.test_decorators import create_mock_token
 
     token = create_mock_token(app, u.id)
@@ -80,7 +80,7 @@ def test_user_roles_crud(client, db_session, app):
         status=RoleStatus.ACTIVE,
     )
     db_session.add(role)
-    db_session.commit()
+    db_session.flush()
 
     # 1. Assign Role to User
     assign_data = {"role_id": str(role.id)}

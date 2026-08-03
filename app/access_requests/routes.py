@@ -227,7 +227,37 @@ class AccessRequestApprove(Resource):
         """Approve an access request."""
         service = get_service()
         try:
-            req = service.approve_request(request_id, UUID(g.user_id))
+            from app.approval_workflow.repository import ApprovalWorkflowRepository
+            from app.approval_workflow.service import ApprovalWorkflowService
+            from app.audit.repository import AuditRepository
+            from app.audit.service import AuditService
+            from app.user_roles.repository import UserRolesRepository
+            from app.approval_workflow.exceptions import ApprovalWorkflowValidationError, ApprovalWorkflowInvalidStateError
+            from werkzeug.exceptions import Forbidden
+
+            wf_svc = ApprovalWorkflowService(
+                ApprovalWorkflowRepository(db.session),
+                service._repo,
+                UserRolesRepository(db.session),
+                AuditService(AuditRepository(db.session)),
+                db.session,
+            )
+
+            workflows = wf_svc._repo.get_by_request(request_id)
+            pending_wf = next((wf for wf in workflows if wf.status.value == "pending"), None)
+            if not pending_wf:
+                raise BadRequest("No pending approval workflow found for this request.")
+
+            try:
+                wf_svc.approve(pending_wf.id, UUID(g.user_id))
+            except Forbidden as e:
+                raise Forbidden(str(e))
+            except ApprovalWorkflowValidationError as e:
+                raise UnprocessableEntity(str(e))
+            except ApprovalWorkflowInvalidStateError as e:
+                raise BadRequest(str(e))
+
+            req = service._repo.get_by_id(request_id)
             return {
                 "success": True,
                 "message": "Access request approved successfully",
@@ -283,11 +313,16 @@ class AccessRequestCancel(Resource):
             raise NotFound("Access request not found")
 
         authz = AuthorizationService(db.session)
-        is_admin = authz.has_permission(
-            UUID(g.user_id), "access_requests", PermissionAction.READ
-        )
-        if not is_admin and req.requester_id != UUID(g.user_id):
-            raise NotFound("Access request not found")
+        try:
+            can_cancel_all = authz.has_permission(
+                UUID(g.user_id), "access_requests", PermissionAction.CANCEL
+            )
+        except ValueError:
+            can_cancel_all = False
+
+        if not can_cancel_all and req.requester_id != UUID(g.user_id):
+            from werkzeug.exceptions import Forbidden
+            raise Forbidden("You do not have permission to cancel this request.")
 
         try:
             cancelled_req = service.cancel_request(request_id)

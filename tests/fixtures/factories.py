@@ -14,7 +14,7 @@ from app.shared.database import db
 class BaseFactory(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         sqlalchemy_session = db.session
-        sqlalchemy_session_persistence = "commit"
+        sqlalchemy_session_persistence = "flush"
 
 
 class UserFactory(BaseFactory):
@@ -52,25 +52,16 @@ class PermissionFactory(BaseFactory):
     description = "Test Permission"
 
 
-class WorkflowFactory(BaseFactory):
-    class Meta:
-        model = ApprovalWorkflow
-
-    id = factory.LazyFunction(uuid.uuid4)
-    access_request_id = factory.LazyFunction(uuid.uuid4)
-    approver_id = factory.LazyFunction(uuid.uuid4)
-    approval_level = ApprovalLevel.MANAGER
-    status = ApprovalStatus.PENDING
 
 
 class NotificationFactory(BaseFactory):
     class Meta:
         model = Notification
+        exclude = ('recipient',)
 
     id = factory.LazyFunction(uuid.uuid4)
-    recipient_user_id = factory.LazyFunction(
-        lambda: str(uuid.uuid4())
-    )  # Must be overridden
+    recipient = factory.SubFactory(UserFactory)
+    recipient_user_id = factory.SelfAttribute('recipient.id')
     title = "Test Notification"
     message = "Message"
     type = NotificationType.SYSTEM
@@ -80,10 +71,26 @@ class NotificationFactory(BaseFactory):
 class AccessRequestFactory(BaseFactory):
     class Meta:
         model = AccessRequest
+        exclude = ('requester', 'requested_role')
 
     id = factory.LazyFunction(uuid.uuid4)
-    requester_id = factory.LazyFunction(uuid.uuid4)
+    requester = factory.SubFactory(UserFactory)
+    requester_id = factory.SelfAttribute('requester.id')
     status = AccessRequestStatus.PENDING
     request_number = factory.Sequence(lambda n: f"REQ-{n}")
-    requested_role_id = factory.LazyFunction(uuid.uuid4)
+    requested_role = factory.SubFactory(RoleFactory)
+    requested_role_id = factory.SelfAttribute('requested_role.id')
     business_justification = "Testing"
+
+class WorkflowFactory(BaseFactory):
+    class Meta:
+        model = ApprovalWorkflow
+        exclude = ('access_request', 'approver')
+
+    id = factory.LazyFunction(uuid.uuid4)
+    access_request = factory.SubFactory(AccessRequestFactory)
+    access_request_id = factory.SelfAttribute('access_request.id')
+    approver = factory.SubFactory(UserFactory)
+    approver_id = factory.SelfAttribute('approver.id')
+    approval_level = ApprovalLevel.MANAGER
+    status = ApprovalStatus.PENDING

@@ -3,9 +3,9 @@ def test_owner_can_read_notification_returns_200(
 ):
     from tests.fixtures.factories import NotificationFactory
 
-    notif = NotificationFactory(recipient_user_id=normal_user.id)
+    notif = NotificationFactory(recipient=normal_user)
     db_session.add(notif)
-    db_session.commit()
+    db_session.flush()
 
     resp = client.get(
         f"/notifications/{notif.id}",
@@ -20,9 +20,9 @@ def test_non_owner_cannot_read_notification_returns_403(
     from tests.fixtures.factories import NotificationFactory
 
     # Notif belongs to admin
-    notif = NotificationFactory(recipient_user_id=admin_user.id)
+    notif = NotificationFactory(recipient=admin_user)
     db_session.add(notif)
-    db_session.commit()
+    db_session.flush()
 
     resp = client.get(
         f"/notifications/{notif.id}",
@@ -36,9 +36,9 @@ def test_owner_can_read_access_request_returns_200(
 ):
     from tests.fixtures.factories import AccessRequestFactory
 
-    req = AccessRequestFactory(requester_id=normal_user.id)
+    req = AccessRequestFactory(requester=normal_user)
     db_session.add(req)
-    db_session.commit()
+    db_session.flush()
 
     resp = client.get(
         f"/access-requests/{req.id}",
@@ -52,9 +52,9 @@ def test_non_owner_cannot_read_access_request_returns_404(
 ):
     from tests.fixtures.factories import AccessRequestFactory
 
-    req = AccessRequestFactory(requester_id=admin_user.id)
+    req = AccessRequestFactory(requester=admin_user)
     db_session.add(req)
-    db_session.commit()
+    db_session.flush()
 
     resp = client.get(
         f"/access-requests/{req.id}",

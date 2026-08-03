@@ -3,7 +3,18 @@ import { apiClient } from "@/api/axios"
 export interface Resource {
   id: string
   resource_name: string
+  resource_code: string
+  resource_type: string
+  status: string
   description?: string
+  hostname_ip?: string
+  protocol?: string
+  port?: number
+  environment?: string
+  criticality?: string
+  connection_method?: string
+  owner_id?: string
+  created_by?: string
 }
 
 export interface ResourceListParams {
@@ -35,12 +46,12 @@ export const resourcesService = {
     return unwrap<Resource>(response)
   },
   
-  async createResource(data: { resource_name: string; description?: string }): Promise<Resource> {
+  async createResource(data: Partial<Resource>): Promise<Resource> {
     const response = await apiClient.post("/resources", data)
     return unwrap<Resource>(response)
   },
   
-  async updateResource(id: string, data: { resource_name: string; description?: string }): Promise<Resource> {
+  async updateResource(id: string, data: Partial<Resource>): Promise<Resource> {
     const response = await apiClient.put(`/resources/${id}`, data)
     return unwrap<Resource>(response)
   },

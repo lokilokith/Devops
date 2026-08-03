@@ -29,7 +29,11 @@ def test_create_notification_success(app, db_session):
     provider = DummyProvider(succeed=True)
 
     svc = NotificationService(repo, audit, provider, db_session)
-    user_id = uuid.uuid4()
+    from tests.fixtures.factories import UserFactory
+    test_user = UserFactory()
+    db_session.add(test_user)
+    db_session.flush()
+    user_id = test_user.id
 
     n = svc.create_notification(
         recipient_user_id=user_id,
@@ -50,7 +54,11 @@ def test_create_notification_provider_failure(app, db_session):
     provider = DummyProvider(succeed=False)
 
     svc = NotificationService(repo, audit, provider, db_session)
-    user_id = uuid.uuid4()
+    from tests.fixtures.factories import UserFactory
+    test_user = UserFactory()
+    db_session.add(test_user)
+    db_session.flush()
+    user_id = test_user.id
 
     n = svc.create_notification(
         recipient_user_id=user_id,
@@ -71,7 +79,11 @@ def test_retry_failed_notifications(app, db_session):
     provider = DummyProvider(succeed=False)
 
     svc = NotificationService(repo, audit, provider, db_session)
-    user_id = uuid.uuid4()
+    from tests.fixtures.factories import UserFactory
+    test_user = UserFactory()
+    db_session.add(test_user)
+    db_session.flush()
+    user_id = test_user.id
 
     n = svc.create_notification(
         recipient_user_id=user_id,
@@ -99,7 +111,11 @@ def test_mark_as_read(app, db_session):
     provider = DummyProvider(succeed=True)
 
     svc = NotificationService(repo, audit, provider, db_session)
-    user_id = uuid.uuid4()
+    from tests.fixtures.factories import UserFactory
+    test_user = UserFactory()
+    db_session.add(test_user)
+    db_session.flush()
+    user_id = test_user.id
 
     n = svc.create_notification(
         recipient_user_id=user_id,

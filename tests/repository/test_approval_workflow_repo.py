@@ -24,7 +24,7 @@ def test_user(db_session):
         employee_id=f"E_{uuid4().hex[:8]}",
     )
     db_session.add(user)
-    db_session.commit()
+    db_session.flush()
     return user
 
 
@@ -34,7 +34,7 @@ def test_role(db_session):
 
     role = Role(role_code=f"R_{uuid4().hex[:8]}", role_name=f"Role {uuid4().hex[:8]}")
     db_session.add(role)
-    db_session.commit()
+    db_session.flush()
     return role
 
 
@@ -60,7 +60,7 @@ def sample_workflow(db_session, test_user, test_role):
         status=ApprovalStatus.PENDING,
     )
     db_session.add(wf)
-    db_session.commit()
+    db_session.flush()
     return wf
 
 

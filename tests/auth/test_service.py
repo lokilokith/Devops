@@ -39,7 +39,7 @@ def test_authenticate_invalid_password(auth_service, sample_user):
 
 def test_authenticate_inactive_user(auth_service, sample_user, db_session):
     sample_user.status = UserStatus.SUSPENDED
-    db_session.commit()
+    db_session.flush()
     with pytest.raises(UserInactiveError):
         auth_service.authenticate_user(sample_user.username, "password123")
 
@@ -114,7 +114,7 @@ def test_refresh_inactive_user(auth_service, sample_user, db_session):
     refresh_token = res["refresh_token"]
 
     sample_user.status = UserStatus.SUSPENDED
-    db_session.commit()
+    db_session.flush()
 
     with pytest.raises(UserInactiveError):
         auth_service.refresh(refresh_token)

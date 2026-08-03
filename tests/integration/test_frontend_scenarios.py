@@ -73,7 +73,7 @@ def test_pending_request_visible_in_approval_queue(client, admin_token, user_tok
     assert req_id in requests
 
 def test_approval_assigns_permission(client, admin_token, user_token, test_role, normal_user, db_session):
-    from app.identity.models import UserRole
+    from app.roles.models import UserRole
     # Create request
     res = client.post(
         "/access-requests",
@@ -102,7 +102,7 @@ def test_approval_assigns_permission(client, admin_token, user_token, test_role,
     assert ur is not None
 
 def test_request_rejected_no_permission(client, admin_token, user_token, test_role, normal_user, db_session):
-    from app.identity.models import UserRole
+    from app.roles.models import UserRole
     res = client.post(
         "/access-requests",
         json={
