@@ -35,8 +35,11 @@ class RoleFactory(BaseFactory):
         model = Role
 
     id = factory.LazyFunction(uuid.uuid4)
-    name = factory.Sequence(lambda n: f"ROLE_{n}")
-    description = "Test Role"
+    role_code = factory.Sequence(lambda n: f"RC{n:03d}")
+    role_name = factory.Faker("word")
+    # role_type defaults to CUSTOM, status defaults to ACTIVE
+    description = factory.Faker("sentence")
+    # status defaults handled by model default
 
 
 class PermissionFactory(BaseFactory):

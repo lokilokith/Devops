@@ -6,7 +6,7 @@ from app import create_app
 from app.auth.service import AuthService
 from app.identity.repository import IdentityRepository
 from app.shared.database import db as _db
-from tests.fixtures.factories import UserFactory
+from tests.fixtures.factories import UserFactory, RoleFactory
 
 
 @pytest.fixture(scope="session")
@@ -89,6 +89,10 @@ def normal_user(db_session):
 def normal_token(security_auth_service, normal_user):
     return security_auth_service.generate_access_token(normal_user.id)
 
+@pytest.fixture
+def user_token(security_auth_service, normal_user):
+    return security_auth_service.generate_access_token(normal_user.id)
+
 
 @pytest.fixture
 def approver_user(db_session):
@@ -121,3 +125,16 @@ def sec_admin_user(db_session):
 @pytest.fixture
 def sec_admin_token(security_auth_service, sec_admin_user):
     return security_auth_service.generate_access_token(sec_admin_user.id)
+@pytest.fixture
+def test_role(db_session):
+    role = RoleFactory()
+    db_session.add(role)
+    db_session.commit()
+    return role
+
+@pytest.fixture
+def test_user(db_session):
+    user = UserFactory()
+    db_session.add(user)
+    db_session.commit()
+    return user
