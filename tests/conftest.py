@@ -24,6 +24,7 @@ def app():
         yield app
         _db.session.remove()
         _db.drop_all()
+        _db.engine.dispose()
 
 
 @pytest.fixture(scope="function")

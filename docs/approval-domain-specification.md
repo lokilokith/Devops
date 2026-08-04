@@ -4,7 +4,7 @@
 
 **Scope:** Approval domain only
 
-**Applies to:** Future implementation in `app/approval/` and authorization decision references across the platform
+**Applies to:** Future implementation in `app/approval_workflow/` and authorization decision references across the platform
 
 **Out of scope:** SQLAlchemy models, Python code, migrations, repositories, services, APIs, the AccessRequest entity, session brokering, and business service implementations
 

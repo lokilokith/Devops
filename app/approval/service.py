@@ -1,1 +1,0 @@
-"""Approval feature service placeholder."""

@@ -4,7 +4,7 @@
 
 **Scope:** AccessRequest domain only
 
-**Applies to:** Future implementation in `app/access/` and access-request references in the wider domain
+**Applies to:** Future implementation in `app/access_requests/` and access-request references in the wider domain
 
 **Out of scope:** SQLAlchemy models, Python code, migrations, repositories, services, APIs, the Approval entity/logic, authorization logic, and business service implementations
 
