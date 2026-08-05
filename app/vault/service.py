@@ -57,6 +57,25 @@ class VaultApplicationService:
         self._authz = authz_service
         self._session = session
 
+    def list_secrets(self, actor_id: UUID) -> list[Secret]:
+        """List active secrets (metadata only)."""
+        self._authz.authorize(actor_id, "vault", PermissionAction("read"))
+        return self._repository.list_active_secrets()
+
+    def get_statistics(self, actor_id: UUID) -> dict:
+        """Get vault statistics."""
+        self._authz.authorize(actor_id, "vault", PermissionAction("read"))
+        from app.vault.models import SecretStatus
+        active = self._repository.count_by_status(SecretStatus.ACTIVE)
+        disabled = self._repository.count_by_status(SecretStatus.DISABLED)
+        recent = self._audit._repo.count(action="SECRET_RETRIEVED")
+        return {
+            "total_secrets": active + disabled,
+            "active_secrets": active,
+            "disabled_secrets": disabled,
+            "recent_accesses": recent
+        }
+
     def create_secret(self, actor_id: UUID, resource_id: UUID, plaintext: bytes) -> Secret:
         """Create a new secret (with implicit authorization check)."""
         # 1. Authorization (RBAC)

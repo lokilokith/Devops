@@ -35,6 +35,15 @@ class SecretRepository(Protocol):
         """Delete a Secret by ID."""
         ...
 
+    def list_active_secrets(self) -> list[Secret]:
+        """List active secrets."""
+        ...
+
+    def count_by_status(self, status: str) -> int:
+        """Count secrets by status."""
+        ...
+
+
 
 class SqlAlchemyVaultRepository:
     """SQLAlchemy implementation of the SecretRepository."""
@@ -143,3 +152,14 @@ class SqlAlchemyVaultRepository:
         if model:
             self._session.delete(model)
             self._session.flush()
+
+    def list_active_secrets(self) -> list[Secret]:
+        from app.vault.models import SecretStatus
+        stmt = select(VaultSecret).where(VaultSecret.status == SecretStatus.ACTIVE)
+        models = self._session.execute(stmt).scalars().unique().all()
+        return [self._to_domain(model) for model in models]
+
+    def count_by_status(self, status: str) -> int:
+        from sqlalchemy import func
+        stmt = select(func.count(VaultSecret.id)).where(VaultSecret.status == status)
+        return self._session.execute(stmt).scalar_one()

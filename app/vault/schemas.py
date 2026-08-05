@@ -42,3 +42,13 @@ secret_reveal_dto = vault_ns.model(
         "metadata": fields.Nested(secret_metadata_dto),
     },
 )
+
+vault_statistics_dto = vault_ns.model(
+    "VaultStatistics",
+    {
+        "total_secrets": fields.Integer(description="Total number of secrets"),
+        "active_secrets": fields.Integer(description="Number of active secrets"),
+        "disabled_secrets": fields.Integer(description="Number of disabled secrets"),
+        "recent_accesses": fields.Integer(description="Number of recent accesses"),
+    },
+)

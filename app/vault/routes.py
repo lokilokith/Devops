@@ -24,6 +24,7 @@ from app.vault.schemas import (
     secret_create_dto,
     secret_response_dto,
     secret_reveal_dto,
+    vault_statistics_dto,
     vault_ns,
 )
 from app.vault.service import ApprovalRequiredError, VaultApplicationService
@@ -43,6 +44,17 @@ def get_vault_service() -> VaultApplicationService:
 
 @vault_ns.route("/secrets")
 class SecretCollection(Resource):
+    @vault_ns.marshal_list_with(secret_response_dto)
+    @login_required
+    def get(self):
+        """List active secrets."""
+        service = get_vault_service()
+        try:
+            secrets = service.list_secrets(actor_id=uuid.UUID(g.user_id))
+            return secrets, 200
+        except AuthorizationDeniedError as e:
+            raise Forbidden(str(e))
+
     @vault_ns.expect(secret_create_dto, validate=True)
     @vault_ns.marshal_with(secret_response_dto, code=201)
     @login_required
@@ -169,3 +181,18 @@ class SecretDisable(Resource):
             if "not found" in str(e).lower():
                 raise NotFound(str(e))
             raise BadRequest(str(e))
+
+
+@vault_ns.route("/secrets/stats")
+class VaultStatistics(Resource):
+    @vault_ns.marshal_with(vault_statistics_dto)
+    @login_required
+    def get(self):
+        """Get vault statistics."""
+        service = get_vault_service()
+        try:
+            stats = service.get_statistics(actor_id=uuid.UUID(g.user_id))
+            return stats, 200
+        except AuthorizationDeniedError as e:
+            raise Forbidden(str(e))
+
