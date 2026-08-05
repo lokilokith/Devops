@@ -171,5 +171,11 @@ class AuditService:
             }
         )
 
+    def search_logs(self, page: int = 1, page_size: int = 20, **filters) -> list[AuditLog]:
+        return self._repo.search(page=page, page_size=page_size, **filters)
+
+    def count_logs(self, **filters) -> int:
+        return self._repo.count(**filters)
+
 
 __all__ = ["AuditService"]

@@ -11,6 +11,7 @@ from flask_restx import Api
 
 from app.access_requests.routes import access_requests_ns
 from app.approval_workflow.routes import approval_workflows_ns
+from app.audit.routes import audit_ns
 from app.auth.routes import auth_ns
 from app.identity.routes import identity_ns
 from app.notifications.routes import notifications_ns
@@ -148,6 +149,7 @@ api = CustomApi(
 
 # Register namespaces with explicit routing prefix paths
 api.add_namespace(health_ns, path="/health")
+api.add_namespace(audit_ns, path="/audit")
 api.add_namespace(auth_ns, path="/auth")
 api.add_namespace(identity_ns, path="/users")
 api.add_namespace(roles_ns, path="/roles")
