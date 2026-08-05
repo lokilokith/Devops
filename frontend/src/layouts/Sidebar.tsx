@@ -9,9 +9,11 @@ import {
   CheckSquare,
   Bell,
   ScrollText,
+  Lock,
 } from "lucide-react"
 import { useAuth } from "@/features/authentication/AuthContext"
 import { PERMISSIONS } from "@/features/authentication/authorization"
+import { VAULT_PERMISSIONS } from "@/features/vault/constants"
 
 export function Sidebar() {
   const { hasPermission } = useAuth()
@@ -22,6 +24,8 @@ export function Sidebar() {
     ...(hasPermission(PERMISSIONS.ROLES_READ) ? [{ name: "Roles", to: "/roles", icon: ShieldCheck }] : []),
     ...(hasPermission(PERMISSIONS.PERMISSIONS_READ) ? [{ name: "Permissions", to: "/permissions", icon: Key }] : []),
     ...(hasPermission(PERMISSIONS.RESOURCES_READ) ? [{ name: "Resources", to: "/resources", icon: FolderOpen }] : []),
+    ...(hasPermission(VAULT_PERMISSIONS.VAULT_READ) ? [{ name: "Credential Vault", to: "/vault", icon: Lock }] : []),
+    ...(hasPermission(VAULT_PERMISSIONS.VAULT_READ) ? [{ name: "Vault Audit", to: "/vault/audit", icon: ScrollText }] : []),
     { name: "Access Requests", to: "/access-requests", icon: ClipboardList },
     { name: "Approvals", to: "/approvals", icon: CheckSquare },
     { name: "Notifications", to: "/notifications", icon: Bell },

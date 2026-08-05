@@ -25,15 +25,28 @@ import {
 interface AccessRequestCreateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  initialType?: "role" | "resource"
+  initialResourceId?: string
 }
 
-export function AccessRequestCreateModal({ open, onOpenChange }: AccessRequestCreateModalProps) {
+export function AccessRequestCreateModal({ open, onOpenChange, initialType = "role", initialResourceId }: AccessRequestCreateModalProps) {
   const [formData, setFormData] = React.useState<AccessRequestCreatePayload>({
     business_justification: "",
     priority: "low",
+    requested_resource_id: initialResourceId,
   })
   
-  const [requestType, setRequestType] = React.useState<"role" | "resource">("role")
+  const [requestType, setRequestType] = React.useState<"role" | "resource">(initialType)
+
+  React.useEffect(() => {
+    if (open) {
+      setRequestType(initialType)
+      setFormData(prev => ({
+        ...prev,
+        requested_resource_id: initialResourceId
+      }))
+    }
+  }, [open, initialType, initialResourceId])
 
   const queryClient = useQueryClient()
   const { toast } = useToast()

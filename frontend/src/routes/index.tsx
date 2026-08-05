@@ -17,6 +17,10 @@ import { Profile } from "@/features/profile/Profile"
 import { Settings } from "@/features/settings/Settings"
 import { NotFound } from "@/features/errors/NotFound"
 import { Unauthorized } from "@/features/errors/Unauthorized"
+import { VaultDashboard } from "@/features/vault/pages/VaultDashboard"
+import { SecretList } from "@/features/vault/pages/SecretList"
+import { VaultAuditList } from "@/features/vault/pages/VaultAuditList"
+import { VAULT_PERMISSIONS } from "@/features/vault/constants"
 
 export const router = createBrowserRouter([
   {
@@ -68,6 +72,30 @@ export const router = createBrowserRouter([
             element: (
               <AuthGuard requiredPermission={PERMISSIONS.RESOURCES_READ}>
                 <ResourceList />
+              </AuthGuard>
+            ),
+          },
+          {
+            path: "vault",
+            element: (
+              <AuthGuard requiredPermission={VAULT_PERMISSIONS.VAULT_READ}>
+                <VaultDashboard />
+              </AuthGuard>
+            ),
+          },
+          {
+            path: "vault/secrets",
+            element: (
+              <AuthGuard requiredPermission={VAULT_PERMISSIONS.VAULT_READ}>
+                <SecretList />
+              </AuthGuard>
+            ),
+          },
+          {
+            path: "vault/audit",
+            element: (
+              <AuthGuard requiredPermission={VAULT_PERMISSIONS.VAULT_READ}>
+                <VaultAuditList />
               </AuthGuard>
             ),
           },

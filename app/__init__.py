@@ -52,6 +52,7 @@ def create_app() -> Flask:
     # Models are imported at module level and exported via __all__ to register metadata
     from app.audit import models as audit_models
     from app.notifications import models as notif_models
+    from app.vault import models as vault_models
 
     # Register error handlers
     register_error_handlers(app)

@@ -101,8 +101,12 @@ apiClient.interceptors.response.use(
           return Promise.reject(refreshError)
         }
       } else if (status === 403) {
-        if (window.location.pathname !== "/403") {
-          router.navigate("/403", { replace: true })
+        // Let components handle specific 403 flows like APPROVAL_REQUIRED
+        const responseData = error.response?.data as any
+        if (responseData?.error !== "APPROVAL_REQUIRED") {
+          if (window.location.pathname !== "/403") {
+            router.navigate("/403", { replace: true })
+          }
         }
       }
     } else if (error.code === 'ECONNABORTED') {

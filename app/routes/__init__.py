@@ -27,6 +27,7 @@ from app.shared.exceptions import (
     ValidationException,
 )
 from app.user_roles.routes import user_roles_ns
+from app.vault.routes import vault_ns
 
 blueprint = Blueprint("api", __name__, url_prefix="")
 
@@ -156,6 +157,8 @@ api.add_namespace(role_permissions_ns, path="/")
 api.add_namespace(user_roles_ns, path="/")
 api.add_namespace(access_requests_ns, path="/access-requests")
 api.add_namespace(approval_workflows_ns, path="/approval-workflows")
+
+api.add_namespace(vault_ns, path="/vault")
 
 api.add_namespace(notifications_ns, path="/notifications")
 

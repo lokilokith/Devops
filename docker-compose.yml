@@ -30,6 +30,7 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-opsforge}:${POSTGRES_PASSWORD:-opsforge_pass}@postgres:5432/${POSTGRES_DB:-opsforge_db}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - VAULT_MASTER_KEY=${VAULT_MASTER_KEY:-MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=}
     depends_on:
       postgres:
         condition: service_healthy
