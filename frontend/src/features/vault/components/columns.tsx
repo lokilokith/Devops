@@ -13,6 +13,7 @@ import {
 
 export const getColumns = (
   onReveal: (id: string) => void,
+  onRotate: (id: string) => void,
   onDisable: (id: string) => void
 ): ColumnDef<VaultSecret>[] => [
   {
@@ -80,9 +81,14 @@ export const getColumns = (
               Reveal Secret
             </DropdownMenuItem>
             {secret.status === "active" && (
-              <DropdownMenuItem onClick={() => onDisable(secret.id)}>
-                Disable Secret
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onClick={() => onRotate(secret.id)}>
+                  Rotate Secret
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDisable(secret.id)}>
+                  Disable Secret
+                </DropdownMenuItem>
+              </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>

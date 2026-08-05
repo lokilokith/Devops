@@ -41,6 +41,11 @@ DEFAULT_PERMISSIONS = [
     ("notifications", "read"),
     ("notifications", "update"),
     ("notifications", "delete"),
+    # Vault
+    ("vault", "read"),
+    ("vault", "create"),
+    ("vault", "update"),
+    ("vault", "delete"),
 ]
 
 ROLE_PERMISSION_MAP = {

@@ -14,8 +14,10 @@ export interface VaultSecret {
   updated_at: string;
   // If backend returns populated resource data:
   resource?: {
+    id: string;
     resource_name: string;
     resource_code: string;
+    resource_type: string;
   };
 }
 

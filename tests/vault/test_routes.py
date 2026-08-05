@@ -1,5 +1,5 @@
 import uuid
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, PropertyMock
 
 import pytest
 from werkzeug.exceptions import Forbidden
@@ -9,6 +9,7 @@ from app.vault.service import ApprovalRequiredError
 from app.vault.domain import Secret, SecretVersion, SecretMetadata
 
 
+from datetime import datetime, timezone
 @pytest.fixture
 def auth_headers(normal_token):
     return {"Authorization": f"Bearer {normal_token}"}
@@ -23,10 +24,10 @@ def test_create_secret_route(client, auth_headers):
         mock_get_service.return_value = mock_service
         
         mock_secret = Mock(spec=Secret)
-        mock_secret.id = uuid.uuid4()
-        mock_secret.resource_id = uuid.UUID(resource_id)
+        type(mock_secret).id = PropertyMock(return_value=uuid.uuid4())
+        type(mock_secret).resource_id = PropertyMock(return_value=uuid.UUID(resource_id))
         mock_secret.status = "ACTIVE"
-        mock_secret.created_at = "2026-01-01T00:00:00Z"
+        mock_secret.created_at = datetime.now(timezone.utc)
         
         mock_service.create_secret.return_value = mock_secret
         
@@ -37,7 +38,7 @@ def test_create_secret_route(client, auth_headers):
         )
         
         assert response.status_code == 201
-        assert response.json["id"] == str(mock_secret.id)
+        assert response.json["data"]["id"] == str(mock_secret.id)
 
 
 def test_retrieve_secret_route_success(client, auth_headers):
@@ -50,14 +51,14 @@ def test_retrieve_secret_route_success(client, auth_headers):
         mock_service.retrieve_secret.return_value = b"decrypted-payload"
         
         mock_secret = Mock()
-        mock_secret.id = uuid.UUID(secret_id)
+        type(mock_secret).id = PropertyMock(return_value=uuid.UUID(secret_id))
         mock_version = Mock()
-        mock_version.created_at = "2026-01-01T00:00:00Z"
+        mock_version.created_at = datetime.now(timezone.utc)
         mock_version.metadata.key_version = "v1"
         mock_version.metadata.algorithm = "AES-256-GCM"
         mock_secret.get_current_version.return_value = mock_version
         
-        mock_service._repository.get_by_id.return_value = mock_secret
+        mock_service._repository.find_by_id.return_value = mock_secret
         
         response = client.post(
             f"/vault/secrets/{secret_id}/retrieve",
@@ -65,8 +66,8 @@ def test_retrieve_secret_route_success(client, auth_headers):
         )
         
         assert response.status_code == 200
-        assert response.json["payload"] == "decrypted-payload"
-        assert response.json["metadata"]["algorithm"] == "AES-256-GCM"
+        assert response.json["data"]["payload"] == "decrypted-payload"
+        assert response.json["data"]["metadata"]["algorithm"] == "AES-256-GCM"
 
 
 def test_retrieve_secret_route_approval_required(client, auth_headers):

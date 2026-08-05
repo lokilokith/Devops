@@ -81,5 +81,9 @@ class AuditLog(BaseModel):
     )
     details: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
 
+    @property
+    def user_id(self):
+        return str(self.actor_user_id) if self.actor_user_id else None
+
 
 __all__ = ["AuditLog", "AuditSeverity", "AuditStatus"]

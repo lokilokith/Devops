@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useVaultStats } from "../hooks/useVault"
 import { Loader2 } from "lucide-react"
+import { SecretList } from "./SecretList"
 
 export function VaultDashboard() {
   const { data: stats, isLoading, error } = useVaultStats()
@@ -51,6 +52,10 @@ export function VaultDashboard() {
             <div className="text-2xl font-bold text-gray-500">{stats?.disabled || 0}</div>
           </CardContent>
         </Card>
+      </div>
+      
+      <div className="mt-8">
+        <SecretList />
       </div>
     </div>
   )

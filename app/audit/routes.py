@@ -6,17 +6,23 @@ from flask import request
 from flask_restx import Resource
 
 from app.api.decorators import login_required
-from app.audit.schemas import audit_log_paginated_response_dto, audit_ns
+from app.api.responses import success_response
+from app.audit.schemas import (
+    audit_log_paginated_response_dto,
+    audit_log_paginated_wrapper,
+    audit_ns,
+)
 from app.extensions import db
 from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
+from flask_restx import marshal
 
 def get_audit_service() -> AuditService:
     return AuditService(AuditRepository(db.session))
 
 @audit_ns.route("")
 class AuditCollection(Resource):
-    @audit_ns.marshal_with(audit_log_paginated_response_dto)
+    @audit_ns.marshal_with(audit_log_paginated_wrapper)
     @login_required
     def get(self):
         """List audit logs."""
@@ -37,7 +43,8 @@ class AuditCollection(Resource):
         items = service.search_logs(page=page, page_size=per_page, **filters)
         total = service.count_logs(**filters)
         
-        return {
+        data_resp = marshal({
             "items": items,
             "total": total
-        }, 200
+        }, audit_log_paginated_response_dto)
+        return success_response(data=data_resp, status_code=200)

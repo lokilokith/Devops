@@ -24,6 +24,16 @@ secret_metadata_dto = vault_ns.model(
     },
 )
 
+resource_nested_dto = vault_ns.model(
+    "NestedResource",
+    {
+        "id": fields.String(description="Resource UUID"),
+        "resource_name": fields.String(description="Resource Name"),
+        "resource_code": fields.String(description="Resource Code"),
+        "resource_type": fields.String(description="Resource Type"),
+    }
+)
+
 secret_response_dto = vault_ns.model(
     "SecretResponse",
     {
@@ -31,6 +41,7 @@ secret_response_dto = vault_ns.model(
         "resource_id": fields.String(description="Phase 0 Resource UUID"),
         "status": fields.String(description="Current status (e.g., ACTIVE, DISABLED)"),
         "created_at": fields.DateTime(description="Creation timestamp"),
+        "resource": fields.Nested(resource_nested_dto, skip_none=True),
     },
 )
 
@@ -52,3 +63,40 @@ vault_statistics_dto = vault_ns.model(
         "recent_accesses": fields.Integer(description="Number of recent accesses"),
     },
 )
+
+vault_secret_response_wrapper = vault_ns.model(
+    "VaultSecretResponseWrapper",
+    {
+        "success": fields.Boolean,
+        "message": fields.String,
+        "data": fields.Nested(secret_response_dto),
+    },
+)
+
+vault_secret_list_wrapper = vault_ns.model(
+    "VaultSecretListWrapper",
+    {
+        "success": fields.Boolean,
+        "message": fields.String,
+        "data": fields.List(fields.Nested(secret_response_dto)),
+    },
+)
+
+vault_stats_wrapper = vault_ns.model(
+    "VaultStatsWrapper",
+    {
+        "success": fields.Boolean,
+        "message": fields.String,
+        "data": fields.Nested(vault_statistics_dto),
+    },
+)
+
+vault_reveal_wrapper = vault_ns.model(
+    "VaultRevealWrapper",
+    {
+        "success": fields.Boolean,
+        "message": fields.String,
+        "data": fields.Nested(secret_reveal_dto),
+    },
+)
+

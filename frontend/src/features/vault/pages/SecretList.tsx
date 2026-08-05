@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { CreateSecretDialog } from "../components/CreateSecretDialog"
 import { SecretRevealDialog } from "../components/SecretRevealDialog"
+import { RotateSecretDialog } from "../components/RotateSecretDialog"
 import { AccessRequestCreateModal } from "@/features/accessRequests/AccessRequestCreateModal"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
@@ -22,6 +23,7 @@ export function SecretList() {
   const [revealOpen, setRevealOpen] = useState(false)
   const [revealedValue, setRevealedValue] = useState<string | null>(null)
   
+  const [rotateOpen, setRotateOpen] = useState(false)
   const [disableOpen, setDisableOpen] = useState(false)
   const [selectedSecretId, setSelectedSecretId] = useState<string | null>(null)
 
@@ -74,6 +76,11 @@ export function SecretList() {
     retrieveMutation.mutate(id)
   }
 
+  const handleRotate = (id: string) => {
+    setSelectedSecretId(id)
+    setRotateOpen(true)
+  }
+
   const handleDisable = (id: string) => {
     setSelectedSecretId(id)
     setDisableOpen(true)
@@ -92,7 +99,7 @@ export function SecretList() {
     setRevealOpen(open)
   }
 
-  const tableColumns = useMemo(() => getColumns(handleReveal, handleDisable), [])
+  const tableColumns = useMemo(() => getColumns(handleReveal, handleRotate, handleDisable), [])
 
   return (
     <div className="space-y-6">
@@ -120,6 +127,7 @@ export function SecretList() {
       </Card>
       <CreateSecretDialog open={createOpen} onOpenChange={setCreateOpen} />
       <SecretRevealDialog open={revealOpen} onOpenChange={handleRevealClose} secretValue={revealedValue} />
+      <RotateSecretDialog open={rotateOpen} onOpenChange={setRotateOpen} secretId={selectedSecretId} />
       
       <AccessRequestCreateModal 
         open={accessRequestOpen} 

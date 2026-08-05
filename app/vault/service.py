@@ -57,10 +57,38 @@ class VaultApplicationService:
         self._authz = authz_service
         self._session = session
 
-    def list_secrets(self, actor_id: UUID) -> list[Secret]:
-        """List active secrets (metadata only)."""
+    def list_secrets(self, actor_id: UUID) -> list[dict]:
+        """List active secrets with hydrated resource data."""
         self._authz.authorize(actor_id, "vault", PermissionAction("read"))
-        return self._repository.list_active_secrets()
+        secrets = self._repository.list_active_secrets()
+        
+        from app.resources.repository import ResourcesRepository
+        resource_repo = ResourcesRepository(self._session)
+        
+        results = []
+        for secret in secrets:
+            secret_dict = {
+                "id": str(secret.id),
+                "resource_id": str(secret.resource_id),
+                "status": secret.status.value,
+                "created_at": secret.created_at,
+                "resource": None
+            }
+            try:
+                res = resource_repo.get_by_id(secret.resource_id)
+                if res:
+                    secret_dict["resource"] = {
+                        "id": str(res.id),
+                        "resource_name": res.resource_name,
+                        "resource_code": res.resource_code,
+                        "resource_type": res.resource_type.value if res.resource_type else None
+                    }
+            except Exception:
+                # If resource fails to load, just leave it as None
+                pass
+            results.append(secret_dict)
+            
+        return results
 
     def get_statistics(self, actor_id: UUID) -> dict:
         """Get vault statistics."""
@@ -117,6 +145,7 @@ class VaultApplicationService:
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.INFO,
         )
+        self._session.commit()
         secret_created.send(
             self,
             payload={
@@ -150,6 +179,7 @@ class VaultApplicationService:
                 severity=AuditSeverity.HIGH,
                 details={"reason": "RBAC Denied"}
             )
+            self._session.commit()
             raise err
 
         # 2. Policy Engine evaluation
@@ -165,6 +195,7 @@ class VaultApplicationService:
                 severity=AuditSeverity.HIGH,
                 details={"reason": "Policy Engine Denied"}
             )
+            self._session.commit()
             secret_access_denied.send(
                 self,
                 payload={
@@ -186,6 +217,7 @@ class VaultApplicationService:
                 severity=AuditSeverity.MEDIUM,
                 details={"reason": "Approval Required"}
             )
+            self._session.commit()
             secret_access_denied.send(
                 self,
                 payload={
@@ -228,6 +260,7 @@ class VaultApplicationService:
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.HIGH,
         )
+        self._session.commit()
 
         return plaintext
 
@@ -271,6 +304,7 @@ class VaultApplicationService:
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.INFO,
         )
+        self._session.commit()
         secret_rotated.send(
             self,
             payload={
@@ -303,6 +337,7 @@ class VaultApplicationService:
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.MEDIUM,
         )
+        self._session.commit()
         secret_disabled.send(
             self,
             payload={
@@ -333,6 +368,7 @@ class VaultApplicationService:
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.HIGH,
         )
+        self._session.commit()
         secret_deleted.send(
             self,
             payload={

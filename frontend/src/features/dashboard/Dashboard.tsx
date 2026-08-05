@@ -5,7 +5,10 @@ import { usersService } from "@/services/users.service"
 import { rolesService } from "@/services/roles.service"
 import { permissionsService } from "@/services/permissions.service"
 import { resourcesService } from "@/services/resources.service"
+import { accessRequestsService } from "@/services/access-requests.service"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Link } from "react-router-dom"
+import { Badge } from "@/components/ui/badge"
 
 function StatCard({ 
   title, 
@@ -45,6 +48,11 @@ function StatCard({
 }
 
 export function Dashboard() {
+  const { data: pendingRequests, isLoading: isLoadingPending } = useQuery({
+    queryKey: ["dashboard-pending-requests"],
+    queryFn: () => accessRequestsService.listRequests({ status: "pending", limit: 5 }),
+  })
+
   return (
     <div className="space-y-4">
       <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
@@ -92,9 +100,35 @@ export function Dashboard() {
             <CardTitle>Pending Approvals</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
-              No pending approvals.
-            </div>
+            {isLoadingPending ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ) : pendingRequests?.items?.length ? (
+              <div className="space-y-4">
+                {pendingRequests.items.map((req) => (
+                  <div key={req.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        <Link to={`/access-requests/${req.id}`} className="hover:underline">
+                          {req.request_number}
+                        </Link>
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                        {req.business_justification}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">{req.priority}</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No pending approvals.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

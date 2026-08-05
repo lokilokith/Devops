@@ -1,5 +1,5 @@
 import uuid
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch, PropertyMock
 
 import pytest
 
@@ -58,24 +58,24 @@ def service(mock_domain, mock_crypto, mock_repo, mock_policy, mock_audit, mock_a
     )
 
 
-def test_create_secret_success(service, mock_authz, mock_domain, mock_crypto, mock_repo, mock_audit):
+def test_create_secret_success(service, mock_authz, mock_crypto, mock_repo, mock_audit):
     actor_id = uuid.uuid4()
     resource_id = uuid.uuid4()
     plaintext = b"top-secret"
     
     mock_secret = Mock(spec=Secret)
     mock_secret.id = uuid.uuid4()
-    mock_domain.create_secret.return_value = mock_secret
     
-    mock_crypto.encrypt_payload.return_value = (b"enc_dek", b"enc_payload", Mock(spec=SecretMetadata))
-    
-    result = service.create_secret(actor_id, resource_id, plaintext)
-    
-    mock_authz.authorize.assert_called_once()
-    mock_domain.create_secret.assert_called_once_with(resource_id, actor_id)
-    mock_repo.save.assert_called_once_with(mock_secret)
-    mock_audit.log_event.assert_called_once()
-    assert result == mock_secret
+    with patch("app.vault.service.SecretFactory.create_new_secret", return_value=mock_secret) as mock_factory:
+        mock_crypto.encrypt_payload.return_value = (b"enc_dek", b"enc_payload", Mock(spec=SecretMetadata))
+        
+        result = service.create_secret(actor_id, resource_id, plaintext)
+        
+        mock_authz.authorize.assert_called_once()
+        mock_factory.assert_called_once_with(resource_id)
+        mock_repo.save.assert_called_once_with(mock_secret)
+        mock_audit.log_event.assert_called_once()
+        assert result == mock_secret
 
 
 def test_retrieve_secret_success_allow(service, mock_authz, mock_policy, mock_repo, mock_crypto, mock_audit):
@@ -83,15 +83,15 @@ def test_retrieve_secret_success_allow(service, mock_authz, mock_policy, mock_re
     secret_id = uuid.uuid4()
     
     mock_secret = Mock(spec=Secret)
-    mock_secret.id = secret_id
-    mock_secret.resource_id = uuid.uuid4()
+    type(mock_secret).id = PropertyMock(return_value=secret_id)
+    type(mock_secret).resource_id = PropertyMock(return_value=uuid.uuid4())
     mock_version = Mock(spec=SecretVersion)
     mock_version.encrypted_dek = b"enc_dek"
     mock_version.encrypted_payload = b"enc_payload"
     mock_version.metadata = Mock(spec=SecretMetadata)
     mock_secret.get_current_version.return_value = mock_version
     
-    mock_repo.get_by_id.return_value = mock_secret
+    mock_repo.find_by_id.return_value = mock_secret
     mock_policy.evaluate_vault_retrieval.return_value = PolicyDecision.ALLOW
     
     mock_crypto.decrypt_payload.return_value = b"decrypted-plaintext"
@@ -115,8 +115,9 @@ def test_retrieve_secret_denied_by_rbac(service, mock_authz, mock_repo, mock_aud
     secret_id = uuid.uuid4()
     
     mock_secret = Mock(spec=Secret)
-    mock_secret.id = secret_id
-    mock_repo.get_by_id.return_value = mock_secret
+    type(mock_secret).id = PropertyMock(return_value=secret_id)
+    type(mock_secret).resource_id = PropertyMock(return_value=uuid.uuid4())
+    mock_repo.find_by_id.return_value = mock_secret
     
     mock_authz.authorize.side_effect = AuthorizationDeniedError("No")
     
@@ -139,10 +140,10 @@ def test_retrieve_secret_require_approval(service, mock_authz, mock_policy, mock
     secret_id = uuid.uuid4()
     
     mock_secret = Mock(spec=Secret)
-    mock_secret.id = secret_id
-    mock_secret.resource_id = uuid.uuid4()
+    type(mock_secret).id = PropertyMock(return_value=secret_id)
+    type(mock_secret).resource_id = PropertyMock(return_value=uuid.uuid4())
     
-    mock_repo.get_by_id.return_value = mock_secret
+    mock_repo.find_by_id.return_value = mock_secret
     mock_policy.evaluate_vault_retrieval.return_value = PolicyDecision.REQUIRE_APPROVAL
     
     with pytest.raises(ApprovalRequiredError):
@@ -164,10 +165,10 @@ def test_retrieve_secret_denied_by_policy(service, mock_authz, mock_policy, mock
     secret_id = uuid.uuid4()
     
     mock_secret = Mock(spec=Secret)
-    mock_secret.id = secret_id
-    mock_secret.resource_id = uuid.uuid4()
+    type(mock_secret).id = PropertyMock(return_value=secret_id)
+    type(mock_secret).resource_id = PropertyMock(return_value=uuid.uuid4())
     
-    mock_repo.get_by_id.return_value = mock_secret
+    mock_repo.find_by_id.return_value = mock_secret
     mock_policy.evaluate_vault_retrieval.return_value = PolicyDecision.DENY
     
     with pytest.raises(AuthorizationDeniedError):

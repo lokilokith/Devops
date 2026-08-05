@@ -25,9 +25,14 @@ from app.vault.schemas import (
     secret_response_dto,
     secret_reveal_dto,
     vault_statistics_dto,
+    vault_secret_response_wrapper,
+    vault_secret_list_wrapper,
+    vault_stats_wrapper,
+    vault_reveal_wrapper,
     vault_ns,
 )
 from app.vault.service import ApprovalRequiredError, VaultApplicationService
+from flask_restx import marshal
 
 
 def get_vault_service() -> VaultApplicationService:
@@ -44,19 +49,20 @@ def get_vault_service() -> VaultApplicationService:
 
 @vault_ns.route("/secrets")
 class SecretCollection(Resource):
-    @vault_ns.marshal_list_with(secret_response_dto)
+    @vault_ns.response(200, "Success", vault_secret_list_wrapper)
     @login_required
     def get(self):
         """List active secrets."""
         service = get_vault_service()
         try:
             secrets = service.list_secrets(actor_id=uuid.UUID(g.user_id))
-            return secrets, 200
+            data = marshal(secrets, secret_response_dto)
+            return success_response(data=data, status_code=200)
         except AuthorizationDeniedError as e:
             raise Forbidden(str(e))
 
     @vault_ns.expect(secret_create_dto, validate=True)
-    @vault_ns.marshal_with(secret_response_dto, code=201)
+    @vault_ns.response(201, "Created", vault_secret_response_wrapper)
     @login_required
     def post(self):
         """Create a new secret."""
@@ -75,7 +81,8 @@ class SecretCollection(Resource):
                 resource_id=resource_id,
                 plaintext=payload_bytes
             )
-            return secret, 201
+            data = marshal(secret, secret_response_dto)
+            return success_response(data=data, status_code=201)
         except AuthorizationDeniedError as e:
             raise Forbidden(str(e))
 
@@ -99,7 +106,7 @@ class SecretItem(Resource):
 
 @vault_ns.route("/secrets/<uuid:secret_id>/retrieve")
 class SecretReveal(Resource):
-    @vault_ns.response(200, "Success", secret_reveal_dto)
+    @vault_ns.response(200, "Success", vault_reveal_wrapper)
     @login_required
     def post(self, secret_id):
         """Retrieve and decrypt the secret payload."""
@@ -107,13 +114,10 @@ class SecretReveal(Resource):
         try:
             plaintext_bytes = service.retrieve_secret(uuid.UUID(g.user_id), secret_id)
 
-            # Since the API expects metadata inside the SecretReveal schema,
-            # and our service returns bytes, we should also probably get the secret itself
-            # to populate the response properly.
             secret = service._repository.find_by_id(secret_id)
             version = secret.get_current_version()
 
-            return marshal({
+            data = marshal({
                 "id": str(secret.id),
                 "payload": plaintext_bytes.decode("utf-8"),
                 "metadata": {
@@ -121,7 +125,9 @@ class SecretReveal(Resource):
                     "algorithm": version.metadata.algorithm,
                     "created_at": version.created_at
                 }
-            }, secret_reveal_dto), 200
+            }, secret_reveal_dto)
+            
+            return success_response(data=data, status_code=200)
 
         except ApprovalRequiredError as e:
             # 403 response mapped precisely to user's requested payload
@@ -142,7 +148,7 @@ class SecretReveal(Resource):
 @vault_ns.route("/secrets/<uuid:secret_id>/rotate")
 class SecretRotate(Resource):
     @vault_ns.expect(secret_create_dto, validate=True)
-    @vault_ns.marshal_with(secret_response_dto, code=200)
+    @vault_ns.response(200, "Success", vault_secret_response_wrapper)
     @login_required
     def post(self, secret_id):
         """Rotate a secret."""
@@ -156,7 +162,8 @@ class SecretRotate(Resource):
                 secret_id=secret_id,
                 new_plaintext=payload_bytes
             )
-            return secret, 200
+            data_resp = marshal(secret, secret_response_dto)
+            return success_response(data=data_resp, status_code=200)
         except AuthorizationDeniedError as e:
             raise Forbidden(str(e))
         except ValueError as e:
@@ -167,14 +174,15 @@ class SecretRotate(Resource):
 
 @vault_ns.route("/secrets/<uuid:secret_id>/disable")
 class SecretDisable(Resource):
-    @vault_ns.marshal_with(secret_response_dto, code=200)
+    @vault_ns.response(200, "Success", vault_secret_response_wrapper)
     @login_required
     def post(self, secret_id):
         """Disable a secret."""
         service = get_vault_service()
         try:
             secret = service.disable_secret(uuid.UUID(g.user_id), secret_id)
-            return secret, 200
+            data_resp = marshal(secret, secret_response_dto)
+            return success_response(data=data_resp, status_code=200)
         except AuthorizationDeniedError as e:
             raise Forbidden(str(e))
         except ValueError as e:
@@ -185,14 +193,15 @@ class SecretDisable(Resource):
 
 @vault_ns.route("/secrets/stats")
 class VaultStatistics(Resource):
-    @vault_ns.marshal_with(vault_statistics_dto)
+    @vault_ns.response(200, "Success", vault_stats_wrapper)
     @login_required
     def get(self):
         """Get vault statistics."""
         service = get_vault_service()
         try:
             stats = service.get_statistics(actor_id=uuid.UUID(g.user_id))
-            return stats, 200
+            data_resp = marshal(stats, vault_statistics_dto)
+            return success_response(data=data_resp, status_code=200)
         except AuthorizationDeniedError as e:
             raise Forbidden(str(e))
 

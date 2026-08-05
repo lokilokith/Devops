@@ -74,7 +74,7 @@ export function DataTable<TData, TValue>({
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
-    pageCount: pageCount,
+    pageCount: pageCount === -1 ? undefined : pageCount,
     manualPagination: pageCount !== -1,
     state: {
       sorting,
