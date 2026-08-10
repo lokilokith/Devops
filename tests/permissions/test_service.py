@@ -36,21 +36,21 @@ def test_create_permission_success(service, mock_repo):
     mock_permission = MagicMock()
     mock_repo.create.return_value = mock_permission
 
-    result = service.create_permission(data)
+    result = service.create_permission(data, uuid4())
     assert result == mock_permission
     mock_repo.create.assert_called_once()
 
 
 def test_create_permission_missing_fields(service):
     with pytest.raises(ValidationError):
-        service.create_permission({"permission_code": "A"})
+        service.create_permission({"permission_code": "A"}, uuid4())
 
 
 def test_create_permission_duplicate_code(service, mock_repo):
     data = {"permission_code": "A", "permission_name": "Permission"}
     mock_repo.exists_by_permission_code.return_value = True
     with pytest.raises(DuplicatePermissionError) as exc:
-        service.create_permission(data)
+        service.create_permission(data, uuid4())
     assert "Permission code" in str(exc.value)
 
 
@@ -59,7 +59,7 @@ def test_create_permission_duplicate_name(service, mock_repo):
     mock_repo.exists_by_permission_code.return_value = False
     mock_repo.exists_by_permission_name.return_value = True
     with pytest.raises(DuplicatePermissionError) as exc:
-        service.create_permission(data)
+        service.create_permission(data, uuid4())
     assert "Permission name" in str(exc.value)
 
 
@@ -69,7 +69,7 @@ def test_create_permission_repo_error_exists(service, mock_repo):
         "DB fail"
     )
     with pytest.raises(PermissionsServiceError):
-        service.create_permission(data)
+        service.create_permission(data, uuid4())
 
 
 def test_create_permission_repo_error_create(service, mock_repo):
@@ -79,7 +79,7 @@ def test_create_permission_repo_error_create(service, mock_repo):
 
     mock_repo.create.side_effect = PermissionsRepositoryError("DB fail")
     with pytest.raises(PermissionsServiceError):
-        service.create_permission(data)
+        service.create_permission(data, uuid4())
 
 
 def test_get_permission_success(service, mock_repo):
@@ -133,6 +133,7 @@ def test_update_permission(service, mock_repo):
             "action": "execute",
             "status": "inactive",
         },
+        uuid4()
     )
 
     assert res.permission_name == "new_n"
@@ -149,7 +150,7 @@ def test_update_permission_duplicate_name(service, mock_repo):
     mock_repo.exists_by_permission_name.return_value = True
 
     with pytest.raises(DuplicatePermissionError):
-        service.update_permission(uid, {"permission_name": "new_n"})
+        service.update_permission(uid, {"permission_name": "new_n"}, uuid4())
 
 
 def test_update_permission_validation_repo_error(service, mock_repo):
@@ -159,7 +160,7 @@ def test_update_permission_validation_repo_error(service, mock_repo):
     mock_repo.get_by_id.return_value = permission
     mock_repo.exists_by_permission_name.side_effect = PermissionsRepositoryError("fail")
     with pytest.raises(PermissionsServiceError):
-        service.update_permission(uid, {"permission_name": "new_n"})
+        service.update_permission(uid, {"permission_name": "new_n"}, uuid4())
 
 
 def test_update_permission_repo_error(service, mock_repo):
@@ -169,7 +170,7 @@ def test_update_permission_repo_error(service, mock_repo):
     mock_repo.get_by_id.return_value = permission
     mock_repo.update.side_effect = PermissionsRepositoryError("fail")
     with pytest.raises(PermissionsServiceError):
-        service.update_permission(uid, {"description": "New Desc"})
+        service.update_permission(uid, {"description": "New Desc"}, uuid4())
 
 
 def test_patch_permission(service, mock_repo):
@@ -178,7 +179,7 @@ def test_patch_permission(service, mock_repo):
     permission.id = uid
     mock_repo.get_by_id.return_value = permission
     mock_repo.update.return_value = permission
-    assert service.patch_permission(uid, {}) == permission
+    assert service.patch_permission(uid, {}, uuid4()) == permission
 
 
 def test_delete_permission(service, mock_repo):
@@ -186,7 +187,7 @@ def test_delete_permission(service, mock_repo):
     mock_permission = MagicMock()
     mock_repo.get_by_id.return_value = mock_permission
     mock_repo.delete.return_value = True
-    assert service.delete_permission(uid) is True
+    assert service.delete_permission(uid, uuid4()) is True
 
 
 def test_delete_permission_repo_error(service, mock_repo):
@@ -195,7 +196,7 @@ def test_delete_permission_repo_error(service, mock_repo):
     mock_repo.get_by_id.return_value = mock_permission
     mock_repo.delete.side_effect = PermissionsRepositoryError("fail")
     with pytest.raises(PermissionsServiceError):
-        service.delete_permission(uid)
+        service.delete_permission(uid, uuid4())
 
 
 def test_search_permissions(service, mock_repo):

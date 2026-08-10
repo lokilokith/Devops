@@ -1,0 +1,175 @@
+
+==================================================
+[STEP] Vault Create
+==================================================
+{
+  "status": 201,
+  "response": {
+    "success": true,
+    "message": "Success",
+    "data": {
+      "id": "1293bbf9-a0b1-4aab-a6f5-224fc56b4220",
+      "resource_id": "47404a49-fd69-4243-a7e1-23a3267f2a45",
+      "status": "SecretStatus.ACTIVE",
+      "created_at": "2026-08-09T05:32:28.648787+00:00",
+      "resource": {}
+    },
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] Vault List
+==================================================
+{
+  "status": 200,
+  "response": {
+    "success": true,
+    "message": "Success",
+    "data": [
+      {
+        "id": "1293bbf9-a0b1-4aab-a6f5-224fc56b4220",
+        "resource_id": "47404a49-fd69-4243-a7e1-23a3267f2a45",
+        "status": "active",
+        "created_at": "2026-08-09T05:32:28.648787+00:00",
+        "resource": {
+          "id": "47404a49-fd69-4243-a7e1-23a3267f2a45",
+          "resource_name": "Notification Engine",
+          "resource_code": "RESOURCE_NOTIFICATIONS",
+          "resource_type": "application"
+        }
+      }
+    ],
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] Vault Retrieve (v1)
+==================================================
+{
+  "status": 200,
+  "response": {
+    "success": true,
+    "message": "Success",
+    "data": {
+      "id": "1293bbf9-a0b1-4aab-a6f5-224fc56b4220",
+      "payload": "super_secret_p@ssw0rd",
+      "metadata": {
+        "key_version": "v1",
+        "algorithm": "AES-256-GCM",
+        "created_at": "2026-08-09T05:32:28.650905+00:00"
+      }
+    },
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] Vault Rotate
+==================================================
+{
+  "status": 200,
+  "response": {
+    "success": true,
+    "message": "Success",
+    "data": {
+      "id": "1293bbf9-a0b1-4aab-a6f5-224fc56b4220",
+      "resource_id": "47404a49-fd69-4243-a7e1-23a3267f2a45",
+      "status": "SecretStatus.ACTIVE",
+      "created_at": "2026-08-09T05:32:28.648787+00:00",
+      "resource": {}
+    },
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] Vault Retrieve (v2)
+==================================================
+{
+  "status": 200,
+  "response": {
+    "success": true,
+    "message": "Success",
+    "data": {
+      "id": "1293bbf9-a0b1-4aab-a6f5-224fc56b4220",
+      "payload": "new_super_secret_p@ssw0rd",
+      "metadata": {
+        "key_version": "v1",
+        "algorithm": "AES-256-GCM",
+        "created_at": "2026-08-09T05:32:28.747933+00:00"
+      }
+    },
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] Vault Disable
+==================================================
+{
+  "status": 200,
+  "response": {
+    "success": true,
+    "message": "Success",
+    "data": {
+      "id": "1293bbf9-a0b1-4aab-a6f5-224fc56b4220",
+      "resource_id": "47404a49-fd69-4243-a7e1-23a3267f2a45",
+      "status": "SecretStatus.DISABLED",
+      "created_at": "2026-08-09T05:32:28.648787+00:00",
+      "resource": {}
+    },
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] Vault Retrieve (Disabled)
+==================================================
+{
+  "status": 400,
+  "response": {
+    "success": false,
+    "message": "Bad Request",
+    "errors": [
+      "Cannot retrieve a secret in disabled state."
+    ]
+  }
+}
+
+==================================================
+[STEP] Vault Delete
+==================================================
+{
+  "status": 200,
+  "response": {
+    "success": true,
+    "message": 200,
+    "data": "Secret deleted successfully",
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] SQL Verification: vault_secrets (Status check)
+==================================================
+ID: 1293bbf9-a0b1-4aab-a6f5-224fc56b4220, Resource ID: 47404a49-fd69-4243-a7e1-23a3267f2a45, Status: tombstoned
+
+==================================================
+[STEP] SQL Verification: vault_secret_versions (v1 & v2 exist)
+==================================================
+[
+  {
+    "created_at": "2026-08-09 05:32:28.650905+00:00",
+    "encrypted": "c613456e593f565c11f84d1d6ad04f...",
+    "algorithm": "AES-256-GCM",
+    "key_version": "v1"
+  },
+  {
+    "created_at": "2026-08-09 05:32:28.747933+00:00",
+    "encrypted": "f766636a987ac02e7103a67a416f2e...",
+    "algorithm": "AES-256-GCM",
+    "key_version": "v1"
+  }
+]

@@ -85,6 +85,7 @@ def test_retrieve_secret_success_allow(service, mock_authz, mock_policy, mock_re
     mock_secret = Mock(spec=Secret)
     type(mock_secret).id = PropertyMock(return_value=secret_id)
     type(mock_secret).resource_id = PropertyMock(return_value=uuid.uuid4())
+    type(mock_secret).status = PropertyMock(return_value=SecretStatus.ACTIVE)
     mock_version = Mock(spec=SecretVersion)
     mock_version.encrypted_dek = b"enc_dek"
     mock_version.encrypted_payload = b"enc_payload"
@@ -117,6 +118,7 @@ def test_retrieve_secret_denied_by_rbac(service, mock_authz, mock_repo, mock_aud
     mock_secret = Mock(spec=Secret)
     type(mock_secret).id = PropertyMock(return_value=secret_id)
     type(mock_secret).resource_id = PropertyMock(return_value=uuid.uuid4())
+    type(mock_secret).status = PropertyMock(return_value=SecretStatus.ACTIVE)
     mock_repo.find_by_id.return_value = mock_secret
     
     mock_authz.authorize.side_effect = AuthorizationDeniedError("No")
@@ -142,6 +144,7 @@ def test_retrieve_secret_require_approval(service, mock_authz, mock_policy, mock
     mock_secret = Mock(spec=Secret)
     type(mock_secret).id = PropertyMock(return_value=secret_id)
     type(mock_secret).resource_id = PropertyMock(return_value=uuid.uuid4())
+    type(mock_secret).status = PropertyMock(return_value=SecretStatus.ACTIVE)
     
     mock_repo.find_by_id.return_value = mock_secret
     mock_policy.evaluate_vault_retrieval.return_value = PolicyDecision.REQUIRE_APPROVAL
@@ -167,6 +170,7 @@ def test_retrieve_secret_denied_by_policy(service, mock_authz, mock_policy, mock
     mock_secret = Mock(spec=Secret)
     type(mock_secret).id = PropertyMock(return_value=secret_id)
     type(mock_secret).resource_id = PropertyMock(return_value=uuid.uuid4())
+    type(mock_secret).status = PropertyMock(return_value=SecretStatus.ACTIVE)
     
     mock_repo.find_by_id.return_value = mock_secret
     mock_policy.evaluate_vault_retrieval.return_value = PolicyDecision.DENY

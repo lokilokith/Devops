@@ -1,0 +1,73 @@
+=== RBAC CERTIFICATION ===
+
+ADMIN
+  CREATE       201 PASS
+  READ         200 PASS
+  ROTATE       200 PASS
+  DISABLE      200 PASS
+  DELETE       200 PASS
+
+SEC_ADMIN
+  CREATE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  READ         403 PASS
+  Audit recorded      PASS
+  ROTATE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  DISABLE      403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  DELETE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+
+SOC_ANALYST
+  CREATE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  READ         403 PASS
+  Audit recorded      PASS
+  ROTATE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  DISABLE      403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  DELETE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+
+HELP_DESK
+  CREATE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  READ         403 PASS
+  Audit recorded      PASS
+  ROTATE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  DISABLE      403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  DELETE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+
+AUDITOR
+  CREATE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  READ         403 PASS
+  Audit recorded      PASS
+  ROTATE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  DISABLE      403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+  DELETE       403 PASS
+  DB unchanged        PASS
+  Audit recorded      PASS
+

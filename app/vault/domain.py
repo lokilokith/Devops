@@ -66,6 +66,13 @@ class Secret:
         self.updated_at = datetime.now(timezone.utc)
         self.row_version += 1
 
+    def tombstone(self) -> None:
+        if self.status == SecretStatus.TOMBSTONED:
+            raise ValueError("Secret is already tombstoned.")
+        self.status = SecretStatus.TOMBSTONED
+        self.updated_at = datetime.now(timezone.utc)
+        self.row_version += 1
+
     def get_current_version(self) -> Optional[SecretVersion]:
         if not self.current_version_id:
             return None

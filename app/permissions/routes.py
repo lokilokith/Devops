@@ -27,8 +27,14 @@ from app.permissions.validators import (
 )
 
 
+from app.audit.service import AuditService
+from app.audit.repository import AuditRepository
+
 def get_service():
-    return PermissionsService(PermissionsRepository(db.session))
+    return PermissionsService(
+        PermissionsRepository(db.session),
+        audit_service=AuditService(AuditRepository(db.session))
+    )
 
 
 @permissions_ns.route("")
@@ -64,8 +70,12 @@ class PermissionCollection(Resource):
         data = request.json or {}
         validate_permission_create(data)
         service = get_service()
+        from flask import g
+        import uuid
+        
         try:
-            permission = service.create_permission(data)
+            actor_id = uuid.UUID(g.user_id) if hasattr(g, 'user_id') else None
+            permission = service.create_permission(data, actor_id)
             return success_response(
                 data=permission,
                 message="Permission created successfully",
@@ -104,8 +114,12 @@ class PermissionResource(Resource):
         data = request.json or {}
         validate_permission_update(data)
         service = get_service()
+        from flask import g
+        import uuid
+        
         try:
-            permission = service.update_permission(uid, data)
+            actor_id = uuid.UUID(g.user_id) if hasattr(g, 'user_id') else None
+            permission = service.update_permission(uid, data, actor_id)
             if not permission:
                 raise NotFound("Permission not found")
             return success_response(
@@ -127,8 +141,12 @@ class PermissionResource(Resource):
         data = request.json or {}
         validate_permission_patch(data)
         service = get_service()
+        from flask import g
+        import uuid
+        
         try:
-            permission = service.patch_permission(uid, data)
+            actor_id = uuid.UUID(g.user_id) if hasattr(g, 'user_id') else None
+            permission = service.patch_permission(uid, data, actor_id)
             if not permission:
                 raise NotFound("Permission not found")
             return success_response(
@@ -149,5 +167,9 @@ class PermissionResource(Resource):
         permission = service.get_permission(uid)
         if not permission:
             raise NotFound("Permission not found")
-        service.delete_permission(uid)
+        from flask import g
+        import uuid
+        actor_id = uuid.UUID(g.user_id) if hasattr(g, 'user_id') else None
+        
+        service.delete_permission(uid, actor_id)
         return success_response(message="Permission deleted successfully")

@@ -1,0 +1,97 @@
+
+==================================================
+[STEP] Request Access
+==================================================
+{
+  "status": 201,
+  "response": {
+    "success": true,
+    "message": "Access request created successfully",
+    "data": {
+      "id": "f49264c9-bfd4-4ba5-aa50-4adf64890b1a",
+      "request_number": "REQ-DA5125F0",
+      "requester_id": "2a34c913-837e-47e3-9a78-849149d6b13e",
+      "requested_role_id": null,
+      "requested_resource_id": "47404a49-fd69-4243-a7e1-23a3267f2a45",
+      "business_justification": "Need access for testing",
+      "status": "pending",
+      "priority": "low",
+      "requested_start": null,
+      "requested_end": null,
+      "approved_by": null,
+      "approved_at": null,
+      "rejected_reason": null,
+      "created_at": "2026-08-09T05:44:45.206639+00:00",
+      "updated_at": "2026-08-09T05:44:45.206644+00:00"
+    },
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] Approve Access
+==================================================
+{
+  "status": 200,
+  "response": {
+    "success": true,
+    "message": "Access request approved successfully",
+    "data": {
+      "id": "f49264c9-bfd4-4ba5-aa50-4adf64890b1a",
+      "request_number": "REQ-DA5125F0",
+      "requester_id": "2a34c913-837e-47e3-9a78-849149d6b13e",
+      "requested_role_id": null,
+      "requested_resource_id": "47404a49-fd69-4243-a7e1-23a3267f2a45",
+      "business_justification": "Need access for testing",
+      "status": "approved",
+      "priority": "low",
+      "requested_start": null,
+      "requested_end": null,
+      "approved_by": "c365b526-6a12-48b8-856a-32e0af864ab2",
+      "approved_at": "2026-08-09T05:44:45.341327+00:00",
+      "rejected_reason": null,
+      "created_at": "2026-08-09T05:44:45.206639+00:00",
+      "updated_at": "2026-08-09T05:44:45.341327+00:00"
+    },
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] Retrieve (Valid Workflow)
+==================================================
+{
+  "status": 200,
+  "response": {
+    "success": true,
+    "message": "Success",
+    "data": {
+      "id": "591de034-dfd4-431d-8628-317dcb83b8c3",
+      "payload": "workflow_secret",
+      "metadata": {
+        "key_version": "v1",
+        "algorithm": "AES-256-GCM",
+        "created_at": "2026-08-09T05:44:45.094146+00:00"
+      }
+    },
+    "meta": {}
+  }
+}
+
+==================================================
+[STEP] Retrieve (Expired Workflow)
+==================================================
+{
+  "status": 403,
+  "response": {
+    "error": "APPROVAL_REQUIRED",
+    "message": "Vault access requires approval",
+    "resource_id": "47404a49-fd69-4243-a7e1-23a3267f2a45",
+    "request_action": "CREATE_ACCESS_REQUEST"
+  }
+}
+
+==================================================
+[STEP] SQL Verification: access_requests
+==================================================
+ID: f49264c9-bfd4-4ba5-aa50-4adf64890b1a, Status: approved, Requester: 2a34c913-837e-47e3-9a78-849149d6b13e, Resource: 47404a49-fd69-4243-a7e1-23a3267f2a45, Approver: c365b526-6a12-48b8-856a-32e0af864ab2

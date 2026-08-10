@@ -107,7 +107,20 @@ class VaultApplicationService:
     def create_secret(self, actor_id: UUID, resource_id: UUID, plaintext: bytes) -> Secret:
         """Create a new secret (with implicit authorization check)."""
         # 1. Authorization (RBAC)
-        self._authz.authorize(actor_id, "vault", PermissionAction("create"))
+        try:
+            self._authz.authorize(actor_id, "vault", PermissionAction("create"))
+        except AuthorizationDeniedError as err:
+            self._audit.log_event(
+                actor_user_id=actor_id,
+                action="SECRET_CREATE_FAILED",
+                resource_type="vault_secrets",
+                resource_id="NEW",
+                status=AuditStatus.DENIED,
+                severity=AuditSeverity.HIGH,
+                details={"reason": "RBAC Denied"}
+            )
+            self._session.commit()
+            raise err
 
         # 2. Domain Service builds aggregate
         secret = SecretFactory.create_new_secret(resource_id)
@@ -161,10 +174,13 @@ class VaultApplicationService:
     def retrieve_secret(self, actor_id: UUID, secret_id: UUID) -> bytes:
         """Retrieve and decrypt secret strictly honoring policies."""
         # Note: Do not load the secret blindly before RBAC/Policy checks if we know the resource.
-        # But we must load it to know its resource_id.
         secret = self._repository.find_by_id(secret_id)
         if not secret:
             raise ValueError(f"Secret {secret_id} not found.")
+
+        from app.vault.domain import SecretStatus
+        if secret.status in (SecretStatus.DISABLED, SecretStatus.TOMBSTONED):
+            raise ValueError(f"Cannot retrieve a secret in {secret.status.value} state.")
 
         # 1. Authorization (RBAC)
         try:
@@ -266,7 +282,20 @@ class VaultApplicationService:
 
     def rotate_secret(self, actor_id: UUID, secret_id: UUID, new_plaintext: bytes) -> Secret:
         """Rotate a secret by adding a new encrypted version."""
-        self._authz.authorize(actor_id, "vault", PermissionAction("update"))
+        try:
+            self._authz.authorize(actor_id, "vault", PermissionAction("update"))
+        except AuthorizationDeniedError as err:
+            self._audit.log_event(
+                actor_user_id=actor_id,
+                action="SECRET_ROTATE_FAILED",
+                resource_type="vault_secrets",
+                resource_id=str(secret_id),
+                status=AuditStatus.DENIED,
+                severity=AuditSeverity.HIGH,
+                details={"reason": "RBAC Denied"}
+            )
+            self._session.commit()
+            raise err
 
         secret = self._repository.find_by_id(secret_id)
         if not secret:
@@ -318,7 +347,20 @@ class VaultApplicationService:
 
     def disable_secret(self, actor_id: UUID, secret_id: UUID) -> Secret:
         """Disable a secret."""
-        self._authz.authorize(actor_id, "vault", PermissionAction("update"))
+        try:
+            self._authz.authorize(actor_id, "vault", PermissionAction("update"))
+        except AuthorizationDeniedError as err:
+            self._audit.log_event(
+                actor_user_id=actor_id,
+                action="SECRET_DISABLE_FAILED",
+                resource_type="vault_secrets",
+                resource_id=str(secret_id),
+                status=AuditStatus.DENIED,
+                severity=AuditSeverity.HIGH,
+                details={"reason": "RBAC Denied"}
+            )
+            self._session.commit()
+            raise err
 
         secret = self._repository.find_by_id(secret_id)
         if not secret:
@@ -351,13 +393,27 @@ class VaultApplicationService:
 
     def delete_secret(self, actor_id: UUID, secret_id: UUID) -> None:
         """Delete/tombstone a secret."""
-        self._authz.authorize(actor_id, "vault", PermissionAction("delete"))
+        try:
+            self._authz.authorize(actor_id, "vault", PermissionAction("delete"))
+        except AuthorizationDeniedError as err:
+            self._audit.log_event(
+                actor_user_id=actor_id,
+                action="SECRET_DELETE_FAILED",
+                resource_type="vault_secrets",
+                resource_id=str(secret_id),
+                status=AuditStatus.DENIED,
+                severity=AuditSeverity.HIGH,
+                details={"reason": "RBAC Denied"}
+            )
+            self._session.commit()
+            raise err
 
         secret = self._repository.find_by_id(secret_id)
         if not secret:
             raise ValueError("Secret not found")
 
-        self._repository.delete(secret_id)
+        secret.tombstone()
+        self._repository.save(secret)
         self._session.commit()
 
         self._audit.log_event(

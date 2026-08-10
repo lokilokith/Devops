@@ -1,19 +1,6 @@
-import sqlite3
-
-def check_db(path):
-    print(f'Checking {path}')
-    try:
-        conn = sqlite3.connect(path)
-        c = conn.cursor()
-        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = c.fetchall()
-        print('Tables:', tables)
-        if ('users',) in tables or ('user',) in tables:
-            t = 'users' if ('users',) in tables else 'user'
-            c.execute(f"SELECT COUNT(*) FROM {t}")
-            print(f'User count: {c.fetchone()[0]}')
-    except Exception as e:
-        print('Error:', e)
-
-check_db('opsforge.db')
-check_db('instance/opsforge.db')
+import psycopg2
+conn = psycopg2.connect('postgresql://opsforge:opsforge_pass@localhost:5432/opsforge_db')
+cur = conn.cursor()
+cur.execute("SELECT action FROM audit_logs WHERE action = 'SECRET_CREATE_FAILED'")
+print("SECRET_CREATE_FAILED events:", cur.fetchall())
+conn.close()

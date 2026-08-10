@@ -16,11 +16,15 @@ from app.permissions.models import Permission, PermissionAction
 from app.permissions.repository import PermissionsRepository
 
 
-class PermissionsService:
-    def __init__(self, repository: PermissionsRepository):
-        self._repository = repository
+from app.audit.service import AuditService
+from app.audit.models import AuditStatus, AuditSeverity
 
-    def create_permission(self, data: dict) -> Permission:
+class PermissionsService:
+    def __init__(self, repository: PermissionsRepository, audit_service: AuditService = None):
+        self._repository = repository
+        self._audit_service = audit_service
+
+    def create_permission(self, data: dict, actor_id: UUID) -> Permission:
         permission_code = data.get("permission_code")
         permission_name = data.get("permission_name")
         description = data.get("description")
@@ -50,7 +54,19 @@ class PermissionsService:
                 description=description,
                 action=action,
             )
-            return self._repository.create(permission)
+            created_permission = self._repository.create(permission)
+            if self._audit_service and actor_id:
+                self._audit_service.log_event(
+                    actor_user_id=actor_id,
+                    action="PERMISSION_CREATED",
+                    resource_type="permissions",
+                    resource_id=str(created_permission.id),
+                    status=AuditStatus.SUCCESS,
+                    severity=AuditSeverity.INFO,
+                    details={"permission_code": permission_code, "permission_name": permission_name}
+                )
+                self._repository._session.commit()
+            return created_permission
         except PermissionsRepositoryError as e:
             raise PermissionsServiceError(f"Failed to create permission: {e}") from e
 
@@ -82,7 +98,7 @@ class PermissionsService:
         except PermissionsRepositoryError as e:
             raise PermissionsServiceError(f"Failed to list permissions: {e}") from e
 
-    def update_permission(self, permission_id: UUID, data: dict) -> Permission:
+    def update_permission(self, permission_id: UUID, data: dict, actor_id: UUID) -> Permission:
         permission = self.get_permission(permission_id)
 
         if (
@@ -106,18 +122,40 @@ class PermissionsService:
             permission.status = data["status"]
 
         try:
-            return self._repository.update(permission)
+            updated_permission = self._repository.update(permission)
+            if self._audit_service and actor_id:
+                self._audit_service.log_event(
+                    actor_user_id=actor_id,
+                    action="PERMISSION_UPDATED",
+                    resource_type="permissions",
+                    resource_id=str(updated_permission.id),
+                    status=AuditStatus.SUCCESS,
+                    severity=AuditSeverity.INFO,
+                )
+                self._repository._session.commit()
+            return updated_permission
         except PermissionsRepositoryError as e:
             raise PermissionsServiceError(f"Failed to update permission: {e}") from e
 
-    def patch_permission(self, permission_id: UUID, data: dict) -> Permission:
-        return self.update_permission(permission_id, data)
+    def patch_permission(self, permission_id: UUID, data: dict, actor_id: UUID) -> Permission:
+        return self.update_permission(permission_id, data, actor_id)
 
-    def delete_permission(self, permission_id: UUID) -> bool:
+    def delete_permission(self, permission_id: UUID, actor_id: UUID) -> bool:
         self.get_permission(permission_id)
 
         try:
-            return self._repository.delete(permission_id)
+            success = self._repository.delete(permission_id)
+            if success and self._audit_service and actor_id:
+                self._audit_service.log_event(
+                    actor_user_id=actor_id,
+                    action="PERMISSION_DELETED",
+                    resource_type="permissions",
+                    resource_id=str(permission_id),
+                    status=AuditStatus.SUCCESS,
+                    severity=AuditSeverity.HIGH,
+                )
+                self._repository._session.commit()
+            return success
         except PermissionsRepositoryError as e:
             raise PermissionsServiceError(f"Failed to delete permission: {e}") from e
 

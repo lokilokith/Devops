@@ -2,6 +2,14 @@
 
 from flask_restx import Namespace, fields
 
+class EnumField(fields.String):
+    def format(self, value):
+        if hasattr(value, "value"):
+            return value.value
+        if isinstance(value, str):
+            return value.split(".")[-1].lower() if "." in value else value
+        return str(value)
+
 permissions_ns = Namespace(
     "permissions", description="Permissions management operations"
 )
@@ -16,8 +24,8 @@ permission_base = {
     "description": fields.String(
         description="Description", example="Allows creating resources"
     ),
-    "action": fields.String(description="Action", example="create"),
-    "status": fields.String(description="Status", example="active"),
+    "action": EnumField(description="Action", example="create"),
+    "status": EnumField(description="Status", example="active"),
 }
 
 permission_model = permissions_ns.model(
