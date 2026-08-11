@@ -171,4 +171,7 @@ api.add_namespace(notifications_ns, path="/notifications")
 from app.policy_engine.routes import policies_ns
 api.add_namespace(policies_ns, path="/policy-engine")
 
+from app.jit_access.routes import jit_ns
+api.add_namespace(jit_ns, path="/jit")
+
 api.add_namespace(version_ns, path="/version")

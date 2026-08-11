@@ -42,6 +42,20 @@ class RoleFactory(BaseFactory):
     # status defaults handled by model default
 
 
+from app.resources.models import Resource, ResourceType
+
+class ResourceFactory(BaseFactory):
+    class Meta:
+        model = Resource
+
+    id = factory.LazyFunction(uuid.uuid4)
+    resource_code = factory.Sequence(lambda n: f"RES{n:03d}")
+    resource_name = factory.Sequence(lambda n: f"Resource {n}")
+    resource_type = ResourceType.SERVER
+    # status defaults to active
+
+
+
 class PermissionFactory(BaseFactory):
     class Meta:
         model = Permission

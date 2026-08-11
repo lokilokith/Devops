@@ -69,6 +69,7 @@ def create_app() -> Flask:
     from app.policy_engine import models as policy_models
     from app.vault_lifecycle import models as vault_lifecycle_models
     from app.compliance import models as compliance_models
+    from app.jit_access import models as jit_access_models
 
     # Register error handlers
     register_error_handlers(app)

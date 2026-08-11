@@ -31,6 +31,29 @@ Audit & Compliance (Enhanced)
 - **Vault Lifecycle Manager**: Automates secret rotation, manages dynamic secret generation, and monitors secret expiration.
 - **Compliance Reporting Service**: Generates structured reports for compliance audits and provides dashboards for security posture.
 
+## 3.1 JIT Access Flow
+```
+User
+ |
+ | Request Privileged Access
+ |
+Access Request
+ |
+Policy Engine Evaluation
+ |
+Approval Workflow
+ |
+JIT Grant Creation
+ |
+Temporary Privilege Activation
+ |
+Privileged Session
+ |
+Expiration/Revoke
+ |
+Audit Record
+```
+
 ## 4. Component Interaction
 - **Access Flow**: A user requests access to a target system. The `Policy Engine` evaluates the request. If approval is needed, the `Approval Workflow` routes it to approvers. Once approved, the `JIT Access Service` grants temporary privileges.
 - **Session Flow**: The user connects via the `Session Management Service`, which retrieves ephemeral credentials from the `Vault`. The session is brokered and recorded.

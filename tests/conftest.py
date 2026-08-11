@@ -50,6 +50,7 @@ def db_session(app):
         factories.WorkflowFactory,
         factories.NotificationFactory,
         factories.AccessRequestFactory,
+        factories.ResourceFactory,
     ]:
         f._meta.sqlalchemy_session = session
 
