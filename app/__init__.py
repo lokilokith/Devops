@@ -65,6 +65,10 @@ def create_app() -> Flask:
     from app.audit import models as audit_models
     from app.notifications import models as notif_models
     from app.vault import models as vault_models
+    from app.sessions import models as session_models
+    from app.policy_engine import models as policy_models
+    from app.vault_lifecycle import models as vault_lifecycle_models
+    from app.compliance import models as compliance_models
 
     # Register error handlers
     register_error_handlers(app)
