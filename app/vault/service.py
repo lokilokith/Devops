@@ -323,6 +323,17 @@ class VaultApplicationService:
         secret.add_version(version)
 
         self._repository.save(secret)
+        
+        # Lifecycle integration: Record rotation atomically
+        try:
+            from app.vault_lifecycle.repository import SecretRotationPolicyRepository
+            from app.vault_lifecycle.service import VaultLifecycleService
+            lifecycle_repo = SecretRotationPolicyRepository(self._session)
+            lifecycle_service = VaultLifecycleService(lifecycle_repo, self._audit, self._authz, self._session)
+            lifecycle_service.record_rotation(secret.id)
+        except Exception as e:
+            logger.warning("Failed to record lifecycle rotation: %s", str(e))
+            
         self._session.commit()
 
         self._audit.log_event(
