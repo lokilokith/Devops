@@ -111,10 +111,14 @@ class CustomApi(Api):
 
         if isinstance(e, HTTPException):
             description = e.description or "An unexpected server error occurred."
+            
+            # Preserve meaningful validation messages for 422 Unprocessable Entity
+            message = description if e.code == 422 else getattr(e, "name", "HTTP Error")
+            
             return self.make_response(
                 {
                     "success": False,
-                    "message": getattr(e, "name", "HTTP Error"),
+                    "message": message,
                     "errors": [description],
                 },
                 e.code,
@@ -164,5 +168,7 @@ api.add_namespace(vault_ns, path="/vault")
 
 api.add_namespace(notifications_ns, path="/notifications")
 
+from app.policy_engine.routes import policies_ns
+api.add_namespace(policies_ns, path="/policy-engine")
 
 api.add_namespace(version_ns, path="/version")
