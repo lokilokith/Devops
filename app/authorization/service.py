@@ -13,7 +13,7 @@ from app.authorization.exceptions import (
     AuthorizationDeniedError,
     AuthorizationRepositoryError,
 )
-from app.permissions.models import Permission, PermissionAction
+from app.permissions.models import Permission, PermissionAction, PermissionStatus
 from app.resources.models import Resource
 from app.role_permissions.models import RolePermission
 from app.roles.models import Role, UserRole
@@ -39,6 +39,7 @@ class AuthorizationService:
                     UserRole.user_id == user_id,
                     Permission.permission_code == perm_code,
                     Permission.action == action,
+                    Permission.status == PermissionStatus.ACTIVE,
                 )
             )
             return self._session.execute(stmt).first() is not None
@@ -62,7 +63,10 @@ class AuthorizationService:
                 select(Permission)
                 .join(RolePermission, RolePermission.permission_id == Permission.id)
                 .join(UserRole, UserRole.role_id == RolePermission.role_id)
-                .where(UserRole.user_id == user_id)
+                .where(
+                    UserRole.user_id == user_id,
+                    Permission.status == PermissionStatus.ACTIVE,
+                )
                 .distinct()
             )
             return self._session.execute(stmt).scalars().all()
@@ -101,7 +105,10 @@ class AuthorizationService:
                 )
                 .join(RolePermission, RolePermission.permission_id == Permission.id)
                 .join(UserRole, UserRole.role_id == RolePermission.role_id)
-                .where(UserRole.user_id == user_id)
+                .where(
+                    UserRole.user_id == user_id,
+                    Permission.status == PermissionStatus.ACTIVE,
+                )
                 .distinct()
             )
             return self._session.execute(stmt).scalars().all()

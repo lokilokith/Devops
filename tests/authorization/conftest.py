@@ -89,7 +89,19 @@ def populated_db(auth_mock_db_session):
         action=PermissionAction.DELETE,
         status=PermissionStatus.ACTIVE,
     )
-    db_session.add_all([p1, p2])
+    p3 = Permission(
+        permission_code="PERM_RES1_UPDATE",
+        permission_name="P3",
+        action=PermissionAction.UPDATE,
+        status=PermissionStatus.INACTIVE,
+    )
+    p4 = Permission(
+        permission_code="PERM_RES1_DELETE",
+        permission_name="P4",
+        action=PermissionAction.DELETE,
+        status=PermissionStatus.RETIRED,
+    )
+    db_session.add_all([p1, p2, p3, p4])
 
     res1 = Resource(
         resource_code="RES1",
@@ -115,12 +127,14 @@ def populated_db(auth_mock_db_session):
 
     # Assign Permissions
     db_session.add(RolePermission(role_id=r1.id, permission_id=p1.id))
+    db_session.add(RolePermission(role_id=r1.id, permission_id=p3.id))
+    db_session.add(RolePermission(role_id=r1.id, permission_id=p4.id))
     db_session.add(RolePermission(role_id=r2.id, permission_id=p2.id))
     db_session.commit()
 
     return {
         "users": {"u1": u1, "u2": u2, "u3": u3},
         "roles": {"r1": r1, "r2": r2},
-        "permissions": {"p1": p1, "p2": p2},
+        "permissions": {"p1": p1, "p2": p2, "p3": p3, "p4": p4},
         "resources": {"res1": res1, "res2": res2},
     }

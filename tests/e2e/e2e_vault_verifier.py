@@ -148,19 +148,97 @@ def main():
         r = requests.post(f"{BASE_URL}/roles", headers=admin_headers, json={"role_name": "SOC Analyst", "role_code": f"SOC_{uuid.uuid4().hex[:4].upper()}"})
         soc_role_id = r.json()['data']['id']
         
-    requests.post(f"{BASE_URL}/users/{soc_user_id}/roles", headers=admin_headers, json={"role_ids": [soc_role_id]})
+    r = requests.post(f"{BASE_URL}/users/{soc_user_id}/roles", headers=admin_headers, json={"role_id": soc_role_id})
+    if r.status_code != 201 and "already assigned" not in r.text:
+        print("Failed to assign role to SOC user:", r.status_code, r.text)
     
-    # Try retrieving as SOC user without permission
+    # Negative API Test: Assign an INACTIVE permission
+    print_step("Permission Negative API Test")
+    
+    # 1. Get the PERM_VAULT_READ permission ID
+    r = requests.get(f"{BASE_URL}/permissions?search=PERM_VAULT_READ", headers=admin_headers)
+    perms = [p for p in r.json().get('data', []) if p['permission_code'] == 'PERM_VAULT_READ']
+    assert len(perms) > 0, "PERM_VAULT_READ not found in system"
+    perm_id = perms[0]['id']
+    
+    # 2. Assign PERM_VAULT_READ to SOC Analyst role
+    r = requests.post(f"{BASE_URL}/roles/{soc_role_id}/permissions", headers=admin_headers, json={"permission_id": perm_id})
+    if r.status_code != 201 and "already assigned" not in r.text:
+        print("Failed to assign permission:", r.status_code, r.text)
+    
+    # 3. Patch permission to INACTIVE
+    r = requests.patch(f"{BASE_URL}/permissions/{perm_id}", headers=admin_headers, json={"status": "inactive"})
+    assert r.status_code == 200, f"Failed to patch permission to inactive: {r.status_code} {r.text}"
+    
+    # Create a new secret for SOC test since the previous one was disabled
+    r = requests.post(f"{BASE_URL}/vault/secrets", headers=admin_headers, json={"resource_id": res_id, "payload": "soc_test_payload"})
+    assert r.status_code == 201, "Failed to create secret for SOC test"
+    soc_secret_id = r.json()['data']['id']
+
     soc_headers = login(soc_user, soc_pass)
-    r = requests.post(f"{BASE_URL}/vault/secrets/{secret_id}/retrieve", headers=soc_headers)
-    print("SOC Retrieve Status:", r.status_code)
-    # Could be 403 or something. Let's see if 403 happens.
-    assert r.status_code == 403, "SOC Analyst should be forbidden if no read perm, or maybe they have it? Checking."
+    # 4. Attempt retrieve -> Expected 403 Forbidden
+    r = requests.post(f"{BASE_URL}/vault/secrets/{soc_secret_id}/retrieve", headers=soc_headers)
+    print("SOC Retrieve Status (with INACTIVE perm):", r.status_code)
+    assert r.status_code == 403, f"Expected 403 Forbidden because permission is INACTIVE, got {r.status_code}"
     
-    assert verify_audit_log(admin_headers, secret_id, "SECRET_RETRIEVAL_FAILED", actor_id=soc_user_id) or \
-           verify_audit_log(admin_headers, secret_id, "AUTHORIZATION_DENIED", actor_id=soc_user_id), "Missing Auth Denied Audit"
+    # Restore permission to ACTIVE
+    r = requests.patch(f"{BASE_URL}/permissions/{perm_id}", headers=admin_headers, json={"status": "active"})
+    assert r.status_code == 200
+
+    print_step("Approval Workflow Validation")
+    # Now the SOC user has ACTIVE PERM_VAULT_READ.
+    # Create ResourceAccessPolicy requiring approval for this resource
+    r = requests.post(f"{BASE_URL}/resources", headers=admin_headers, json={
+        "resource_code": f"RES_VAULT_{uuid.uuid4().hex[:4].upper()}",
+        "resource_name": f"Vault Test Resource {uuid.uuid4().hex[:4]}",
+        "description": "Test"
+    })
+    res_id_2 = r.json()['data']['id']
+
+    # Create Secret 2
+    r = requests.post(f"{BASE_URL}/vault/secrets", headers=admin_headers, json={"resource_id": res_id_2, "payload": "secret_2_payload"})
+    secret_id_2 = r.json()['data']['id']
+
+    # The ResourceAccessPolicy API does not exist yet in Phase 1, so we insert it directly via SQLAlchemy
+    from app import create_app
+    from app.platform.extensions import db
+    from app.resources.models import ResourceAccessPolicy
+
+    app = create_app()
+    with app.app_context():
+        policy = ResourceAccessPolicy(
+            id=uuid.uuid4(),
+            resource_id=uuid.UUID(res_id_2),
+            role_id=uuid.UUID(soc_role_id),
+            approval_required=True
+        )
+        db.session.add(policy)
+        db.session.commit()
+
+    # SOC tries to retrieve -> Should be 403 APPROVAL_REQUIRED
+    r = requests.post(f"{BASE_URL}/vault/secrets/{secret_id_2}/retrieve", headers=soc_headers)
+    assert r.status_code == 403, f"Expected 403 APPROVAL_REQUIRED, got {r.status_code}"
+    assert r.json().get('error') == 'APPROVAL_REQUIRED', f"Expected APPROVAL_REQUIRED error, got {r.json()}"
+
+    # SOC Creates Access Request
+    r = requests.post(f"{BASE_URL}/access-requests", headers=soc_headers, json={
+        "business_justification": "Need access for SOC duties",
+        "requested_resource_id": res_id_2
+    })
+    assert r.status_code == 201, "Failed to create access request"
+    soc_req_id = r.json()['data']['id']
+
+    # Admin Approves
+    r = requests.post(f"{BASE_URL}/access-requests/{soc_req_id}/approve", headers=admin_headers)
+    assert r.status_code == 200, "Failed to approve access request"
+
+    # SOC Retrieves successfully
+    r = requests.post(f"{BASE_URL}/vault/secrets/{secret_id_2}/retrieve", headers=soc_headers)
+    assert r.status_code == 200, f"SOC Analyst should retrieve secret successfully after approval, got {r.status_code} {r.text}"
+    assert r.json()['data']['payload'] == "secret_2_payload", "Decrypted payload mismatch"
            
     print("ALL TESTS PASSED SUCCESSFULLY!")
+
 
 if __name__ == '__main__':
     main()

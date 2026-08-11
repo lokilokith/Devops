@@ -24,6 +24,14 @@ def test_has_permission(auth_test_service, populated_db):
     assert (
         auth_test_service.has_permission(u2.id, "RES1", PermissionAction.READ) is False
     )
+    
+    # Test INACTIVE and RETIRED permissions
+    assert (
+        auth_test_service.has_permission(u1.id, "RES1", PermissionAction.UPDATE) is False
+    )
+    assert (
+        auth_test_service.has_permission(u1.id, "RES1", PermissionAction.DELETE) is False
+    )
     assert (
         auth_test_service.has_permission(u2.id, "RES2", PermissionAction.DELETE) is True
     )
@@ -41,11 +49,11 @@ def test_authorize(auth_test_service, populated_db):
 def test_get_user_permissions(auth_test_service, populated_db):
     u1 = populated_db["users"]["u1"]
     perms = auth_test_service.get_user_permissions(u1.id)
-    assert len(perms) == 2
+    assert len(perms) == 2  # p1 and p2 (since u1 has r1 and r2, but p3, p4 are inactive/retired)
 
     u2 = populated_db["users"]["u2"]
     perms = auth_test_service.get_user_permissions(u2.id)
-    assert len(perms) == 1
+    assert len(perms) == 1  # p2
 
     u3 = populated_db["users"]["u3"]
     perms = auth_test_service.get_user_permissions(u3.id)
