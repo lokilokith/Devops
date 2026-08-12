@@ -1,0 +1,61 @@
+
+==================================================
+[STEP] Create Secret API
+==================================================
+{'status': 201, 'response': {'success': True, 'message': 'Success', 'data': {'id': '94dcb72e-ea33-4a9f-92f2-50b9a55a57fd', 'resource_id': 'b8e10156-a60b-4f50-809e-f53879927924', 'status': 'SecretStatus.ACTIVE', 'created_at': '2026-08-12T05:35:56.206070+00:00', 'resource': {}}, 'meta': {}}}
+
+==================================================
+[STEP] Request Access API
+==================================================
+{'status': 201, 'response': {'success': True, 'message': 'Access request created successfully', 'data': {'id': 'bd636e5a-448d-43a5-97c6-a701938c0eb1', 'request_number': 'REQ-9BE1F209', 'requester_id': 'ffefa798-fd96-40d3-876b-8a2f981062a8', 'requested_role_id': None, 'requested_resource_id': 'b8e10156-a60b-4f50-809e-f53879927924', 'business_justification': 'Need access for testing audit', 'status': 'pending', 'priority': 'low', 'requested_start': None, 'requested_end': None, 'approved_by': None, 'approved_at': None, 'rejected_reason': None, 'created_at': '2026-08-12T05:35:56.305840+00:00', 'updated_at': '2026-08-12T05:35:56.305843+00:00'}, 'meta': {}}}
+
+==================================================
+[STEP] Approve Access API
+==================================================
+{'status': 200, 'response': {'success': True, 'message': 'Access request approved successfully', 'data': {'id': 'bd636e5a-448d-43a5-97c6-a701938c0eb1', 'request_number': 'REQ-9BE1F209', 'requester_id': 'ffefa798-fd96-40d3-876b-8a2f981062a8', 'requested_role_id': None, 'requested_resource_id': 'b8e10156-a60b-4f50-809e-f53879927924', 'business_justification': 'Need access for testing audit', 'status': 'approved', 'priority': 'low', 'requested_start': None, 'requested_end': None, 'approved_by': 'c1caa315-4e7a-4b4e-819d-9386789236b8', 'approved_at': '2026-08-12T05:35:56.671378+00:00', 'rejected_reason': None, 'created_at': '2026-08-12T05:35:56.305840+00:00', 'updated_at': '2026-08-12T05:35:56.671378+00:00'}, 'meta': {}}}
+
+==================================================
+[STEP] Retrieve Secret API (Valid)
+==================================================
+{'status': 200, 'response': {'success': True, 'message': 'Success', 'data': {'id': '94dcb72e-ea33-4a9f-92f2-50b9a55a57fd', 'payload': 'audit_secret', 'metadata': {'key_version': 'v1', 'algorithm': 'AES-256-GCM', 'created_at': '2026-08-12T05:35:56.206228+00:00'}}, 'meta': {}}}
+
+==================================================
+[STEP] Rotate Secret API
+==================================================
+{'status': 200, 'response': {'success': True, 'message': 'Success', 'data': {'id': '94dcb72e-ea33-4a9f-92f2-50b9a55a57fd', 'resource_id': 'b8e10156-a60b-4f50-809e-f53879927924', 'status': 'SecretStatus.ACTIVE', 'created_at': '2026-08-12T05:35:56.206070+00:00', 'resource': {}}, 'meta': {}}}
+
+==================================================
+[STEP] Disable Secret API
+==================================================
+{'status': 200, 'response': {'success': True, 'message': 'Success', 'data': {'id': '94dcb72e-ea33-4a9f-92f2-50b9a55a57fd', 'resource_id': 'b8e10156-a60b-4f50-809e-f53879927924', 'status': 'SecretStatus.DISABLED', 'created_at': '2026-08-12T05:35:56.206070+00:00', 'resource': {}}, 'meta': {}}}
+
+==================================================
+[STEP] Delete Secret API
+==================================================
+{'status': 200, 'response': {'success': True, 'message': 200, 'data': 'Secret deleted successfully', 'meta': {}}}
+
+==================================================
+[STEP] Retrieve Secret API (Unauthorized)
+==================================================
+{'status': 403, 'response': {'success': False, 'message': 'Forbidden', 'errors': ['User is not authorized to read vault.']}}
+
+==================================================
+[STEP] Audit DB Verification
+==================================================
+| Operation | Expected audit event | Count | Result |
+| --- | --- | --- | --- |
+| SECRET_CREATED | SECRET_CREATED | 1 | PASS |
+| ACCESS_REQUEST_CREATED | ACCESS_REQUEST_CREATED | 1 | PASS |
+| APPROVAL_APPROVED | APPROVAL_APPROVED | 1 | PASS |
+| SECRET_RETRIEVED | SECRET_RETRIEVED | 1 | PASS |
+| SECRET_ROTATED | SECRET_ROTATED | 1 | PASS |
+| SECRET_DISABLED | SECRET_DISABLED | 1 | PASS |
+| SECRET_DELETED | SECRET_DELETED | 1 | PASS |
+| SECRET_RETRIEVAL_FAILED | SECRET_RETRIEVAL_FAILED | 1 | PASS |
+
+==================================================
+[STEP] Critical Check: Tombstone Persistence
+==================================================
+Secret Status: tombstoned
+Audit Record Count: 1
+CRITICAL CHECK: PASS (Tombstoned record exists and audit remains)
