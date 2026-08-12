@@ -141,6 +141,21 @@ class AccessRequestService:
                 "priority": "normal",
             },
         )
+        
+        from app.audit.models import AuditSeverity, AuditStatus
+        
+        audit_service = AuditService(AuditRepository(db.session))
+        audit_service.log_event(
+            action="ACCESS_REQUEST_CREATED",
+            actor_user_id=requester_id,
+            resource_type="access_requests",
+            resource_id=str(created.id),
+            details={"request_number": request_number, "requested_resource_id": str(requested_resource_id) if requested_resource_id else None},
+            severity=AuditSeverity.INFO,
+            status=AuditStatus.SUCCESS
+        )
+        self._repo._session.commit()
+        
         return created
 
     def approve_request(self, request_id: UUID, approver_id: UUID) -> AccessRequest:
