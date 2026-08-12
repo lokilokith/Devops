@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Sequence
 from uuid import UUID
 
@@ -148,7 +148,7 @@ class NotificationService:
 
             if not notif.is_read:
                 notif.is_read = True
-                notif.read_at = datetime.utcnow()
+                notif.read_at = datetime.now(timezone.utc)
                 notif.status = NotificationStatus.READ
                 self._repo.update_notification(notif)
                 self._session.flush()

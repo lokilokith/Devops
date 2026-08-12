@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Sequence
 from uuid import UUID
 
@@ -84,7 +84,7 @@ class NotificationRepository:
             count = len(notifs)
             for notif in notifs:
                 notif.is_read = True
-                notif.read_at = datetime.utcnow()
+                notif.read_at = datetime.now(timezone.utc)
                 notif.status = NotificationStatus.READ
             self._session.flush()
             return count

@@ -54,6 +54,7 @@ packages = ["app"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+addopts = "-v --tb=short"
 
 [tool.black]
 line-length = 88
