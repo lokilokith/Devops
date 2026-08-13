@@ -16,7 +16,7 @@ from app.utils.errors import register_error_handlers
 __all__ = ["create_app"]
 
 
-def create_app() -> Flask:
+def create_app(validate_kms: bool = True) -> Flask:
     """Flask Application Factory function."""
     app = Flask(__name__)
 
@@ -27,7 +27,7 @@ def create_app() -> Flask:
     # Initialize structured console logging for the application-scoped logger
     init_logging(debug=app.config.get("DEBUG", False))
 
-    # Direct Flask logger to use the same handlers and level as the 'opsforge' logger
+
     opsforge_logger = logging.getLogger("opsforge")
     app.logger.handlers = opsforge_logger.handlers
     app.logger.setLevel(opsforge_logger.level)
@@ -37,19 +37,26 @@ def create_app() -> Flask:
     migrate.init_app(app, db)
     from app.extensions import limiter
 
-    # Validate Vault Master Key after DB initialization
-    try:
-        # Resolve the active KMS provider via factory to validate configuration within app context
-        from app.vault.kms_factory import KMSProviderFactory
-        with app.app_context():
-            KMSProviderFactory.resolve_active_provider(db.session)
-    except Exception as e:
-        app.logger.critical(f"Startup validation failed: {e}")
-        raise RuntimeError(f"Startup validation failed: {e}") from e
+    if validate_kms:
+        try:
+            # Resolve the active KMS provider via factory within an app context
+            from app.vault.kms_factory import KMSProviderFactory
+            with app.app_context():
+                KMSProviderFactory.resolve_active_provider(db.session)
+        except Exception as e:
+            # Missing KMS table indicates migrations not applied yet; skip validation.
+            missing_indicators = [
+                "relation \"kms_configurations\" does not exist",
+                "no such table: kms_configurations",
+            ]
+            if any(msg in str(e) for msg in missing_indicators):
+                app.logger.info("KMS validation skipped: migrations not applied yet.")
+            else:
+                # Any other error (e.g., no active config) should be fatal.
+                app.logger.critical(f"Startup validation failed: {e}")
+                raise RuntimeError(f"Startup validation failed: {e}") from e
 
     limiter.init_app(app)
-
-
 
     # Initialize CORS
     from flask_cors import CORS
@@ -80,9 +87,11 @@ def create_app() -> Flask:
     # Register CLI commands
     from app.cli.seed_commands import register_commands as register_seed
     from app.cli.token_commands import register_commands as register_tokens
+    from app.cli.rotation_commands import register_commands as register_rotation
 
     register_seed(app)
     register_tokens(app)
+    register_rotation(app)
 
     # Register notification handlers
     from app.notifications.bootstrap import register_notification_handlers
