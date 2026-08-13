@@ -11,6 +11,39 @@ from sqlalchemy.types import Uuid
 
 from app.shared.database import BaseModel
 from app.vault.domain import SecretStatus
+import enum
+from sqlalchemy import JSON, Enum, ForeignKey, Integer, LargeBinary, String, Boolean, Index, text
+
+
+class KMSProviderType(str, enum.Enum):
+    AWS_KMS = "aws_kms"
+    AZURE_KV = "azure_kv"
+    HASHICORP = "hashicorp"
+
+
+class KMSConfiguration(BaseModel):
+    __tablename__ = "kms_configurations"
+
+    __table_args__ = (
+        # Ensure only one KMS configuration can be active at a time
+        Index('ix_active_kms', 'is_active', unique=True, postgresql_where=text('is_active = true')),
+    )
+
+    provider_type: Mapped[KMSProviderType] = mapped_column(
+        Enum(
+            KMSProviderType,
+            name="kms_provider_type_enum",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+    )
+    kms_endpoint: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    kms_key_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
 
 
 class VaultSecret(BaseModel):

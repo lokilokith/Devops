@@ -71,6 +71,25 @@ class JITAccessGrant(BaseModel):
     activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+class JITAccessSession(BaseModel):
+    """Tracks ephemeral credentials created for Just-In-Time access."""
+
+    __tablename__ = "jit_access_sessions"
+
+    access_request_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("access_requests.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    ephemeral_secret_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("vault_secrets.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-__all__ = ["JITAccessGrant", "JITGrantStatus"]
+__all__ = ["JITAccessGrant", "JITGrantStatus", "JITAccessSession"]

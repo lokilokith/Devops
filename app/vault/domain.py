@@ -14,6 +14,8 @@ class SecretStatus(str, enum.Enum):
     ROTATING = "rotating"
     DISABLED = "disabled"
     TOMBSTONED = "tombstoned"
+    DESYNCED = "desynced"
+    JIT_EPHEMERAL = "jit_ephemeral"
 
 
 @dataclass
