@@ -17,15 +17,21 @@ Alembic migration script `bb0ca7658bd4_phase_2b_1_database_foundation.py` was im
 
 ## 3. Regression Suite & Verification
 
-The test suite executed natively using `pytest -v` resulting in 601 passing tests and 0 failures.
+The test suite executed within the Docker PostgreSQL environment (`docker compose exec -T backend pytest -v`) resulting in 601 passing tests and 0 failures.
 
 ### Execution Output:
 ```text
-=========================== short test summary info ===========================
-601 passed, 6 warnings in 17.54s
+======================= 601 passed, 6 warnings in 14.65s =======================
 ```
 
-*Note: A flaky factory error (`RoleFactory` generating duplicate `role_name`) in the identity module was patched to guarantee a stable build without regressions.*
+*Note: A flaky factory error (`RoleFactory` generating duplicate `role_name`) in the identity module was patched to guarantee a stable build without regressions. The change replaces faker with a deterministic Sequence, preserving Phase 1 behavior while preventing random sqlite3/postgres unique constraint violations.*
 
-## 4. Conclusion
+## 4. Environment & Certification Details
+- **Database Used**: PostgreSQL 15 (Docker)
+- **Migration ID**: bb0ca7658bd4
+- **PostgreSQL Migration Result**: PASS (Applied from clean database)
+- **Database Schema Verification**: PASS (Tables, columns, ENUM states, foreign keys verified natively)
+- **Focused Tests / Regression**: PASS (601 passed)
+
+## 5. Conclusion
 Phase 2B.1 foundation elements are verified and stable. Next steps: Proceed to Phase 2B.2 (State Management & Domain Logic) to implement the lifecycle workflows on top of these tables.
