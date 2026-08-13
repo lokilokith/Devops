@@ -11,6 +11,7 @@ from app.resources.models import (
     ResourceType,
 )
 from app.vault.domain import SecretFactory, SecretMetadata, SecretVersion
+from app.vault.exceptions import ConcurrencyError
 from app.vault.repository import SqlAlchemyVaultRepository
 
 
@@ -97,5 +98,5 @@ def test_optimistic_locking_conflict(db_session, test_user):
 
     # Modify instance 2 and attempt to save -> should throw ValueError
     instance2.disable()
-    with pytest.raises(ValueError, match="row_version mismatch"):
+    with pytest.raises(ConcurrencyError, match="row_version mismatch"):
         repo2.save(instance2)
