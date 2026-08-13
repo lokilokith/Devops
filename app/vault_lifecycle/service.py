@@ -212,3 +212,127 @@ class VaultLifecycleService:
             policy.next_rotation_at = now + timedelta(seconds=policy.rotation_interval_seconds)
             policy.updated_at = now
             self._repository.save(policy)
+
+    def start_rotation(self, actor_id: UUID, vault_secret_id: UUID) -> None:
+        """Domain transition to start rotation."""
+        self._authz.authorize(actor_id, "vault_lifecycle", PermissionAction("update"))
+        
+        from app.vault.repository import SecretRepository
+        secret_repo = SecretRepository(self._session)
+        secret = secret_repo.find_by_id(vault_secret_id)
+        if not secret:
+            raise ValueError("Secret not found")
+            
+        secret.begin_rotation()
+        secret_repo.save(secret)
+        self._session.commit()
+        
+        self._audit.log_event(
+            actor_user_id=actor_id,
+            action="SECRET_ROTATION_STARTED",
+            resource_type="vault_secrets",
+            resource_id=str(vault_secret_id),
+            status=AuditStatus.SUCCESS,
+            severity=AuditSeverity.INFO,
+        )
+        self._session.commit()
+        
+        from app.vault.events import secret_rotation_started
+        secret_rotation_started.send(
+            self,
+            payload={
+                "event": "secret_rotation_started",
+                "secret_id": str(vault_secret_id),
+                "actor_id": str(actor_id),
+            }
+        )
+
+    def complete_rotation(self, actor_id: UUID, vault_secret_id: UUID, new_version) -> None:
+        """Domain transition to complete rotation."""
+        self._authz.authorize(actor_id, "vault_lifecycle", PermissionAction("update"))
+        
+        from app.vault.repository import SecretRepository
+        secret_repo = SecretRepository(self._session)
+        secret = secret_repo.find_by_id(vault_secret_id)
+        if not secret:
+            raise ValueError("Secret not found")
+            
+        secret.complete_rotation(new_version)
+        secret_repo.save(secret)
+        
+        from app.vault_lifecycle.models import RotationResultStatus
+        policy = self._repository.get_by_vault_secret_id(vault_secret_id)
+        if policy:
+            now = datetime.now(timezone.utc)
+            policy.last_rotated_at = now
+            policy.next_rotation_at = now + timedelta(seconds=policy.rotation_interval_seconds)
+            policy.last_rotation_status = RotationResultStatus.SUCCESS
+            policy.updated_at = now
+            self._repository.save(policy)
+            
+        self._session.commit()
+        
+        self._audit.log_event(
+            actor_user_id=actor_id,
+            action="SECRET_ROTATION_COMPLETED",
+            resource_type="vault_secrets",
+            resource_id=str(vault_secret_id),
+            status=AuditStatus.SUCCESS,
+            severity=AuditSeverity.INFO,
+        )
+        self._session.commit()
+        
+        from app.vault.events import secret_rotation_completed
+        secret_rotation_completed.send(
+            self,
+            payload={
+                "event": "secret_rotation_completed",
+                "secret_id": str(vault_secret_id),
+                "actor_id": str(actor_id),
+            }
+        )
+
+    def fail_rotation(self, actor_id: UUID, vault_secret_id: UUID, reason: str) -> None:
+        """Domain transition to fail rotation (DESYNCED)."""
+        self._authz.authorize(actor_id, "vault_lifecycle", PermissionAction("update"))
+        
+        from app.vault.repository import SecretRepository
+        secret_repo = SecretRepository(self._session)
+        secret = secret_repo.find_by_id(vault_secret_id)
+        if not secret:
+            raise ValueError("Secret not found")
+            
+        secret.fail_rotation()
+        secret_repo.save(secret)
+        
+        from app.vault_lifecycle.models import RotationResultStatus
+        policy = self._repository.get_by_vault_secret_id(vault_secret_id)
+        if policy:
+            policy.last_rotation_status = RotationResultStatus.FAILED
+            policy.failure_reason = reason
+            policy.updated_at = datetime.now(timezone.utc)
+            self._repository.save(policy)
+            
+        self._session.commit()
+        
+        self._audit.log_event(
+            actor_user_id=actor_id,
+            action="SECRET_ROTATION_FAILED",
+            resource_type="vault_secrets",
+            resource_id=str(vault_secret_id),
+            status=AuditStatus.SUCCESS,
+            severity=AuditSeverity.HIGH,
+            details={"reason": reason}
+        )
+        self._session.commit()
+        
+        from app.vault.events import secret_rotation_failed
+        secret_rotation_failed.send(
+            self,
+            payload={
+                "event": "secret_rotation_failed",
+                "secret_id": str(vault_secret_id),
+                "actor_id": str(actor_id),
+                "reason": reason
+            }
+        )

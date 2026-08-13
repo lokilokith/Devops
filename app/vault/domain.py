@@ -57,6 +57,41 @@ class Secret:
             raise ValueError("Version belongs to a different secret.")
         self.versions.append(version)
         self.current_version_id = version.id
+        # We don't automatically set ACTIVE here if it's called from complete_rotation or initialization,
+        # but for backward compatibility with Phase 1, we preserve it.
+        # However, for Phase 2, rotation lifecycle manages status.
+        if self.status not in (SecretStatus.ROTATING, SecretStatus.ACTIVE, SecretStatus.JIT_EPHEMERAL):
+            self.status = SecretStatus.ACTIVE
+        self.updated_at = datetime.now(timezone.utc)
+        self.row_version += 1
+
+    def begin_rotation(self) -> None:
+        if self.status == SecretStatus.ROTATING:
+            raise ValueError("Secret is already in ROTATING state.")
+        if self.status != SecretStatus.ACTIVE:
+            raise ValueError(f"Cannot begin rotation from {self.status.value} state.")
+        self.status = SecretStatus.ROTATING
+        self.updated_at = datetime.now(timezone.utc)
+        self.row_version += 1
+
+    def complete_rotation(self, version: SecretVersion) -> None:
+        if self.status != SecretStatus.ROTATING:
+            raise ValueError(f"Cannot complete rotation from {self.status.value} state.")
+        self.add_version(version)
+        self.status = SecretStatus.ACTIVE
+        self.updated_at = datetime.now(timezone.utc)
+        self.row_version += 1
+
+    def fail_rotation(self) -> None:
+        if self.status != SecretStatus.ROTATING:
+            raise ValueError(f"Cannot fail rotation from {self.status.value} state.")
+        self.status = SecretStatus.DESYNCED
+        self.updated_at = datetime.now(timezone.utc)
+        self.row_version += 1
+
+    def restore_from_desynced(self) -> None:
+        if self.status != SecretStatus.DESYNCED:
+            raise ValueError(f"Cannot restore from {self.status.value} state.")
         self.status = SecretStatus.ACTIVE
         self.updated_at = datetime.now(timezone.utc)
         self.row_version += 1

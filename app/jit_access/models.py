@@ -91,5 +91,28 @@ class JITAccessSession(BaseModel):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    def expire(self) -> bool:
+        """Expire the session. Returns True if state changed, False if already expired."""
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        if self.revoked_at is not None:
+            raise ValueError("Cannot expire a revoked session.")
+        # Need to handle offset-naive datetime gracefully if it occurs
+        expires_at = self.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at <= now:
+            return False
+        self.expires_at = now
+        return True
+
+    def revoke(self) -> bool:
+        """Revoke the session. Returns True if state changed, False if already revoked."""
+        from datetime import datetime, timezone
+        if self.revoked_at is not None:
+            return False
+        self.revoked_at = datetime.now(timezone.utc)
+        return True
+
 
 __all__ = ["JITAccessGrant", "JITGrantStatus", "JITAccessSession"]

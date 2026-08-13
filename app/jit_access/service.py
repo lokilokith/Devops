@@ -165,16 +165,105 @@ class JITAccessService:
         )
         return updated_grant
 
+
+    def create_session(
+        self, 
+        grant_id: UUID, 
+        system_actor_id: UUID,
+        vault_service,
+        plaintext: bytes
+    ):
+        from app.jit_access.models import JITAccessSession
+        from app.jit_access.events import jit_session_created
+        from sqlalchemy import select
+        
+        grant = self._repo.get_by_id(grant_id)
+        if grant.status != JITGrantStatus.ACTIVE:
+            raise InvalidGrantStateError("Grant must be ACTIVE to create a session")
+            
+        # Check idempotency
+        stmt = select(JITAccessSession).where(JITAccessSession.access_request_id == grant.approval_request_id)
+        existing = db.session.execute(stmt).scalar_one_or_none()
+        if existing:
+            return existing
+
+        # Delegate secret creation to vault service
+        secret = vault_service.create_secret(system_actor_id, grant.resource_id, plaintext)
+        
+        # Transition secret to JIT_EPHEMERAL
+        from app.vault.domain import SecretStatus
+        secret.status = SecretStatus.JIT_EPHEMERAL
+        vault_service._repository.save(secret)
+        db.session.commit()
+
+        session = JITAccessSession(
+            access_request_id=grant.approval_request_id,
+            ephemeral_secret_id=secret.id,
+            expires_at=grant.expires_at,
+        )
+        db.session.add(session)
+        
+        self._audit.log_event(
+            actor_user_id=grant.user_id,
+            action="JIT_SESSION_CREATED",
+            resource_type="jit_access_sessions",
+            resource_id=str(grant.approval_request_id),
+            status=AuditStatus.SUCCESS,
+            severity=AuditSeverity.INFO,
+            details={"grant_id": str(grant.id), "secret_id": str(secret.id)}
+        )
+        db.session.commit()
+        
+        jit_session_created.send(
+            self,
+            payload={
+                "event": "jit_session_created",
+                "session_id": str(grant.approval_request_id),
+                "grant_id": str(grant.id),
+                "actor_id": str(grant.user_id),
+            }
+        )
+        return session
+
     def expire_access(self, grant_id: UUID) -> JITAccessGrant:
         grant = self._repo.get_by_id(grant_id)
+        if grant.status == JITGrantStatus.EXPIRED:
+            return grant
         if grant.status != JITGrantStatus.ACTIVE:
             raise InvalidGrantStateError("Only active grants can be expired")
             
         grant.status = JITGrantStatus.EXPIRED
         updated_grant = self._repo.update(grant)
         
+        from app.jit_access.models import JITAccessSession
+        from app.jit_access.events import jit_session_expired
+        from sqlalchemy import select
+        stmt = select(JITAccessSession).where(JITAccessSession.access_request_id == grant.approval_request_id)
+        session = db.session.execute(stmt).scalar_one_or_none()
+        
+        if session:
+            if session.expire():
+                db.session.add(session)
+                self._audit.log_event(
+                    actor_user_id=grant.user_id,
+                    action="JIT_SESSION_EXPIRED",
+                    resource_type="jit_access_sessions",
+                    resource_id=str(session.access_request_id),
+                    status=AuditStatus.SUCCESS,
+                    severity=AuditSeverity.INFO,
+                )
+                jit_session_expired.send(
+                    self,
+                    payload={
+                        "event": "jit_session_expired",
+                        "session_id": str(session.access_request_id),
+                        "grant_id": str(grant.id),
+                        "actor_id": str(grant.user_id),
+                    }
+                )
+        
         self._audit.log_event(
-            actor_user_id=grant.user_id,  # System usually does this, but we associate with the grantee
+            actor_user_id=grant.user_id,
             action="jit.expired",
             resource_type="jit_access_grants",
             resource_id=str(updated_grant.id),
@@ -186,6 +275,9 @@ class JITAccessService:
     def revoke_access(self, grant_id: UUID, revoker_id: UUID) -> JITAccessGrant:
         grant = self._repo.get_by_id(grant_id)
         
+        if grant.status == JITGrantStatus.REVOKED:
+            return grant
+            
         # Check authorization: non-admin cannot revoke another user's grant
         if grant.user_id != revoker_id:
             try:
@@ -201,6 +293,33 @@ class JITAccessService:
         grant.status = JITGrantStatus.REVOKED
         grant.revoked_at = datetime.now(timezone.utc)
         updated_grant = self._repo.update(grant)
+        
+        from app.jit_access.models import JITAccessSession
+        from app.jit_access.events import jit_session_revoked
+        from sqlalchemy import select
+        stmt = select(JITAccessSession).where(JITAccessSession.access_request_id == grant.approval_request_id)
+        session = db.session.execute(stmt).scalar_one_or_none()
+        
+        if session:
+            if session.revoke():
+                db.session.add(session)
+                self._audit.log_event(
+                    actor_user_id=revoker_id,
+                    action="JIT_SESSION_REVOKED",
+                    resource_type="jit_access_sessions",
+                    resource_id=str(session.access_request_id),
+                    status=AuditStatus.SUCCESS,
+                    severity=AuditSeverity.INFO,
+                )
+                jit_session_revoked.send(
+                    self,
+                    payload={
+                        "event": "jit_session_revoked",
+                        "session_id": str(session.access_request_id),
+                        "grant_id": str(grant.id),
+                        "actor_id": str(revoker_id),
+                    }
+                )
         
         self._audit.log_event(
             actor_user_id=revoker_id,
