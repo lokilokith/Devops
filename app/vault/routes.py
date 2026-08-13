@@ -17,7 +17,8 @@ from app.authorization.exceptions import AuthorizationDeniedError
 from app.authorization.service import AuthorizationService
 from app.extensions import db
 from app.policy_engine.engine import PolicyEngine
-from app.vault.crypto import EncryptionService, LocalEnvironmentKeyProvider
+from app.vault.crypto import EncryptionService, LocalKMSProvider
+from app.vault.kms_factory import KMSProviderFactory
 from app.vault.domain import SecretDomainService
 from app.vault.repository import SqlAlchemyVaultRepository
 from app.vault.schemas import (
@@ -38,7 +39,7 @@ from flask_restx import marshal
 def get_vault_service() -> VaultApplicationService:
     return VaultApplicationService(
         domain_service=SecretDomainService(),
-        encryption_service=EncryptionService(LocalEnvironmentKeyProvider()),
+        encryption_service=EncryptionService(KMSProviderFactory.resolve_active_provider(db.session)),
         repository=SqlAlchemyVaultRepository(db.session),
         policy_engine=PolicyEngine(db.session, AuthorizationService(db.session)),
         audit_service=AuditService(AuditRepository(db.session)),

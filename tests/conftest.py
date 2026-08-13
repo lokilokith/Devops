@@ -1,4 +1,5 @@
 import os
+import base64
 
 import pytest
 
@@ -13,6 +14,8 @@ from tests.fixtures.factories import UserFactory, RoleFactory
 def app():
     os.environ["APP_ENV"] = "testing"
     os.environ["SECRET_KEY"] = "super-secret-key-for-testing-12345678"
+    # Ensure master key is set for KMS provider initialization
+    os.environ["VAULT_MASTER_KEY"] = base64.b64encode(os.urandom(32)).decode()
     app = create_app()
     with app.app_context():
 

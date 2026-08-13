@@ -207,9 +207,11 @@ class VaultLifecycleService:
         """
         policy = self._repository.get_by_vault_secret_id(vault_secret_id)
         if policy:
+            from app.vault_lifecycle.models import RotationResultStatus
             now = datetime.now(timezone.utc)
             policy.last_rotated_at = now
             policy.next_rotation_at = now + timedelta(seconds=policy.rotation_interval_seconds)
+            policy.last_rotation_status = RotationResultStatus.SUCCESS
             policy.updated_at = now
             self._repository.save(policy)
 
@@ -217,8 +219,8 @@ class VaultLifecycleService:
         """Domain transition to start rotation."""
         self._authz.authorize(actor_id, "vault_lifecycle", PermissionAction("update"))
         
-        from app.vault.repository import SecretRepository
-        secret_repo = SecretRepository(self._session)
+        from app.vault.repository import SqlAlchemyVaultRepository
+        secret_repo = SqlAlchemyVaultRepository(self._session)
         secret = secret_repo.find_by_id(vault_secret_id)
         if not secret:
             raise ValueError("Secret not found")
@@ -251,8 +253,8 @@ class VaultLifecycleService:
         """Domain transition to complete rotation."""
         self._authz.authorize(actor_id, "vault_lifecycle", PermissionAction("update"))
         
-        from app.vault.repository import SecretRepository
-        secret_repo = SecretRepository(self._session)
+        from app.vault.repository import SqlAlchemyVaultRepository
+        secret_repo = SqlAlchemyVaultRepository(self._session)
         secret = secret_repo.find_by_id(vault_secret_id)
         if not secret:
             raise ValueError("Secret not found")
@@ -296,8 +298,8 @@ class VaultLifecycleService:
         """Domain transition to fail rotation (DESYNCED)."""
         self._authz.authorize(actor_id, "vault_lifecycle", PermissionAction("update"))
         
-        from app.vault.repository import SecretRepository
-        secret_repo = SecretRepository(self._session)
+        from app.vault.repository import SqlAlchemyVaultRepository
+        secret_repo = SqlAlchemyVaultRepository(self._session)
         secret = secret_repo.find_by_id(vault_secret_id)
         if not secret:
             raise ValueError("Secret not found")

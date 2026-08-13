@@ -41,6 +41,7 @@ class SecretRotationPolicy(BaseModel):
     plugin_name: Mapped[str] = mapped_column(String(100), nullable=False, default="manual")
     rotation_interval_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     rotation_interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     next_rotation_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     rotation_script_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)

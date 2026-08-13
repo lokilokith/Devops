@@ -12,7 +12,19 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from app.vault.domain import SecretMetadata
 
 
-class MasterKeyProvider(Protocol):
+class KMSProviderError(Exception):
+    """Base exception for KMS provider errors."""
+    pass
+
+class UnsupportedKMSProviderError(KMSProviderError):
+    """Raised when an unsupported KMS provider is requested."""
+    pass
+
+class KMSConfigurationError(KMSProviderError):
+    """Raised when the KMS configuration is invalid or missing."""
+    pass
+
+class KMSProvider(Protocol):
     """Abstract interface for Master Key operations."""
 
     def encrypt_dek(self, plaintext_dek: bytes, key_version: str, aad: bytes) -> bytes:
@@ -28,7 +40,7 @@ class MasterKeyProvider(Protocol):
         ...
 
 
-class LocalEnvironmentKeyProvider:
+class LocalKMSProvider:
     """Master Key Provider that loads AES-256 key from VAULT_MASTER_KEY env var."""
 
     def __init__(self) -> None:
@@ -78,10 +90,19 @@ class LocalEnvironmentKeyProvider:
         return key_version == self._active_version
 
 
+class LocalEnvironmentKeyProvider(LocalKMSProvider):
+    """Alias for LocalKMSProvider for backward compatibility.
+
+    The original tests expect a class named `LocalEnvironmentKeyProvider` that
+    loads the master key from the `VAULT_MASTER_KEY` environment variable and
+    provides the same encrypt/decrypt semantics as `LocalKMSProvider`.
+    """
+    pass
+
 class EncryptionService:
     """Domain service for handling envelope encryption lifecycles."""
 
-    def __init__(self, key_provider: MasterKeyProvider):
+    def __init__(self, key_provider: KMSProvider):
         self._provider = key_provider
 
     def _generate_aad(self, resource_id: UUID, secret_id: UUID) -> bytes:

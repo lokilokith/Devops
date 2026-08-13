@@ -32,24 +32,24 @@ def create_app() -> Flask:
     app.logger.handlers = opsforge_logger.handlers
     app.logger.setLevel(opsforge_logger.level)
 
-    # Validate Vault Master Key at startup
-    try:
-        from app.vault.crypto import MasterKeyProvider
-        
-        # Instantiate provider to trigger key validations
-        # The concrete implementation LocalEnvironmentKeyProvider will check VAULT_MASTER_KEY
-        from app.vault.crypto import LocalEnvironmentKeyProvider
-        LocalEnvironmentKeyProvider()
-    except ValueError as e:
-        app.logger.critical(f"Startup validation failed: {e}")
-        raise RuntimeError(f"Startup validation failed: {e}") from e
-
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
     from app.extensions import limiter
 
+    # Validate Vault Master Key after DB initialization
+    try:
+        # Resolve the active KMS provider via factory to validate configuration within app context
+        from app.vault.kms_factory import KMSProviderFactory
+        with app.app_context():
+            KMSProviderFactory.resolve_active_provider(db.session)
+    except Exception as e:
+        app.logger.critical(f"Startup validation failed: {e}")
+        raise RuntimeError(f"Startup validation failed: {e}") from e
+
     limiter.init_app(app)
+
+
 
     # Initialize CORS
     from flask_cors import CORS

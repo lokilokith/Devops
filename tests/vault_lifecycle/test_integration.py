@@ -3,6 +3,8 @@
 import uuid
 from datetime import datetime, timezone
 import pytest
+import os, base64
+from app.vault.models import KMSConfiguration, KMSProviderType
 
 from app.vault_lifecycle.models import SecretRotationPolicy, RotationStatus
 from app.vault_lifecycle.repository import SecretRotationPolicyRepository
@@ -19,6 +21,11 @@ def test_vault_rotation_updates_lifecycle_policy(db_session, client, admin_token
     secret_id = uuid.uuid4()
     secret = VaultSecret(id=secret_id, resource_id=res.id, status=SecretStatus.ACTIVE, row_version=1)
     db_session.add(secret)
+    db_session.commit()
+    # Set up active LOCAL KMS configuration for test
+    os.environ["VAULT_MASTER_KEY"] = base64.b64encode(os.urandom(32)).decode()
+    config = KMSConfiguration(provider_type=KMSProviderType.LOCAL, kms_key_id="local-key", is_active=True)
+    db_session.add(config)
     db_session.commit()
     
     # 3. Create a SecretRotationPolicy

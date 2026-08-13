@@ -16,6 +16,7 @@ from sqlalchemy import JSON, Enum, ForeignKey, Integer, LargeBinary, String, Boo
 
 
 class KMSProviderType(str, enum.Enum):
+    LOCAL = "local"
     AWS_KMS = "aws_kms"
     AZURE_KV = "azure_kv"
     HASHICORP = "hashicorp"

@@ -320,7 +320,11 @@ class VaultApplicationService:
             created_at=datetime.now(timezone.utc),
             created_by=actor_id
         )
-        secret.add_version(version)
+        from app.vault.domain import SecretStatus
+        if secret.status == SecretStatus.ROTATING:
+            secret.complete_rotation(version)
+        else:
+            secret.add_version(version)
 
         self._repository.save(secret)
         
