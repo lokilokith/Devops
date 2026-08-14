@@ -1,18 +1,7 @@
-"""Vault Exceptions."""
+"""Vault‑specific exception definitions.
 
-from __future__ import annotations
+This module provides exceptions used by the vault persistence layer.
+"""
 
-from app.shared.exceptions import DomainException
-
-
-class DecryptionFailedError(DomainException):
-    """Raised when AES-GCM tag verification fails or DEK decryption fails."""
-    pass
-
-class MasterKeyUnavailableError(DomainException):
-    """Raised when the KMS provider is unreachable."""
-    pass
-
-class InvalidKeyVersionError(DomainException):
-    """Raised when an unsupported or revoked MEK version is requested."""
-    pass
+class ConcurrencyError(RuntimeError):
+    """Raised when an optimistic‑concurrency check fails (row_version mismatch)."""

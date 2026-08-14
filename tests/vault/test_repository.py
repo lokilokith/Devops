@@ -19,7 +19,9 @@ def test_repository_mapping_cycle(db_session, test_user):
     """Verifies Domain -> DB -> Domain mapping preserves all attributes."""
     repo = SqlAlchemyVaultRepository(db_session)
 
-    resource = Resource(resource_code="TST01", resource_name="Test Resource", resource_type=ResourceType.SERVER, status=ResourceStatus.ACTIVE, environment=Environment.DEV, criticality=Criticality.LOW)
+    import uuid
+    uid = uuid.uuid4().hex[:6]
+    resource = Resource(resource_code=f"TST01_{uid}", resource_name=f"Test Resource {uid}", resource_type=ResourceType.SERVER, status=ResourceStatus.ACTIVE, environment=Environment.DEV, criticality=Criticality.LOW)
     db_session.add(resource)
     db_session.commit()
 

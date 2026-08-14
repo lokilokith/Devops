@@ -61,12 +61,16 @@ def rotate_secrets_command():
             executor_registry=executor_registry,
         )
 
-        click.secho("Rotation job completed.", fg="green")
-        click.echo(f"Attempted:  {result.get('attempted', 0)}")
-        click.echo(f"Succeeded:  {result.get('succeeded', 0)}")
-        click.echo(f"Retryable:  {result.get('retryable', 0) if 'retryable' in result else 0}")
-        click.echo(f"Terminal:   {result.get('failed', 0)}")
-        click.echo(f"Skipped:    {result.get('skipped', 0)}")
+        click.secho("Rotation run completed", fg="green")
+        click.echo(f"Run ID: {result.get('run_id')}")
+        click.echo(f"Attempted: {result.get('attempted', 0)}")
+        click.echo(f"Succeeded: {result.get('succeeded', 0)}")
+        click.echo(f"Retryable: {result.get('retryable', 0)}")
+        click.echo(f"Terminal: {result.get('terminal', 0)}")
+        click.echo(f"No executor: {result.get('no_executor', 0)}")
+        click.echo(f"Skipped: {result.get('skipped', 0)}")
+        click.echo(f"Unexpected: {result.get('unexpected', 0)}")
+        click.echo(f"Duration: {result.get('duration_seconds', 0.0)}s")
 
     except click.Abort:
         raise

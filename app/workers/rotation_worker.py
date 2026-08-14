@@ -126,10 +126,23 @@ def run_rotation_job(
     policies = _fetch_eligible_policies(session)
     logger.info("RotationWorker: %d eligible policies found", len(policies))
 
-    counters = {"attempted": len(policies), "succeeded": 0, "skipped": 0, "failed": 0}
+    run_id = str(uuid.uuid4())
+    start_time = datetime.now(timezone.utc)
+    counters = {
+        "run_id": run_id,
+        "attempted": len(policies),
+        "succeeded": 0,
+        "retryable": 0,
+        "terminal": 0,
+        "no_executor": 0,
+        "unexpected": 0,
+        "skipped": 0,
+        "duration_seconds": 0.0,
+    }
 
     for policy in policies:
         result = _process_policy(
+            run_id=run_id,
             policy=policy,
             actor_id=actor_id,
             session=session,
@@ -142,12 +155,15 @@ def run_rotation_job(
         )
         counters[result] += 1
 
+    duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+    counters["duration_seconds"] = round(duration, 3)
+
     logger.info(
-        "RotationWorker: completed – attempted=%d succeeded=%d skipped=%d failed=%d",
+        "RotationWorker: completed – run_id=%s attempted=%d succeeded=%d skipped=%d",
+        run_id,
         counters["attempted"],
         counters["succeeded"],
         counters["skipped"],
-        counters["failed"],
     )
     return counters
 
@@ -172,6 +188,7 @@ def _fetch_eligible_policies(session: Session) -> List[SecretRotationPolicy]:
 
 def _process_policy(
     *,
+    run_id: str,
     policy: SecretRotationPolicy,
     actor_id: UUID,
     session: Session,
@@ -184,7 +201,7 @@ def _process_policy(
 ) -> str:
     """Process a single rotation policy inside its own SAVEPOINT.
 
-    Returns one of: ``"succeeded"``, ``"skipped"``, ``"failed"``.
+    Returns one of: ``"succeeded"``, ``"skipped"``, ``"retryable"``, ``"terminal"``, ``"no_executor"``, ``"unexpected"``.
     """
     policy_id_str = str(policy.id)
     secret_id = policy.vault_secret_id
@@ -214,8 +231,10 @@ def _process_policy(
                 "RotationWorker: Cannot start rotation for secret %s: %s",
                 secret_id_str,
                 exc,
+                extra={"run_id": run_id, "policy_id": policy_id_str}
             )
             _audit_failure(
+                run_id=run_id,
                 audit_service=audit_service,
                 actor_id=actor_id,
                 secret_id_str=secret_id_str,
@@ -223,14 +242,15 @@ def _process_policy(
                 reason=str(exc),
                 severity=AuditSeverity.HIGH,
             )
-            return "failed"
+            return "unexpected"
 
         # 2. Resolve executor for this resource.
         executor = executor_registry.get_executor(secret_id)
         if executor is None:
             reason = f"No executor registered for secret {secret_id_str}"
-            logger.warning("RotationWorker: %s", reason)
+            logger.warning("RotationWorker: %s", reason, extra={"run_id": run_id, "policy_id": policy_id_str})
             _handle_fail_rotation(
+                run_id=run_id,
                 lifecycle_service=lifecycle_service,
                 audit_service=audit_service,
                 policy=policy,
@@ -242,13 +262,14 @@ def _process_policy(
                 action="SECRET_ROTATION_NO_EXECUTOR",
             )
             savepoint.commit()
-            return "failed"
+            return "no_executor"
 
         # 3. Load current secret aggregate from DB.
         secret = secret_repo.find_by_id(secret_id)
         if secret is None:
             reason = f"Secret {secret_id_str} not found during rotation"
             _handle_fail_rotation(
+                run_id=run_id,
                 lifecycle_service=lifecycle_service,
                 audit_service=audit_service,
                 policy=policy,
@@ -260,12 +281,13 @@ def _process_policy(
                 action="SECRET_ROTATION_FAILED",
             )
             savepoint.commit()
-            return "failed"
+            return "unexpected"
 
         current_version = secret.get_current_version()
         if current_version is None:
             reason = f"Secret {secret_id_str} has no current version"
             _handle_fail_rotation(
+                run_id=run_id,
                 lifecycle_service=lifecycle_service,
                 audit_service=audit_service,
                 policy=policy,
@@ -277,7 +299,7 @@ def _process_policy(
                 action="SECRET_ROTATION_FAILED",
             )
             savepoint.commit()
-            return "failed"
+            return "unexpected"
 
         # 4. Decrypt current secret in memory – plaintext MUST NOT be logged.
         try:
@@ -294,8 +316,10 @@ def _process_policy(
                 "RotationWorker: %s for secret %s (details omitted for security)",
                 reason,
                 secret_id_str,
+                extra={"run_id": run_id, "policy_id": policy_id_str}
             )
             _handle_fail_rotation(
+                run_id=run_id,
                 lifecycle_service=lifecycle_service,
                 audit_service=audit_service,
                 policy=policy,
@@ -307,9 +331,8 @@ def _process_policy(
                 action="SECRET_ROTATION_FAILED",
             )
             savepoint.commit()
-            # Wipe local reference before returning – plaintext must not linger.
-            del plaintext  # noqa: F821
-            return "failed"
+            # Plaintext was not bound if decryption failed, so no need to del it.
+            return "unexpected"
 
         # 5. Call executor – may raise RuntimeError for retryable/terminal.
         exec_error: str | None = None
@@ -331,6 +354,7 @@ def _process_policy(
                 "RotationWorker: Executor raised RuntimeError for secret %s (classified as %s)",
                 secret_id_str,
                 exec_error,
+                extra={"run_id": run_id, "policy_id": policy_id_str}
             )
 
         # 6. Handle executor error outcome.
@@ -342,7 +366,8 @@ def _process_policy(
                 policy.updated_at = datetime.now(timezone.utc)
                 policy_repo.save(policy)
                 _audit_failure(
-                    audit_service=audit_service,
+                run_id=run_id,
+                audit_service=audit_service,
                     actor_id=actor_id,
                     secret_id_str=secret_id_str,
                     action="SECRET_ROTATION_RETRYABLE_FAILURE",
@@ -364,12 +389,13 @@ def _process_policy(
                     # Another worker may have changed state – that's acceptable.
                     pass
                 savepoint.commit()
-                return "failed"
+                return "retryable"
             else:
                 # Terminal failure – transition secret to DESYNCED, policy to ERROR.
                 reason = "Terminal executor failure"
                 _handle_fail_rotation(
-                    lifecycle_service=lifecycle_service,
+                run_id=run_id,
+                lifecycle_service=lifecycle_service,
                     audit_service=audit_service,
                     policy=policy,
                     policy_repo=policy_repo,
@@ -380,12 +406,13 @@ def _process_policy(
                     action="SECRET_ROTATION_TERMINAL_FAILURE",
                 )
                 savepoint.commit()
-                return "failed"
+                return "terminal"
 
         # 7. SUCCESS path – encrypt the new credential and persist.
         if not new_secret_bytes:
             reason = "Executor returned empty credential bytes"
             _handle_fail_rotation(
+                run_id=run_id,
                 lifecycle_service=lifecycle_service,
                 audit_service=audit_service,
                 policy=policy,
@@ -397,13 +424,14 @@ def _process_policy(
                 action="SECRET_ROTATION_FAILED",
             )
             savepoint.commit()
-            return "failed"
+            return "unexpected"
 
         # Re-load secret (start_rotation already saved it; fetch fresh state).
         secret = secret_repo.find_by_id(secret_id)
         if secret is None:
             reason = "Secret disappeared between start and complete rotation"
             _handle_fail_rotation(
+                run_id=run_id,
                 lifecycle_service=lifecycle_service,
                 audit_service=audit_service,
                 policy=policy,
@@ -415,7 +443,7 @@ def _process_policy(
                 action="SECRET_ROTATION_FAILED",
             )
             savepoint.commit()
-            return "failed"
+            return "unexpected"
 
         try:
             encrypted_dek, encrypted_payload, metadata = encryption_service.encrypt_payload(
@@ -451,11 +479,11 @@ def _process_policy(
             resource_id=secret_id_str,
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.INFO,
-            details={"policy_id": policy_id_str},
+            details={"run_id": run_id, "policy_id": policy_id_str},
         )
 
         savepoint.commit()
-        logger.info("RotationWorker: rotation completed for secret %s", secret_id_str)
+        logger.info("RotationWorker: rotation completed for secret %s", secret_id_str, extra={"run_id": run_id, "policy_id": policy_id_str})
         return "succeeded"
 
     except ConcurrencyError:
@@ -480,9 +508,11 @@ def _process_policy(
             "RotationWorker: Unexpected error processing secret %s: %s",
             secret_id_str,
             exc,
+            extra={"run_id": run_id, "policy_id": policy_id_str}
         )
         _audit_failure(
-            audit_service=audit_service,
+                run_id=run_id,
+                audit_service=audit_service,
             actor_id=actor_id,
             secret_id_str=secret_id_str,
             action="SECRET_ROTATION_FAILED",
@@ -498,6 +528,7 @@ def _process_policy(
 
 def _audit_failure(
     *,
+    run_id: str,
     audit_service: AuditService,
     actor_id: UUID,
     secret_id_str: str,
@@ -507,7 +538,7 @@ def _audit_failure(
     details: dict | None = None,
 ) -> None:
     """Emit a failure audit event. Never includes plaintext."""
-    payload = {"reason": reason}
+    payload = {"run_id": run_id, "reason": reason}
     if details:
         payload.update(details)
     try:
@@ -526,6 +557,7 @@ def _audit_failure(
 
 def _handle_fail_rotation(
     *,
+    run_id: str,
     lifecycle_service: VaultLifecycleService,
     audit_service: AuditService,
     policy: SecretRotationPolicy,
@@ -561,7 +593,8 @@ def _handle_fail_rotation(
         )
 
     _audit_failure(
-        audit_service=audit_service,
+                run_id=run_id,
+                audit_service=audit_service,
         actor_id=actor_id,
         secret_id_str=secret_id_str,
         action=action,

@@ -16,7 +16,7 @@ from app.utils.errors import register_error_handlers
 __all__ = ["create_app"]
 
 
-def create_app(validate_kms: bool = True) -> Flask:
+def create_app(validate_kms: bool = True, testing_bootstrap: bool = False) -> Flask:
     """Flask Application Factory function."""
     app = Flask(__name__)
 
@@ -36,6 +36,14 @@ def create_app(validate_kms: bool = True) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
     from app.extensions import limiter
+    
+    if testing_bootstrap:
+        from app.vault.bootstrap import seed_kms
+        from app.security.bootstrap.rbac_seed_service import seed_rbac
+        with app.app_context():
+            db.create_all()
+            seed_kms()
+            seed_rbac()
 
     if validate_kms:
         try:

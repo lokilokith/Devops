@@ -22,11 +22,7 @@ def test_vault_rotation_updates_lifecycle_policy(db_session, client, admin_token
     secret = VaultSecret(id=secret_id, resource_id=res.id, status=SecretStatus.ACTIVE, row_version=1)
     db_session.add(secret)
     db_session.commit()
-    # Set up active LOCAL KMS configuration for test
-    os.environ["VAULT_MASTER_KEY"] = base64.b64encode(os.urandom(32)).decode()
-    config = KMSConfiguration(provider_type=KMSProviderType.LOCAL, kms_key_id="local-key", is_active=True)
-    db_session.add(config)
-    db_session.commit()
+    # Active KMS config already seeded by fixture; no need to create another
     
     # 3. Create a SecretRotationPolicy
     repo = SecretRotationPolicyRepository(db_session)

@@ -143,8 +143,8 @@ def _build_services(db_session, behaviour_map: Dict[UUID, str] | None = None):
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def actor_id() -> UUID:
-    return WORKER_ACTOR_ID
+def actor_id(test_user) -> UUID:
+    return test_user.id
 
 
 @pytest.fixture
@@ -173,7 +173,10 @@ def test_no_eligible_policies_is_noop(db_session, enc_svc, actor_id):
 
     assert result["attempted"] == 0
     assert result["succeeded"] == 0
-    assert result["failed"] == 0
+    assert result["unexpected"] == 0
+    assert "run_id" in result
+    assert isinstance(result["run_id"], str)
+    assert result["duration_seconds"] >= 0
 
 
 def test_future_next_rotation_at_is_not_eligible(db_session, enc_svc, actor_id):
@@ -221,7 +224,7 @@ def test_successful_rotation_creates_new_version(db_session, enc_svc, actor_id):
     )
 
     assert result["succeeded"] == 1
-    assert result["failed"] == 0
+    assert result["unexpected"] == 0
 
     db_session.expire_all()
     repo = SqlAlchemyVaultRepository(db_session)
@@ -313,7 +316,7 @@ def test_retryable_failure_increments_retry_count(db_session, enc_svc, actor_id)
         actor_id=actor_id,
     )
 
-    assert result["failed"] == 1
+    assert result["retryable"] == 1
 
     db_session.expire_all()
     policy_repo = SecretRotationPolicyRepository(db_session)
@@ -392,7 +395,7 @@ def test_terminal_failure_moves_policy_to_error(db_session, enc_svc, actor_id):
         actor_id=actor_id,
     )
 
-    assert result["failed"] == 1
+    assert result["terminal"] == 1
 
     db_session.expire_all()
     policy_repo = SecretRotationPolicyRepository(db_session)
@@ -449,7 +452,7 @@ def test_missing_executor_marks_policy_error(db_session, enc_svc, actor_id):
         actor_id=actor_id,
     )
 
-    assert result["failed"] == 1
+    assert result["no_executor"] == 1
     db_session.expire_all()
     policy_repo = SecretRotationPolicyRepository(db_session)
     refreshed_policy = policy_repo.get_by_vault_secret_id(secret.id)
@@ -521,7 +524,7 @@ def test_unexpected_exception_returns_failed(db_session, enc_svc, actor_id):
         actor_id=actor_id,
     )
 
-    assert result["failed"] == 1
+    assert result["unexpected"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -554,7 +557,7 @@ def test_multiple_policies_independent(db_session, enc_svc, actor_id):
 
     assert result["attempted"] == 2
     assert result["succeeded"] == 1
-    assert result["failed"] == 1
+    assert result["retryable"] == 1
 
     db_session.expire_all()
     repo = SqlAlchemyVaultRepository(db_session)
@@ -653,3 +656,119 @@ def test_paused_policy_not_eligible(db_session, enc_svc, actor_id):
     )
 
     assert result["attempted"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Idempotency and Concurrency tests for Phase 2B.5D
+# ---------------------------------------------------------------------------
+
+def test_idempotency_avoids_duplicate_rotation(db_session, enc_svc, actor_id):
+    """Repeated execution does not cause duplicate rotation of the same policy when no longer eligible."""
+    resource = _make_resource(db_session)
+    secret = _make_secret_with_version(db_session, resource, enc_svc, actor_id)
+    initial_version_count = len(secret.versions)
+    _make_policy(db_session, secret.id)
+    db_session.flush()
+
+    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    
+    # First run
+    result1 = run_rotation_job(
+        session=db_session,
+        audit_service=audit_svc,
+        encryption_service=enc,
+        lifecycle_service=lc_svc,
+        executor_registry=registry,
+        actor_id=actor_id,
+    )
+    assert result1["succeeded"] == 1
+    
+    db_session.expire_all()
+    repo = SqlAlchemyVaultRepository(db_session)
+    refreshed_secret = repo.find_by_id(secret.id)
+    assert len(refreshed_secret.versions) == initial_version_count + 1
+
+    # Second immediate run
+    result2 = run_rotation_job(
+        session=db_session,
+        audit_service=audit_svc,
+        encryption_service=enc,
+        lifecycle_service=lc_svc,
+        executor_registry=registry,
+        actor_id=actor_id,
+    )
+    assert result2["attempted"] == 0
+    assert result2["succeeded"] == 0
+    
+    db_session.expire_all()
+    refreshed_secret_2 = repo.find_by_id(secret.id)
+    assert len(refreshed_secret_2.versions) == initial_version_count + 1
+
+
+def test_concurrent_execution_skips_safely(db_session, enc_svc, actor_id):
+    """Simulate concurrent worker execution. One should succeed, the other should skip gracefully."""
+    resource = _make_resource(db_session)
+    secret = _make_secret_with_version(db_session, resource, enc_svc, actor_id)
+    initial_version_count = len(secret.versions)
+    _make_policy(db_session, secret.id)
+    db_session.flush()
+
+    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+
+    # Instead of multi-threading which can be flaky in SQLite, we invoke the internal method 
+    # twice in sequence but without updating the next_rotation_at check manually,
+    # or we simulate the ConcurrencyError by patching start_rotation. 
+    # Since we already have test_concurrency_error_at_start_rotation_is_skipped, 
+    # we can explicitly demonstrate that overlapping requests resulting in ConcurrencyError skip cleanly.
+    
+    # We will simulate the exact failure mechanism of CAS by triggering a ConcurrencyError
+    # when the second worker attempts to acquire the lock.
+    original_start_rotation = lc_svc.start_rotation
+    
+    call_count = [0]
+    def mocked_start_rotation(*args, **kwargs):
+        call_count[0] += 1
+        if call_count[0] == 2:
+            raise ConcurrencyError("Simulated concurrent worker beat us to the lock")
+        return original_start_rotation(*args, **kwargs)
+
+    with patch.object(lc_svc, 'start_rotation', side_effect=mocked_start_rotation):
+        # We manually fetch the policy to feed it to _process_policy twice to mimic two workers 
+        # picking up the same eligible policy.
+        from app.workers.rotation_worker import _fetch_eligible_policies, _process_policy
+        policies = _fetch_eligible_policies(db_session)
+        assert len(policies) == 1
+        policy = policies[0]
+        
+        policy_repo = SecretRotationPolicyRepository(db_session)
+        secret_repo = SqlAlchemyVaultRepository(db_session)
+
+        # Worker 1 processes it
+        res1 = _process_policy(
+            run_id=str(uuid.uuid4()),
+            policy=policy,
+            actor_id=actor_id,
+            session=db_session,
+            secret_repo=secret_repo,
+            policy_repo=policy_repo,
+            audit_service=audit_svc,
+            encryption_service=enc,
+            lifecycle_service=lc_svc,
+            executor_registry=registry,
+        )
+        assert res1 == "succeeded"
+
+        # Worker 2 processes the SAME policy concurrently (before DB commits visible to worker 2)
+        res2 = _process_policy(
+            run_id=str(uuid.uuid4()),
+            policy=policy,
+            actor_id=actor_id,
+            session=db_session,
+            secret_repo=secret_repo,
+            policy_repo=policy_repo,
+            audit_service=audit_svc,
+            encryption_service=enc,
+            lifecycle_service=lc_svc,
+            executor_registry=registry,
+        )
+        assert res2 == "skipped"

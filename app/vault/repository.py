@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import Optional, Protocol
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
+from app.vault.exceptions import ConcurrencyError
 
 from app.vault.domain import Secret, SecretMetadata, SecretVersion
 from app.vault.models import VaultSecret, VaultSecretVersion
@@ -81,10 +82,20 @@ class SqlAlchemyVaultRepository:
             secret.versions.append(version)
         return secret
 
+    def find_by_id(self, id: UUID) -> Optional[Secret]:
+        model = self._session.get(VaultSecret, id)
+        return self._to_domain(model) if model else None
+
     def save(self, secret: Secret) -> None:
+        """Persist a ``Secret`` aggregate with atomic compare‑and‑swap.
+
+        Enforces the Option A invariant: ``row_version`` reflects the current persisted DB version.
+        Uses a conditional UPDATE that includes ``WHERE row_version = :expected``. Raises ``ConcurrencyError``
+        if no rows are affected.
+        """
         model = self._session.get(VaultSecret, secret.id)
         if not model:
-            # Insert new, defer current_version_id to avoid FK cycle
+            # Insert new secret
             model = VaultSecret(
                 id=secret.id,
                 resource_id=secret.resource_id,
@@ -95,16 +106,33 @@ class SqlAlchemyVaultRepository:
                 updated_at=secret.updated_at,
             )
             self._session.add(model)
-            self._session.flush() # Insert parent record first
+            self._session.flush()
         else:
-            # Check optimistic lock
-            if model.row_version >= secret.row_version:
-                raise ValueError("Optimistic concurrency failure: row_version mismatch.")
-
-            # Update existing
-            model.status = secret.status
-            model.row_version = secret.row_version
-            model.updated_at = secret.updated_at
+            # Atomic CAS update
+            # Domain methods no longer increment row_version; repository must handle increment.
+            # Expected DB version is the current secret.row_version.
+            expected = secret.row_version
+            stmt = (
+                update(VaultSecret)
+                .where(VaultSecret.id == secret.id, VaultSecret.row_version == expected)
+                .values(
+                    status=secret.status,
+                    updated_at=secret.updated_at,
+                    row_version=expected + 1,
+                )
+            )
+            result = self._session.execute(stmt)
+            if result.rowcount == 0:
+                # Fetch current DB row_version
+                current_version = self._session.execute(
+                    select(VaultSecret.row_version).where(VaultSecret.id == secret.id)
+                ).scalar_one()
+                raise ConcurrencyError(
+                    f"row_version mismatch: expected {expected}, got {current_version}"
+                )
+            # Sync domain object
+            secret.row_version = expected + 1
+            self._session.refresh(model)
 
         # Upsert versions
         existing_version_ids = {v.id for v in model.versions} if model.versions else set()
@@ -124,16 +152,11 @@ class SqlAlchemyVaultRepository:
                     updated_at=v.created_at,
                 )
                 model.versions.append(v_model)
-
-        self._session.flush() # Flush the versions
-
-        # Now safe to update current_version_id since version exists
-        model.current_version_id = secret.current_version_id
         self._session.flush()
 
-    def find_by_id(self, id: UUID) -> Optional[Secret]:
-        model = self._session.get(VaultSecret, id)
-        return self._to_domain(model) if model else None
+        if secret.current_version_id:
+            model.current_version_id = secret.current_version_id
+            self._session.flush()
 
     def find_by_resource(self, resource_id: UUID) -> Optional[Secret]:
         model = self._session.execute(

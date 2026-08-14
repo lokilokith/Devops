@@ -16,17 +16,11 @@ def app():
     os.environ["SECRET_KEY"] = "super-secret-key-for-testing-12345678"
     # Ensure master key is set for KMS provider initialization
     os.environ["VAULT_MASTER_KEY"] = base64.b64encode(os.urandom(32)).decode()
-    app = create_app()
+    
+    app = create_app(testing_bootstrap=True)
     with app.app_context():
-
-        _db.create_all()
-        # Ensure RBAC is seeded
-        from app.security.bootstrap.rbac_seed_service import seed_rbac
-
-        seed_rbac()
         yield app
         _db.session.remove()
-        _db.drop_all()
         _db.engine.dispose()
 
 

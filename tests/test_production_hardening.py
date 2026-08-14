@@ -48,7 +48,7 @@ def test_cors_headers_development(client):
     assert res.headers.get("Access-Control-Allow-Origin") == "http://localhost:3000"
 
 
-def test_wsgi_entrypoint_imports():
+def test_wsgi_entrypoint_imports(app):
     """Verify wsgi.py is importable and exposes the app instance."""
     from wsgi import app as wsgi_app
 

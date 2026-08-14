@@ -227,8 +227,8 @@ class VaultLifecycleService:
             
         secret.begin_rotation()
         secret_repo.save(secret)
-        self._session.commit()
-        
+        # Defer commit to caller for atomic rotation transaction
+
         self._audit.log_event(
             actor_user_id=actor_id,
             action="SECRET_ROTATION_STARTED",
@@ -237,8 +237,8 @@ class VaultLifecycleService:
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.INFO,
         )
-        self._session.commit()
-        
+        # Commit will be handled by the orchestrating caller
+
         from app.vault.events import secret_rotation_started
         secret_rotation_started.send(
             self,
@@ -272,8 +272,8 @@ class VaultLifecycleService:
             policy.updated_at = now
             self._repository.save(policy)
             
-        self._session.commit()
-        
+        # Defer commit to caller for atomic rotation transaction
+
         self._audit.log_event(
             actor_user_id=actor_id,
             action="SECRET_ROTATION_COMPLETED",
@@ -282,8 +282,8 @@ class VaultLifecycleService:
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.INFO,
         )
-        self._session.commit()
-        
+        # Commit will be handled by the orchestrating caller
+
         from app.vault.events import secret_rotation_completed
         secret_rotation_completed.send(
             self,
@@ -315,8 +315,8 @@ class VaultLifecycleService:
             policy.updated_at = datetime.now(timezone.utc)
             self._repository.save(policy)
             
-        self._session.commit()
-        
+        # Defer commit to caller for atomic rotation transaction
+
         self._audit.log_event(
             actor_user_id=actor_id,
             action="SECRET_ROTATION_FAILED",
@@ -326,8 +326,8 @@ class VaultLifecycleService:
             severity=AuditSeverity.HIGH,
             details={"reason": reason}
         )
-        self._session.commit()
-        
+        # Commit will be handled by the orchestrating caller
+
         from app.vault.events import secret_rotation_failed
         secret_rotation_failed.send(
             self,

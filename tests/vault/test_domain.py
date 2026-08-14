@@ -46,7 +46,8 @@ def test_secret_add_version():
     secret.add_version(version)
 
     assert secret.current_version_id == version_id
-    assert secret.row_version == 2
+    # row_version is now managed by persistence layer; remains unchanged in domain
+    assert secret.row_version == 1
     assert len(secret.versions) == 1
 
     assert secret.get_current_version() == version
@@ -72,7 +73,8 @@ def test_secret_disable():
 
     secret.disable()
     assert secret.status == SecretStatus.DISABLED
-    assert secret.row_version == 2
+    # row_version not incremented in domain
+    assert secret.row_version == 1
 
 def test_domain_service_ensure_can_rotate():
     secret = SecretFactory.create_new_secret(uuid4())

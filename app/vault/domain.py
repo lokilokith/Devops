@@ -63,7 +63,7 @@ class Secret:
         if self.status not in (SecretStatus.ROTATING, SecretStatus.ACTIVE, SecretStatus.JIT_EPHEMERAL):
             self.status = SecretStatus.ACTIVE
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
+
 
     def begin_rotation(self) -> None:
         if self.status == SecretStatus.ROTATING:
@@ -72,7 +72,7 @@ class Secret:
             raise ValueError(f"Cannot begin rotation from {self.status.value} state.")
         self.status = SecretStatus.ROTATING
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
+
 
     def complete_rotation(self, version: SecretVersion) -> None:
         if self.status != SecretStatus.ROTATING:
@@ -80,35 +80,35 @@ class Secret:
         self.add_version(version)
         self.status = SecretStatus.ACTIVE
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
+
 
     def fail_rotation(self) -> None:
         if self.status != SecretStatus.ROTATING:
             raise ValueError(f"Cannot fail rotation from {self.status.value} state.")
         self.status = SecretStatus.DESYNCED
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
+
 
     def restore_from_desynced(self) -> None:
         if self.status != SecretStatus.DESYNCED:
             raise ValueError(f"Cannot restore from {self.status.value} state.")
         self.status = SecretStatus.ACTIVE
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
+
 
     def disable(self) -> None:
         if self.status == SecretStatus.TOMBSTONED:
             raise ValueError("Cannot disable a tombstoned secret.")
         self.status = SecretStatus.DISABLED
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
+
 
     def tombstone(self) -> None:
         if self.status == SecretStatus.TOMBSTONED:
             raise ValueError("Secret is already tombstoned.")
         self.status = SecretStatus.TOMBSTONED
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
+
 
     def get_current_version(self) -> Optional[SecretVersion]:
         if not self.current_version_id:
