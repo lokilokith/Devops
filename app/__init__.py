@@ -12,6 +12,7 @@ from app.platform.extensions import db, migrate
 from app.platform.logging import init_logging
 from app.routes import blueprint as api_bp
 from app.utils.errors import register_error_handlers
+from app.checkout.routes import bp as checkout_bp
 
 __all__ = ["create_app"]
 
@@ -85,21 +86,25 @@ def create_app(validate_kms: bool = True, testing_bootstrap: bool = False) -> Fl
     from app.vault_lifecycle import models as vault_lifecycle_models
     from app.compliance import models as compliance_models
     from app.jit_access import models as jit_access_models
+    from app.checkout import models as checkout_models
 
     # Register error handlers
     register_error_handlers(app)
 
     # Register API blueprint
     app.register_blueprint(api_bp)
+    app.register_blueprint(checkout_bp)
 
     # Register CLI commands
     from app.cli.seed_commands import register_commands as register_seed
     from app.cli.token_commands import register_commands as register_tokens
     from app.cli.rotation_commands import register_commands as register_rotation
+    from app.cli.checkout_commands import register_commands as register_checkout
 
     register_seed(app)
     register_tokens(app)
     register_rotation(app)
+    register_checkout(app)
 
     # Register notification handlers
     from app.notifications.bootstrap import register_notification_handlers

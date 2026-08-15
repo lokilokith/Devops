@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 class SecretStatus(str, enum.Enum):
     ACTIVE = "active"
+    CHECKED_OUT = "checked_out"
     ROTATING = "rotating"
     DISABLED = "disabled"
     TOMBSTONED = "tombstoned"
@@ -60,8 +61,20 @@ class Secret:
         # We don't automatically set ACTIVE here if it's called from complete_rotation or initialization,
         # but for backward compatibility with Phase 1, we preserve it.
         # However, for Phase 2, rotation lifecycle manages status.
-        if self.status not in (SecretStatus.ROTATING, SecretStatus.ACTIVE, SecretStatus.JIT_EPHEMERAL):
+        if self.status not in (SecretStatus.ROTATING, SecretStatus.ACTIVE, SecretStatus.JIT_EPHEMERAL, SecretStatus.CHECKED_OUT):
             self.status = SecretStatus.ACTIVE
+        self.updated_at = datetime.now(timezone.utc)
+
+    def checkout(self) -> None:
+        if self.status != SecretStatus.ACTIVE:
+            raise ValueError(f"Cannot checkout from {self.status.value} state.")
+        self.status = SecretStatus.CHECKED_OUT
+        self.updated_at = datetime.now(timezone.utc)
+
+    def check_in_to_rotate(self) -> None:
+        if self.status != SecretStatus.CHECKED_OUT:
+            raise ValueError(f"Cannot check-in from {self.status.value} state.")
+        self.status = SecretStatus.ROTATING
         self.updated_at = datetime.now(timezone.utc)
 
 
