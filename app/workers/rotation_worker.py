@@ -137,6 +137,7 @@ def run_rotation_job(
         "no_executor": 0,
         "unexpected": 0,
         "skipped": 0,
+        "deferred": 0,
         "duration_seconds": 0.0,
     }
 
@@ -174,12 +175,16 @@ def run_rotation_job(
 
 def _fetch_eligible_policies(session: Session) -> List[SecretRotationPolicy]:
     """Return all active policies whose ``next_rotation_at`` is in the past."""
+    from app.vault.models import VaultSecret
+    from app.vault.domain import SecretStatus
     now = datetime.now(timezone.utc)
     stmt = (
         select(SecretRotationPolicy)
+        .join(VaultSecret, SecretRotationPolicy.vault_secret_id == VaultSecret.id)
         .where(
             SecretRotationPolicy.status == RotationStatus.ACTIVE,
             SecretRotationPolicy.next_rotation_at <= now,
+            VaultSecret.status != SecretStatus.CHECKED_OUT,
         )
         .order_by(SecretRotationPolicy.next_rotation_at.asc())
     )
@@ -224,25 +229,45 @@ def _process_policy(
                 secret_id_str,
             )
             return "skipped"
-        except ValueError as exc:
-            # Secret not found or wrong state – not retryable, mark failed.
-            savepoint.rollback()
-            logger.warning(
-                "RotationWorker: Cannot start rotation for secret %s: %s",
-                secret_id_str,
-                exc,
-                extra={"run_id": run_id, "policy_id": policy_id_str}
-            )
-            _audit_failure(
-                run_id=run_id,
-                audit_service=audit_service,
-                actor_id=actor_id,
-                secret_id_str=secret_id_str,
-                action="SECRET_ROTATION_FAILED",
-                reason=str(exc),
-                severity=AuditSeverity.HIGH,
-            )
-            return "unexpected"
+        except Exception as exc:
+            from app.vault.exceptions import SecretCheckedOutError
+            if isinstance(exc, SecretCheckedOutError):
+                savepoint.rollback()
+                logger.info(
+                    "RotationWorker: Secret %s is checked out – deferring rotation",
+                    secret_id_str,
+                    extra={"run_id": run_id, "policy_id": policy_id_str}
+                )
+                audit_service.log_event(
+                    actor_user_id=actor_id,
+                    action="SECRET_ROTATION_DEFERRED",
+                    resource_type="vault_secrets",
+                    resource_id=secret_id_str,
+                    status=AuditStatus.SUCCESS,
+                    severity=AuditSeverity.INFO,
+                    details={"run_id": run_id, "policy_id": policy_id_str, "reason": "Secret is checked out"}
+                )
+                return "deferred"
+            elif isinstance(exc, ValueError):
+                # Secret not found or wrong state – not retryable, mark failed.
+                savepoint.rollback()
+                logger.warning(
+                    "RotationWorker: Cannot start rotation for secret %s: %s",
+                    secret_id_str,
+                    exc,
+                    extra={"run_id": run_id, "policy_id": policy_id_str}
+                )
+                _audit_failure(
+                    run_id=run_id,
+                    audit_service=audit_service,
+                    actor_id=actor_id,
+                    secret_id_str=secret_id_str,
+                    action="SECRET_ROTATION_FAILED",
+                    reason=str(exc),
+                    severity=AuditSeverity.HIGH,
+                )
+                return "unexpected"
+            raise
 
         # 2. Resolve executor for this resource.
         executor = executor_registry.get_executor(secret_id)

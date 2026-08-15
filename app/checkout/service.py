@@ -240,7 +240,8 @@ class CheckoutService:
             return # Ignore if already returned or revoked
 
         now = datetime.now(timezone.utc)
-        if lease.expires_at > now:
+        expires_at = lease.expires_at.replace(tzinfo=timezone.utc) if lease.expires_at.tzinfo is None else lease.expires_at
+        if expires_at > now:
             raise InvalidCheckoutStateError("Lease has not yet expired")
 
         # Expiration is typically done by a system worker, so actor is the system
@@ -267,15 +268,16 @@ class CheckoutService:
         self._checkin_internal(lease, admin_id, LeaseStatus.REVOKED, "LEASE_REVOKED")
 
 
-    def process_expirations(self) -> int:
-        """System sweep to process all expired leases."""
+    def process_expirations(self) -> tuple[int, int]:
+        """System sweep to process all expired leases. Returns (attempted, succeeded)."""
         now = datetime.now(timezone.utc)
         expired_leases = self._lease_repo.get_expired_active_leases(now)
         count = 0
+        attempted = len(expired_leases)
         for lease in expired_leases:
             try:
                 self.expire(lease.id)
                 count += 1
             except Exception as e:
                 logger.error(f"Failed to expire lease {lease.id}: {e}")
-        return count
+        return attempted, count

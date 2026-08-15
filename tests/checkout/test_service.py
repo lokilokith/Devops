@@ -229,7 +229,7 @@ def test_expiration_triggers_rotation(db_session, checkout_service, normal_user)
     checkout_service._lease_repo.save(lease)
     db_session.flush()
 
-    count = checkout_service.process_expirations()
+    attempted, count = checkout_service.process_expirations()
     assert count == 1
 
     updated_lease = checkout_service._lease_repo.get_by_id(lease.id)

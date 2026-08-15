@@ -65,10 +65,10 @@ def test_secret_rotation_idempotency_and_invalid_states():
         versions=[]
     )
     
-    # Begin twice (should fail deterministicly)
+    # Begin twice (should succeed due to retry logic)
     secret.begin_rotation()
-    with pytest.raises(ValueError, match="already in ROTATING"):
-        secret.begin_rotation()
+    secret.begin_rotation()
+    assert secret.status == SecretStatus.ROTATING
         
     # Cannot fail from active
     secret.status = SecretStatus.ACTIVE

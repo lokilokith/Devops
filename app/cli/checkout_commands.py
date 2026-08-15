@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.platform.extensions import db
 from app.checkout.routes import get_checkout_service
+from app.workers.expiration_worker import run_expiration_job
 
 
 @click.group("checkout")
@@ -43,14 +44,17 @@ def checkin_credential(user_id, lease_id):
         click.secho(f"Check-in failed: {e}", fg="red")
 
 
-@checkout_cli.command("expire")
+@checkout_cli.command("process-expirations")
 @with_appcontext
-def process_expirations():
-    """Process all expired leases."""
+def process_expirations_cmd():
+    """Process all expired leases via ExpirationWorker."""
     service = get_checkout_service()
     try:
-        count = service.process_expirations()
-        click.echo(f"Processed {count} expired leases.")
+        result = run_expiration_job(db.session, service)
+        click.echo(f"Run ID: {result['run_id']}")
+        click.echo(f"Processed {result['succeeded']} of {result['attempted']} expired leases.")
+        if result['failed'] > 0:
+            click.echo(f"Failed: {result['failed']}")
     except Exception as e:
         click.secho(f"Expiration processing failed: {e}", fg="red")
 

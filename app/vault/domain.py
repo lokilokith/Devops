@@ -79,9 +79,10 @@ class Secret:
 
 
     def begin_rotation(self) -> None:
-        if self.status == SecretStatus.ROTATING:
-            raise ValueError("Secret is already in ROTATING state.")
-        if self.status != SecretStatus.ACTIVE:
+        if self.status == SecretStatus.CHECKED_OUT:
+            from app.vault.exceptions import SecretCheckedOutError
+            raise SecretCheckedOutError("Cannot begin rotation from checked_out state.")
+        if self.status not in (SecretStatus.ACTIVE, SecretStatus.ROTATING):
             raise ValueError(f"Cannot begin rotation from {self.status.value} state.")
         self.status = SecretStatus.ROTATING
         self.updated_at = datetime.now(timezone.utc)

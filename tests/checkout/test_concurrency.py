@@ -25,6 +25,24 @@ from app.authorization.service import AuthorizationService
 from app.identity.repository import IdentityRepository
 from app.auth.service import AuthService
 
+from app.shared.database import db
+from sqlalchemy import text as sa_text
+
+@pytest.fixture(autouse=True)
+def teardown_concurrency_data():
+    """Ensure data committed by separate connections is cleaned up to prevent test pollution."""
+    yield
+    engine = db.session.get_bind()
+    with engine.begin() as conn:
+        conn.execute(sa_text("DELETE FROM audit_logs"))
+        conn.execute(sa_text("DELETE FROM credential_leases"))
+        conn.execute(sa_text("DELETE FROM access_requests"))
+        conn.execute(sa_text("DELETE FROM vault_secret_versions"))
+        conn.execute(sa_text("DELETE FROM vault_secrets"))
+        conn.execute(sa_text("DELETE FROM resources WHERE resource_code LIKE 'RES03_%'"))
+        conn.execute(sa_text("DELETE FROM users WHERE username LIKE 'user_a_%' OR username LIKE 'user_b_%'"))
+
+
 def _new_sessions():
     engine = db.session.get_bind()
     Session = sessionmaker(bind=engine)
