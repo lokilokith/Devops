@@ -6,7 +6,7 @@
 - KMSProviderFactory with fail‑closed contract
 - `LOCAL` enum value addition
 - Startup validation via the factory
-- Migration `20260813_add_local_to_kms_enum`
+- Migration `20260813ab12_add_local_to_kms_enum`
 - Test fixtures and seed‑KMS CLI command
 - Security hardening (no hard‑coded `VAULT_MASTER_KEY`, no plaintext key logging)
 
@@ -39,7 +39,7 @@ During `create_app()` ( `app/__init__.py` ) the factory is invoked **after** `db
 `docker‑compose.yml` now uses `VAULT_MASTER_KEY=${VAULT_MASTER_KEY}`. The key is never logged; only error messages reference the absence of a valid configuration.
 
 ## PostgreSQL Migration
-- Migration file: `migrations/versions/20260813_add_local_to_kms_enum.py`
+- Migration file: `migrations/versions/20260813ab12_add_local_to_kms_enum.py`
 - Adds `local` value to `kms_provider_type_enum` with correct `down_revision` linking to the previous migration chain.
 - `flask db current` reports this migration as the head.
 
@@ -70,7 +70,7 @@ app/vault_lifecycle/service.py
 tests/conftest.py
 tests/vault_lifecycle/test_integration.py
 app/vault/kms_factory.py
-migrations/versions/20260813_add_local_to_kms_enum.py
+migrations/versions/20260813ab12_add_local_to_kms_enum.py
 docs/evidence/phase2b_4_kms_provider.md
 ```
 
