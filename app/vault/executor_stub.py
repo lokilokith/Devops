@@ -1,56 +1,30 @@
-# Stub implementation of credential executor for testing.
-"""A deterministic test‑double used by the RotationWorker (future work).
+"""Stub Implementation of Credential Executor for Testing.
 
-It never performs any network I/O and returns opaque bytes on success.
-The behaviour is driven by a mapping supplied at construction time:
-    {resource_id: "success" | "retry" | "terminal"}
-Missing resource ids result in ``can_execute`` => False.
+Deterministic test-double used by rotation workers and execution testing.
+Inherits from StubTargetExecutor to provide full 6-method canonical TargetExecutor
+support while preserving backwards compatibility for legacy execute() callers.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import Dict
+from typing import Dict, Optional
+from uuid import UUID
 
-from .executor import ExecutionResult
+from app.execution.executor import StubTargetExecutor
+from app.vault.executor import ExecutionResult
 
 
-class StubCredentialExecutor:
-    """Deterministic stub executor.
+class StubCredentialExecutor(StubTargetExecutor):
+    """Deterministic stub executor supporting both canonical TargetExecutor and legacy CredentialExecutor."""
 
-    Parameters
-    ----------
-    behaviour_map: dict[uuid.UUID, str] | None
-        Mapping of ``resource_id`` to mode.  Supported modes:
-        * ``"success"`` – returns a fake encrypted blob.
-        * ``"retry"`` – raises ``RuntimeError`` with a retryable message.
-        * ``"terminal"`` – raises ``RuntimeError`` with a terminal message.
-        If omitted, all resources default to ``"success"`` when ``can_execute``
-        is True.
-    """
+    def __init__(self, behaviour_map: Optional[Dict[UUID, str]] = None) -> None:
+        super().__init__(behaviour_map=behaviour_map)
 
-    def __init__(self, behaviour_map: Dict[uuid.UUID, str] | None = None):
-        self._behaviour: Dict[uuid.UUID, str] = behaviour_map or {}
-
-    # ---------------------------------------------------------------------
-    def can_execute(self, resource_id: uuid.UUID) -> bool:
-        """Return ``True`` if the executor knows how to handle ``resource_id``.
-        The check is purely in‑memory and does not perform I/O.
-        """
-        return resource_id in self._behaviour
-
-    # ---------------------------------------------------------------------
-    def execute(self, resource_id: uuid.UUID, current_secret: bytes) -> ExecutionResult:
-        """Execute the rotation for ``resource_id``.
-
-        Returns an ``ExecutionResult`` on success.  On failure a ``RuntimeError``
-        with a generic message is raised – the message contains the word
-        ``retryable`` for the retry mode and ``terminal`` for the terminal mode.
-        No credential data is ever logged or included in the exception.
-        """
+    def execute(self, resource_id: UUID, current_secret: bytes) -> ExecutionResult:
+        """Execute rotation for resource_id in legacy dictionary format."""
         mode = self._behaviour.get(resource_id, "success")
         if mode == "success":
-            # Produce a deterministic opaque payload – uuid4 ensures uniqueness.
             fake_blob = f"{resource_id}-{uuid.uuid4()}".encode()
             return {
                 "new_secret_version": fake_blob,
@@ -59,5 +33,6 @@ class StubCredentialExecutor:
             }
         if mode == "retry":
             raise RuntimeError("Transient error – retryable")
-        # terminal failure
-        raise RuntimeError("Permanent error – terminal")
+        if mode == "terminal":
+            raise RuntimeError("Permanent error – terminal")
+        raise RuntimeError(f"Execution failed with mode {mode}")
