@@ -25,6 +25,18 @@ from app.execution.exceptions import (
     VerificationFailureError,
 )
 from app.execution.executor import ExecutorRegistry, StubTargetExecutor, TargetExecutor
+from app.execution.host_identity import (
+    HostKeyMismatchError,
+    HostKeyVerificationError,
+    HostKeyVerifier,
+    TrustedHostKey,
+    UntrustedHostError,
+)
+from app.execution.network_validator import (
+    TargetAddressValidationError,
+    TargetAddressValidator,
+    ValidatedTargetDestination,
+)
 
 __all__ = [
     "ExecutionOperation",
@@ -47,4 +59,12 @@ __all__ = [
     "StubTargetExecutor",
     "ExecutorRegistry",
     "ExecutionAuditService",
+    "TargetAddressValidator",
+    "ValidatedTargetDestination",
+    "TargetAddressValidationError",
+    "HostKeyVerifier",
+    "TrustedHostKey",
+    "HostKeyVerificationError",
+    "HostKeyMismatchError",
+    "UntrustedHostError",
 ]

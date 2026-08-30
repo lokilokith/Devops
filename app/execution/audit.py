@@ -74,13 +74,13 @@ class ExecutionAuditService:
 
         try:
             self._audit_service.log_event(
-                actor_id=effective_actor_id,
+                actor_user_id=effective_actor_id,
                 action=action_name,
                 resource_type="RESOURCE",
                 resource_id=str(request.resource_id),
                 status=audit_status,
                 severity=severity,
-                payload=event_payload,
+                details=event_payload,
             )
         except Exception as e:
             logger.error(

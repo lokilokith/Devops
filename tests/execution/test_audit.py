@@ -51,13 +51,13 @@ def test_execution_audit_service_logs_success_event():
     assert mock_audit_svc.log_event.called is True
     kwargs = mock_audit_svc.log_event.call_args.kwargs
 
-    assert kwargs["actor_id"] == user_id
+    assert kwargs["actor_user_id"] == user_id
     assert kwargs["action"] == "TARGET_EXECUTION_ROTATE_CREDENTIAL"
     assert kwargs["resource_id"] == str(resource_id)
     assert kwargs["status"] == AuditStatus.SUCCESS
     assert kwargs["severity"] == AuditSeverity.INFO
 
-    payload = kwargs["payload"]
+    payload = kwargs["details"]
     assert payload["execution_id"] == str(req.execution_id)
     assert payload["status"] == "SUCCESS"
     assert payload["verification_status"] == "VERIFIED_SUCCESS"
@@ -104,7 +104,7 @@ def test_execution_audit_service_logs_uncertain_event():
     kwargs = mock_audit_svc.log_event.call_args.kwargs
     assert kwargs["status"] == AuditStatus.FAILED
     assert kwargs["severity"] == AuditSeverity.CRITICAL
-    assert kwargs["payload"]["is_uncertain"] is True
+    assert kwargs["details"]["is_uncertain"] is True
 
 
 def test_execution_audit_service_logs_general_failure_event():
