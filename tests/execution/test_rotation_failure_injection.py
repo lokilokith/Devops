@@ -232,3 +232,99 @@ def test_failure_injection_old_key_not_revoked_fails(
     assert res.verification_status == VerificationStatus.VERIFIED_FAILURE
     assert res.failure_classification == FailureClassification.VERIFICATION_FAILURE
     assert "Old credential was not conclusively revoked" in res.error_message
+
+
+def test_revocation_proof_distinguishes_network_failure_from_auth_failure(
+    auth_context, test_keypair, mock_validator, monkeypatch
+):
+    """Test Critical Issue E: Network/Socket/Timeout failures are NOT treated as revocation."""
+    connect_calls = 0
+
+    def fake_connect(*args, **kwargs):
+        nonlocal connect_calls
+        connect_calls += 1
+        if connect_calls == 4:
+            # Step 5 (old key test) raises Transport/Network timeout rather than AuthenticationException!
+            raise socket.timeout("Connection timed out")
+        return None
+
+    def fake_exec_command(cmd):
+        out = MagicMock()
+        err = MagicMock()
+        err.read.return_value = b""
+        if "INSTALL_SUCCESS" in cmd:
+            out.read.return_value = b"INSTALL_SUCCESS"
+        elif "REMOVE_SUCCESS" in cmd:
+            out.read.return_value = b"REMOVE_SUCCESS"
+        elif "whoami" in cmd:
+            out.read.return_value = b"opsforge-svc\n"
+        return (MagicMock(), out, err)
+
+    mock_client = MagicMock(spec=paramiko.SSHClient)
+    mock_client.connect.side_effect = fake_connect
+    mock_client.exec_command.side_effect = fake_exec_command
+    monkeypatch.setattr(paramiko, "SSHClient", lambda: mock_client)
+
+    executor = SSHTargetExecutor(network_validator=mock_validator)
+    req = ExecutionRequest(
+        operation=ExecutionOperation.ROTATE_CREDENTIAL,
+        resource_id=auth_context.resource_id,
+        authorization_context=auth_context,
+        parameters={"host": "10.0.0.1", "port": 22, "username": "opsforge-svc"},
+    )
+
+    res = executor.rotate_credential(req, test_keypair[0].encode("utf-8"))
+    # MUST fail because timeout is not proof of revocation!
+    assert res.status == ExecutionStatus.FAILED
+    assert res.failure_classification == FailureClassification.VERIFICATION_FAILURE
+    assert res.is_uncertain is True
+    assert "Old credential was not conclusively revoked" in res.error_message
+
+
+def test_failure_injection_final_new_key_verify_failure(
+    auth_context, test_keypair, mock_validator, monkeypatch
+):
+    """Test Critical Issue D.F: Failure during final new-key verification fails closed."""
+    connect_calls = 0
+
+    def fake_connect(*args, **kwargs):
+        nonlocal connect_calls
+        connect_calls += 1
+        if connect_calls == 4:
+            # Step 5: old key correctly fails authentication
+            raise paramiko.AuthenticationException("Permission denied")
+        if connect_calls == 5:
+            # Step 6: final new key verify fails unexpectedly
+            raise paramiko.SSHException("Connection reset by peer")
+        return None
+
+    def fake_exec_command(cmd):
+        out = MagicMock()
+        err = MagicMock()
+        err.read.return_value = b""
+        if "INSTALL_SUCCESS" in cmd:
+            out.read.return_value = b"INSTALL_SUCCESS"
+        elif "REMOVE_SUCCESS" in cmd:
+            out.read.return_value = b"REMOVE_SUCCESS"
+        elif "whoami" in cmd:
+            out.read.return_value = b"opsforge-svc\n"
+        return (MagicMock(), out, err)
+
+    mock_client = MagicMock(spec=paramiko.SSHClient)
+    mock_client.connect.side_effect = fake_connect
+    mock_client.exec_command.side_effect = fake_exec_command
+    monkeypatch.setattr(paramiko, "SSHClient", lambda: mock_client)
+
+    executor = SSHTargetExecutor(network_validator=mock_validator)
+    req = ExecutionRequest(
+        operation=ExecutionOperation.ROTATE_CREDENTIAL,
+        resource_id=auth_context.resource_id,
+        authorization_context=auth_context,
+        parameters={"host": "10.0.0.1", "port": 22, "username": "opsforge-svc"},
+    )
+
+    res = executor.rotate_credential(req, test_keypair[0].encode("utf-8"))
+    assert res.status == ExecutionStatus.FAILED
+    assert res.failure_classification == FailureClassification.VERIFICATION_FAILURE
+    assert res.is_uncertain is True
+    assert "final authentication verification" in res.error_message

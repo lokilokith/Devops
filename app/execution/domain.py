@@ -179,6 +179,8 @@ class ExecutionRequest:
         """Validate request invariants on creation."""
         if not self.resource_id:
             raise ValueError("ExecutionRequest must specify a valid resource_id")
+        if not self.authorization_context:
+            raise ValueError("ExecutionRequest must specify authorization_context")
         if self.resource_id != self.authorization_context.resource_id:
             raise ValueError(
                 f"Resource ID mismatch: request resource ({self.resource_id}) "

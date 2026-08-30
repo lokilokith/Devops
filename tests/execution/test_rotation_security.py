@@ -220,3 +220,63 @@ def test_ssh_target_executor_execute_adapter(
     assert dict_res["error"] is None
     assert dict_res["new_secret_version"] is not None
     assert b"BEGIN OPENSSH PRIVATE KEY" in dict_res["new_secret_version"]
+
+
+def test_authorization_binding_expired_or_invalid_context_rejected(
+    mock_validator, test_keypair
+):
+    """Test Critical Issue F: Expired or missing authorization context is rejected fail-closed."""
+    # 1. Missing authorization context fails at domain construction
+    with pytest.raises(
+        ValueError, match="ExecutionRequest must specify authorization_context"
+    ):
+        ExecutionRequest(
+            operation=ExecutionOperation.ROTATE_CREDENTIAL,
+            resource_id=uuid4(),
+            authorization_context=None,
+            parameters={"host": "10.0.0.1", "port": 22, "username": "opsforge-svc"},
+        )
+
+    # 2. Expired authorization context fails at validation
+    past = datetime.now(timezone.utc) - timedelta(minutes=10)
+    expired_auth = ExecutionAuthorizationContext(
+        user_id=uuid4(),
+        resource_id=uuid4(),
+        credential_id=uuid4(),
+        requested_at=past - timedelta(minutes=15),
+        expires_at=past,
+    )
+    with pytest.raises(
+        ValueError, match="Execution authorization context has expired"
+    ):
+        ExecutionRequest(
+            operation=ExecutionOperation.ROTATE_CREDENTIAL,
+            resource_id=expired_auth.resource_id,
+            authorization_context=expired_auth,
+            parameters={"host": "10.0.0.1", "port": 22, "username": "opsforge-svc"},
+        )
+
+
+def test_target_atomicity_symlink_detection_fails_closed(
+    auth_context, test_keypair, mock_validator, monkeypatch
+):
+    """Test Critical Issue G: Refuses to overwrite authorized_keys if symlinked."""
+    mock_client = MagicMock(spec=paramiko.SSHClient)
+    mock_stdout = MagicMock()
+    mock_stdout.read.return_value = b"Symlink detected on authorized_keys"
+    mock_stderr = MagicMock()
+    mock_stderr.read.return_value = b"RuntimeError: Symlink detected on authorized_keys"
+    mock_client.exec_command.return_value = (MagicMock(), mock_stdout, mock_stderr)
+    monkeypatch.setattr(paramiko, "SSHClient", lambda: mock_client)
+
+    executor = SSHTargetExecutor(network_validator=mock_validator)
+    req = ExecutionRequest(
+        operation=ExecutionOperation.ROTATE_CREDENTIAL,
+        resource_id=auth_context.resource_id,
+        authorization_context=auth_context,
+        parameters={"host": "10.0.0.1", "port": 22, "username": "opsforge-svc"},
+    )
+
+    res = executor.rotate_credential(req, test_keypair[0].encode("utf-8"))
+    assert res.status == ExecutionStatus.FAILED
+    assert "Failed during new public key installation" in res.error_message
