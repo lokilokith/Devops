@@ -26,7 +26,9 @@ class ExecutorRegistry:
     def __init__(self, executors: List[CredentialExecutor] | None = None):
         # If the caller supplies executors we honour them; otherwise we fall back
         # to a stub that can be configured later.
-        self._executors: List[CredentialExecutor] = executors or [StubCredentialExecutor()]
+        self._executors: List[CredentialExecutor] = executors or [
+            StubCredentialExecutor()
+        ]
 
     def get_executor(self, resource_id: UUID) -> Optional[CredentialExecutor]:
         """Return the first executor that reports ``can_execute(resource_id)``.

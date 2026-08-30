@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class ApprovalRequiredError(Exception):
     """Raised when vault access requires an approved AccessRequest."""
+
     def __init__(self, resource_id: UUID) -> None:
         self.resource_id = resource_id
         super().__init__("Vault access requires approval.")
@@ -61,10 +62,11 @@ class VaultApplicationService:
         """List active secrets with hydrated resource data."""
         self._authz.authorize(actor_id, "vault", PermissionAction("read"))
         secrets = self._repository.list_active_secrets()
-        
+
         from app.resources.repository import ResourcesRepository
+
         resource_repo = ResourcesRepository(self._session)
-        
+
         results = []
         for secret in secrets:
             secret_dict = {
@@ -72,7 +74,7 @@ class VaultApplicationService:
                 "resource_id": str(secret.resource_id),
                 "status": secret.status.value,
                 "created_at": secret.created_at,
-                "resource": None
+                "resource": None,
             }
             try:
                 res = resource_repo.get_by_id(secret.resource_id)
@@ -81,19 +83,22 @@ class VaultApplicationService:
                         "id": str(res.id),
                         "resource_name": res.resource_name,
                         "resource_code": res.resource_code,
-                        "resource_type": res.resource_type.value if res.resource_type else None
+                        "resource_type": (
+                            res.resource_type.value if res.resource_type else None
+                        ),
                     }
             except Exception:
                 # If resource fails to load, just leave it as None
                 pass
             results.append(secret_dict)
-            
+
         return results
 
     def get_statistics(self, actor_id: UUID) -> dict:
         """Get vault statistics."""
         self._authz.authorize(actor_id, "vault", PermissionAction("read"))
         from app.vault.models import SecretStatus
+
         active = self._repository.count_by_status(SecretStatus.ACTIVE)
         disabled = self._repository.count_by_status(SecretStatus.DISABLED)
         recent = self._audit._repo.count(action="SECRET_RETRIEVED")
@@ -101,10 +106,12 @@ class VaultApplicationService:
             "total_secrets": active + disabled,
             "active_secrets": active,
             "disabled_secrets": disabled,
-            "recent_accesses": recent
+            "recent_accesses": recent,
         }
 
-    def create_secret(self, actor_id: UUID, resource_id: UUID, plaintext: bytes) -> Secret:
+    def create_secret(
+        self, actor_id: UUID, resource_id: UUID, plaintext: bytes
+    ) -> Secret:
         """Create a new secret (with implicit authorization check)."""
         # 1. Authorization (RBAC)
         try:
@@ -117,7 +124,7 @@ class VaultApplicationService:
                 resource_id="NEW",
                 status=AuditStatus.DENIED,
                 severity=AuditSeverity.HIGH,
-                details={"reason": "RBAC Denied"}
+                details={"reason": "RBAC Denied"},
             )
             self._session.commit()
             raise err
@@ -126,14 +133,16 @@ class VaultApplicationService:
         secret = SecretFactory.create_new_secret(resource_id)
 
         # 3. Encryption Service wraps payload
-        encrypted_dek, encrypted_payload, metadata = self._encryption_service.encrypt_payload(
-            resource_id, secret.id, plaintext
+        encrypted_dek, encrypted_payload, metadata = (
+            self._encryption_service.encrypt_payload(resource_id, secret.id, plaintext)
         )
 
         # 4. Domain Service adds version
-        from app.vault.domain import SecretVersion
         import uuid
         from datetime import datetime, timezone
+
+        from app.vault.domain import SecretVersion
+
         version = SecretVersion(
             id=uuid.uuid4(),
             secret_id=secret.id,
@@ -141,7 +150,7 @@ class VaultApplicationService:
             encrypted_payload=encrypted_payload,
             metadata=metadata,
             created_at=datetime.now(timezone.utc),
-            created_by=actor_id
+            created_by=actor_id,
         )
         secret.add_version(version)
 
@@ -166,7 +175,7 @@ class VaultApplicationService:
                 "secret_id": str(secret.id),
                 "actor_id": str(actor_id),
                 "resource_id": str(resource_id),
-            }
+            },
         )
 
         return secret
@@ -179,8 +188,11 @@ class VaultApplicationService:
             raise ValueError(f"Secret {secret_id} not found.")
 
         from app.vault.domain import SecretStatus
+
         if secret.status in (SecretStatus.DISABLED, SecretStatus.TOMBSTONED):
-            raise ValueError(f"Cannot retrieve a secret in {secret.status.value} state.")
+            raise ValueError(
+                f"Cannot retrieve a secret in {secret.status.value} state."
+            )
 
         # 1. Authorization (RBAC)
         try:
@@ -193,13 +205,15 @@ class VaultApplicationService:
                 resource_id=str(secret.id),
                 status=AuditStatus.DENIED,
                 severity=AuditSeverity.HIGH,
-                details={"reason": "RBAC Denied"}
+                details={"reason": "RBAC Denied"},
             )
             self._session.commit()
             raise err
 
         # 2. Policy Engine evaluation
-        decision = self._policy_engine.evaluate_vault_retrieval(actor_id, secret.resource_id)
+        decision = self._policy_engine.evaluate_vault_retrieval(
+            actor_id, secret.resource_id
+        )
 
         if decision == PolicyDecision.DENY:
             self._audit.log_event(
@@ -209,7 +223,7 @@ class VaultApplicationService:
                 resource_id=str(secret.id),
                 status=AuditStatus.DENIED,
                 severity=AuditSeverity.HIGH,
-                details={"reason": "Policy Engine Denied"}
+                details={"reason": "Policy Engine Denied"},
             )
             self._session.commit()
             secret_access_denied.send(
@@ -218,10 +232,12 @@ class VaultApplicationService:
                     "event": "secret_access_denied",
                     "secret_id": str(secret.id),
                     "actor_id": str(actor_id),
-                    "reason": "Policy DENY"
-                }
+                    "reason": "Policy DENY",
+                },
             )
-            raise AuthorizationDeniedError("Access to secret is explicitly denied by policy.")
+            raise AuthorizationDeniedError(
+                "Access to secret is explicitly denied by policy."
+            )
 
         if decision == PolicyDecision.REQUIRE_APPROVAL:
             self._audit.log_event(
@@ -231,7 +247,7 @@ class VaultApplicationService:
                 resource_id=str(secret.id),
                 status=AuditStatus.DENIED,
                 severity=AuditSeverity.MEDIUM,
-                details={"reason": "Approval Required"}
+                details={"reason": "Approval Required"},
             )
             self._session.commit()
             secret_access_denied.send(
@@ -240,8 +256,8 @@ class VaultApplicationService:
                     "event": "secret_access_denied",
                     "secret_id": str(secret.id),
                     "actor_id": str(actor_id),
-                    "reason": "Policy REQUIRE_APPROVAL"
-                }
+                    "reason": "Policy REQUIRE_APPROVAL",
+                },
             )
             raise ApprovalRequiredError(secret.resource_id)
 
@@ -266,7 +282,7 @@ class VaultApplicationService:
                 "event": "secret_accessed",
                 "secret_id": str(secret.id),
                 "actor_id": str(actor_id),
-            }
+            },
         )
         self._audit.log_event(
             actor_user_id=actor_id,
@@ -280,7 +296,9 @@ class VaultApplicationService:
 
         return plaintext
 
-    def rotate_secret(self, actor_id: UUID, secret_id: UUID, new_plaintext: bytes) -> Secret:
+    def rotate_secret(
+        self, actor_id: UUID, secret_id: UUID, new_plaintext: bytes
+    ) -> Secret:
         """Rotate a secret by adding a new encrypted version."""
         try:
             self._authz.authorize(actor_id, "vault", PermissionAction("update"))
@@ -292,7 +310,7 @@ class VaultApplicationService:
                 resource_id=str(secret_id),
                 status=AuditStatus.DENIED,
                 severity=AuditSeverity.HIGH,
-                details={"reason": "RBAC Denied"}
+                details={"reason": "RBAC Denied"},
             )
             self._session.commit()
             raise err
@@ -304,13 +322,17 @@ class VaultApplicationService:
         # Business rules checked in DomainService
         self._domain_service.ensure_can_rotate(secret)
 
-        encrypted_dek, encrypted_payload, metadata = self._encryption_service.encrypt_payload(
-            secret.resource_id, secret.id, new_plaintext
+        encrypted_dek, encrypted_payload, metadata = (
+            self._encryption_service.encrypt_payload(
+                secret.resource_id, secret.id, new_plaintext
+            )
         )
 
-        from app.vault.domain import SecretVersion
         import uuid
         from datetime import datetime, timezone
+
+        from app.vault.domain import SecretVersion
+
         version = SecretVersion(
             id=uuid.uuid4(),
             secret_id=secret.id,
@@ -318,26 +340,30 @@ class VaultApplicationService:
             encrypted_payload=encrypted_payload,
             metadata=metadata,
             created_at=datetime.now(timezone.utc),
-            created_by=actor_id
+            created_by=actor_id,
         )
         from app.vault.domain import SecretStatus
+
         if secret.status == SecretStatus.ROTATING:
             secret.complete_rotation(version)
         else:
             secret.add_version(version)
 
         self._repository.save(secret)
-        
+
         # Lifecycle integration: Record rotation atomically
         try:
             from app.vault_lifecycle.repository import SecretRotationPolicyRepository
             from app.vault_lifecycle.service import VaultLifecycleService
+
             lifecycle_repo = SecretRotationPolicyRepository(self._session)
-            lifecycle_service = VaultLifecycleService(lifecycle_repo, self._audit, self._authz, self._session)
+            lifecycle_service = VaultLifecycleService(
+                lifecycle_repo, self._audit, self._authz, self._session
+            )
             lifecycle_service.record_rotation(secret.id)
         except Exception as e:
             logger.warning("Failed to record lifecycle rotation: %s", str(e))
-            
+
         self._session.commit()
 
         self._audit.log_event(
@@ -355,7 +381,7 @@ class VaultApplicationService:
                 "event": "secret_rotated",
                 "secret_id": str(secret.id),
                 "actor_id": str(actor_id),
-            }
+            },
         )
 
         return secret
@@ -372,7 +398,7 @@ class VaultApplicationService:
                 resource_id=str(secret_id),
                 status=AuditStatus.DENIED,
                 severity=AuditSeverity.HIGH,
-                details={"reason": "RBAC Denied"}
+                details={"reason": "RBAC Denied"},
             )
             self._session.commit()
             raise err
@@ -401,7 +427,7 @@ class VaultApplicationService:
                 "event": "secret_disabled",
                 "secret_id": str(secret.id),
                 "actor_id": str(actor_id),
-            }
+            },
         )
 
         return secret
@@ -418,7 +444,7 @@ class VaultApplicationService:
                 resource_id=str(secret_id),
                 status=AuditStatus.DENIED,
                 severity=AuditSeverity.HIGH,
-                details={"reason": "RBAC Denied"}
+                details={"reason": "RBAC Denied"},
             )
             self._session.commit()
             raise err
@@ -446,6 +472,5 @@ class VaultApplicationService:
                 "event": "secret_deleted",
                 "secret_id": str(secret_id),
                 "actor_id": str(actor_id),
-            }
+            },
         )
-

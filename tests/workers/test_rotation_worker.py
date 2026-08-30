@@ -21,15 +21,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import UUID
 
 import pytest
 
-from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
-from app.authorization.service import AuthorizationService
 from app.resources.models import (
     Criticality,
     Environment,
@@ -38,16 +36,21 @@ from app.resources.models import (
     ResourceType,
 )
 from app.vault.crypto import EncryptionService, LocalKMSProvider
-from app.vault.domain import SecretFactory, SecretMetadata, SecretVersion
+from app.vault.domain import SecretFactory, SecretVersion
 from app.vault.exceptions import ConcurrencyError
-from app.vault.executor import ExecutionResult
 from app.vault.executor_registry import ExecutorRegistry
 from app.vault.executor_stub import StubCredentialExecutor
 from app.vault.repository import SqlAlchemyVaultRepository
-from app.vault_lifecycle.models import RotationResultStatus, RotationStatus, SecretRotationPolicy
+from app.vault_lifecycle.models import (
+    RotationStatus,
+    SecretRotationPolicy,
+)
 from app.vault_lifecycle.repository import SecretRotationPolicyRepository
 from app.vault_lifecycle.service import VaultLifecycleService
-from app.workers.rotation_worker import run_rotation_job, WORKER_ACTOR_ID, _PrivilegedAuthorizationService
+from app.workers.rotation_worker import (
+    _PrivilegedAuthorizationService,
+    run_rotation_job,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers / shared factories
@@ -71,7 +74,10 @@ def _make_resource(db_session) -> Resource:
 
 
 def _make_secret_with_version(
-    db_session, resource: Resource, encryption_service: EncryptionService, actor_id: UUID
+    db_session,
+    resource: Resource,
+    encryption_service: EncryptionService,
+    actor_id: UUID,
 ):
     """Create a persisted ACTIVE secret with one encrypted version."""
     repo = SqlAlchemyVaultRepository(db_session)
@@ -121,7 +127,6 @@ def _make_policy(
 
 def _build_services(db_session, behaviour_map: Dict[UUID, str] | None = None):
     """Wire all services for the worker using the privileged auth stub."""
-    import os, base64
 
     kms = LocalKMSProvider()
     enc = EncryptionService(kms)
@@ -142,6 +147,7 @@ def _build_services(db_session, behaviour_map: Dict[UUID, str] | None = None):
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def actor_id(test_user) -> UUID:
     return test_user.id
@@ -157,6 +163,7 @@ def enc_svc(app) -> EncryptionService:
 # ---------------------------------------------------------------------------
 # Scenario 1: No eligible policies
 # ---------------------------------------------------------------------------
+
 
 def test_no_eligible_policies_is_noop(db_session, enc_svc, actor_id):
     """Worker finds no eligible policies → returns zeros, no DB writes."""
@@ -187,7 +194,9 @@ def test_future_next_rotation_at_is_not_eligible(db_session, enc_svc, actor_id):
     _make_policy(db_session, secret.id, next_rotation_at=future)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
     result = run_rotation_job(
         session=db_session,
         audit_service=audit_svc,
@@ -204,16 +213,19 @@ def test_future_next_rotation_at_is_not_eligible(db_session, enc_svc, actor_id):
 # Scenario 2: Successful rotation
 # ---------------------------------------------------------------------------
 
+
 def test_successful_rotation_creates_new_version(db_session, enc_svc, actor_id):
     """After a successful run the secret must have one additional version."""
     resource = _make_resource(db_session)
     secret = _make_secret_with_version(db_session, resource, enc_svc, actor_id)
-    initial_version_count = len(secret.versions)
+    initial_version_count = len(secret.versions)  # noqa: F841
     initial_row_version = secret.row_version
     _make_policy(db_session, secret.id)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
     result = run_rotation_job(
         session=db_session,
         audit_service=audit_svc,
@@ -235,6 +247,7 @@ def test_successful_rotation_creates_new_version(db_session, enc_svc, actor_id):
     assert refreshed.row_version > initial_row_version
     # Secret must be back to ACTIVE
     from app.vault.domain import SecretStatus
+
     assert refreshed.status == SecretStatus.ACTIVE
 
 
@@ -246,7 +259,9 @@ def test_successful_rotation_resets_retry_count(db_session, enc_svc, actor_id):
     policy.retry_count = 5
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
     run_rotation_job(
         session=db_session,
         audit_service=audit_svc,
@@ -268,10 +283,12 @@ def test_successful_rotation_updates_policy_timestamps(db_session, enc_svc, acto
     resource = _make_resource(db_session)
     secret = _make_secret_with_version(db_session, resource, enc_svc, actor_id)
     policy = _make_policy(db_session, secret.id)
-    original_last = policy.last_rotated_at
+    original_last = policy.last_rotated_at  # noqa: F841
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
     before = datetime.now(timezone.utc)
     run_rotation_job(
         session=db_session,
@@ -291,7 +308,6 @@ def test_successful_rotation_updates_policy_timestamps(db_session, enc_svc, acto
         # SQLite may return naive datetimes; normalise for comparison.
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
-        before_naive = before.replace(tzinfo=None) if ts.tzinfo is None else before
         assert ts >= before
 
 
@@ -299,11 +315,12 @@ def test_successful_rotation_updates_policy_timestamps(db_session, enc_svc, acto
 # Scenario 3: Retryable failure
 # ---------------------------------------------------------------------------
 
+
 def test_retryable_failure_increments_retry_count(db_session, enc_svc, actor_id):
     """When the executor raises a retryable error, ``retry_count`` must increment."""
     resource = _make_resource(db_session)
     secret = _make_secret_with_version(db_session, resource, enc_svc, actor_id)
-    policy = _make_policy(db_session, secret.id)
+    policy = _make_policy(db_session, secret.id)  # noqa: F841
     db_session.flush()
 
     enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "retry"})
@@ -378,6 +395,7 @@ def test_retryable_failure_leaves_policy_active(db_session, enc_svc, actor_id):
 # Scenario 4: Terminal failure
 # ---------------------------------------------------------------------------
 
+
 def test_terminal_failure_moves_policy_to_error(db_session, enc_svc, actor_id):
     """Terminal executor failure must set policy.status = ERROR."""
     resource = _make_resource(db_session)
@@ -385,7 +403,9 @@ def test_terminal_failure_moves_policy_to_error(db_session, enc_svc, actor_id):
     _make_policy(db_session, secret.id)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "terminal"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "terminal"}
+    )
     result = run_rotation_job(
         session=db_session,
         audit_service=audit_svc,
@@ -411,7 +431,9 @@ def test_terminal_failure_moves_secret_to_desynced(db_session, enc_svc, actor_id
     _make_policy(db_session, secret.id)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "terminal"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "terminal"}
+    )
     run_rotation_job(
         session=db_session,
         audit_service=audit_svc,
@@ -426,12 +448,14 @@ def test_terminal_failure_moves_secret_to_desynced(db_session, enc_svc, actor_id
     refreshed = repo.find_by_id(secret.id)
     assert refreshed is not None
     from app.vault.domain import SecretStatus
+
     assert refreshed.status == SecretStatus.DESYNCED
 
 
 # ---------------------------------------------------------------------------
 # Scenario 5: Missing executor
 # ---------------------------------------------------------------------------
+
 
 def test_missing_executor_marks_policy_error(db_session, enc_svc, actor_id):
     """No executor registered for the resource → policy moves to ERROR."""
@@ -464,6 +488,7 @@ def test_missing_executor_marks_policy_error(db_session, enc_svc, actor_id):
 # Scenario 6: ConcurrencyError during start_rotation (another worker won)
 # ---------------------------------------------------------------------------
 
+
 def test_concurrency_error_at_start_rotation_is_skipped(db_session, enc_svc, actor_id):
     """ConcurrencyError at start_rotation → policy is skipped (not failed)."""
     resource = _make_resource(db_session)
@@ -471,10 +496,12 @@ def test_concurrency_error_at_start_rotation_is_skipped(db_session, enc_svc, act
     _make_policy(db_session, secret.id)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
 
     # Patch start_rotation to simulate a concurrent worker winning.
-    original_start = lc_svc.start_rotation
+    original_start = lc_svc.start_rotation  # noqa: F841
     call_count = [0]
 
     def raise_concurrency(*args, **kwargs):
@@ -500,6 +527,7 @@ def test_concurrency_error_at_start_rotation_is_skipped(db_session, enc_svc, act
 # Scenario 7: Unexpected exception during processing
 # ---------------------------------------------------------------------------
 
+
 def test_unexpected_exception_returns_failed(db_session, enc_svc, actor_id):
     """An unexpected exception during encryption results in failed + audit."""
     resource = _make_resource(db_session)
@@ -507,7 +535,9 @@ def test_unexpected_exception_returns_failed(db_session, enc_svc, actor_id):
     _make_policy(db_session, secret.id)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
 
     # Patch encryption to fail unexpectedly.
     def boom(*args, **kwargs):
@@ -530,6 +560,7 @@ def test_unexpected_exception_returns_failed(db_session, enc_svc, actor_id):
 # ---------------------------------------------------------------------------
 # Scenario 8: Multiple policies – per-SAVEPOINT isolation
 # ---------------------------------------------------------------------------
+
 
 def test_multiple_policies_independent(db_session, enc_svc, actor_id):
     """Two eligible policies: first succeeds, second has a retryable error.
@@ -565,6 +596,7 @@ def test_multiple_policies_independent(db_session, enc_svc, actor_id):
     s2_fresh = repo.find_by_id(s2.id)
 
     from app.vault.domain import SecretStatus
+
     assert s1_fresh.status == SecretStatus.ACTIVE
     # s2 is back to ACTIVE because retryable failure rolls back ROTATING state
     # but does NOT progress to DESYNCED.
@@ -575,17 +607,21 @@ def test_multiple_policies_independent(db_session, enc_svc, actor_id):
 # Scenario 9: Plaintext leakage check
 # ---------------------------------------------------------------------------
 
+
 def test_no_plaintext_in_audit_details(db_session, enc_svc, actor_id):
     """The sentinel plaintext string must not appear in any audit log details."""
+    from sqlalchemy import select as sa_select
+
     from app.audit.models import AuditLog
-    from sqlalchemy import select as sa_select, or_
 
     resource = _make_resource(db_session)
     secret = _make_secret_with_version(db_session, resource, enc_svc, actor_id)
     _make_policy(db_session, secret.id)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
     run_rotation_job(
         session=db_session,
         audit_service=audit_svc,
@@ -600,22 +636,25 @@ def test_no_plaintext_in_audit_details(db_session, enc_svc, actor_id):
     sentinel = SENTINEL_PLAINTEXT.decode()
     for log in logs:
         details_str = str(log.details or "")
-        assert sentinel not in details_str, (
-            f"Plaintext found in audit log {log.event_id}: {details_str[:100]}"
-        )
+        assert (
+            sentinel not in details_str
+        ), f"Plaintext found in audit log {log.event_id}: {details_str[:100]}"
 
 
 def test_no_plaintext_in_version_rows(db_session, enc_svc, actor_id):
     """No ``VaultSecretVersion`` row may contain the plaintext sentinel string."""
-    from app.vault.models import VaultSecretVersion
     from sqlalchemy import select as sa_select
+
+    from app.vault.models import VaultSecretVersion
 
     resource = _make_resource(db_session)
     secret = _make_secret_with_version(db_session, resource, enc_svc, actor_id)
     _make_policy(db_session, secret.id)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
     run_rotation_job(
         session=db_session,
         audit_service=audit_svc,
@@ -626,17 +665,18 @@ def test_no_plaintext_in_version_rows(db_session, enc_svc, actor_id):
     )
 
     db_session.flush()
-    sentinel = SENTINEL_CREDENTIAL_DO_NOT_LOG = SENTINEL_PLAINTEXT
+    sentinel = SENTINEL_PLAINTEXT  # noqa: F841 - SENTINEL_CREDENTIAL_DO_NOT_LOG removed
     versions = db_session.execute(sa_select(VaultSecretVersion)).scalars().all()
     for v in versions:
-        assert sentinel not in v.encrypted_payload, (
-            "Plaintext stored unencrypted in vault_secret_versions"
-        )
+        assert (
+            sentinel not in v.encrypted_payload
+        ), "Plaintext stored unencrypted in vault_secret_versions"
 
 
 # ---------------------------------------------------------------------------
 # Scenario 10: PAUSED policy is not eligible
 # ---------------------------------------------------------------------------
+
 
 def test_paused_policy_not_eligible(db_session, enc_svc, actor_id):
     """PAUSED policies must never be eligible regardless of ``next_rotation_at``."""
@@ -645,7 +685,9 @@ def test_paused_policy_not_eligible(db_session, enc_svc, actor_id):
     _make_policy(db_session, secret.id, status=RotationStatus.PAUSED)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
     result = run_rotation_job(
         session=db_session,
         audit_service=audit_svc,
@@ -662,6 +704,7 @@ def test_paused_policy_not_eligible(db_session, enc_svc, actor_id):
 # Idempotency and Concurrency tests for Phase 2B.5D
 # ---------------------------------------------------------------------------
 
+
 def test_idempotency_avoids_duplicate_rotation(db_session, enc_svc, actor_id):
     """Repeated execution does not cause duplicate rotation of the same policy when no longer eligible."""
     resource = _make_resource(db_session)
@@ -670,8 +713,10 @@ def test_idempotency_avoids_duplicate_rotation(db_session, enc_svc, actor_id):
     _make_policy(db_session, secret.id)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
-    
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
+
     # First run
     result1 = run_rotation_job(
         session=db_session,
@@ -682,7 +727,7 @@ def test_idempotency_avoids_duplicate_rotation(db_session, enc_svc, actor_id):
         actor_id=actor_id,
     )
     assert result1["succeeded"] == 1
-    
+
     db_session.expire_all()
     repo = SqlAlchemyVaultRepository(db_session)
     refreshed_secret = repo.find_by_id(secret.id)
@@ -699,7 +744,7 @@ def test_idempotency_avoids_duplicate_rotation(db_session, enc_svc, actor_id):
     )
     assert result2["attempted"] == 0
     assert result2["succeeded"] == 0
-    
+
     db_session.expire_all()
     refreshed_secret_2 = repo.find_by_id(secret.id)
     assert len(refreshed_secret_2.versions) == initial_version_count + 1
@@ -709,37 +754,43 @@ def test_concurrent_execution_skips_safely(db_session, enc_svc, actor_id):
     """Simulate concurrent worker execution. One should succeed, the other should skip gracefully."""
     resource = _make_resource(db_session)
     secret = _make_secret_with_version(db_session, resource, enc_svc, actor_id)
-    initial_version_count = len(secret.versions)
     _make_policy(db_session, secret.id)
     db_session.flush()
 
-    enc, audit_svc, lc_svc, registry = _build_services(db_session, {secret.id: "success"})
+    enc, audit_svc, lc_svc, registry = _build_services(
+        db_session, {secret.id: "success"}
+    )
 
-    # Instead of multi-threading which can be flaky in SQLite, we invoke the internal method 
+    # Instead of multi-threading which can be flaky in SQLite, we invoke the internal method
     # twice in sequence but without updating the next_rotation_at check manually,
-    # or we simulate the ConcurrencyError by patching start_rotation. 
-    # Since we already have test_concurrency_error_at_start_rotation_is_skipped, 
+    # or we simulate the ConcurrencyError by patching start_rotation.
+    # Since we already have test_concurrency_error_at_start_rotation_is_skipped,
     # we can explicitly demonstrate that overlapping requests resulting in ConcurrencyError skip cleanly.
-    
+
     # We will simulate the exact failure mechanism of CAS by triggering a ConcurrencyError
     # when the second worker attempts to acquire the lock.
     original_start_rotation = lc_svc.start_rotation
-    
+
     call_count = [0]
+
     def mocked_start_rotation(*args, **kwargs):
         call_count[0] += 1
         if call_count[0] == 2:
             raise ConcurrencyError("Simulated concurrent worker beat us to the lock")
         return original_start_rotation(*args, **kwargs)
 
-    with patch.object(lc_svc, 'start_rotation', side_effect=mocked_start_rotation):
-        # We manually fetch the policy to feed it to _process_policy twice to mimic two workers 
+    with patch.object(lc_svc, "start_rotation", side_effect=mocked_start_rotation):
+        # We manually fetch the policy to feed it to _process_policy twice to mimic two workers
         # picking up the same eligible policy.
-        from app.workers.rotation_worker import _fetch_eligible_policies, _process_policy
+        from app.workers.rotation_worker import (
+            _fetch_eligible_policies,
+            _process_policy,
+        )
+
         policies = _fetch_eligible_policies(db_session)
         assert len(policies) == 1
         policy = policies[0]
-        
+
         policy_repo = SecretRotationPolicyRepository(db_session)
         secret_repo = SqlAlchemyVaultRepository(db_session)
 

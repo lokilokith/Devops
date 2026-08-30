@@ -41,6 +41,7 @@ class ApprovalWorkflowRepository:
             stmt = select(ApprovalWorkflow).where(ApprovalWorkflow.id == workflow_id)
             if for_update:
                 from sqlalchemy.orm import selectinload
+
                 stmt = stmt.options(
                     selectinload(ApprovalWorkflow.access_request)
                 ).with_for_update()

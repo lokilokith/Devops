@@ -31,19 +31,21 @@ from typing import List
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.service import AuditService
-from app.authorization.exceptions import AuthorizationDeniedError
 from app.permissions.models import PermissionAction
 from app.vault.crypto import EncryptionService
 from app.vault.domain import SecretVersion
 from app.vault.exceptions import ConcurrencyError
 from app.vault.executor_registry import ExecutorRegistry
 from app.vault.repository import SqlAlchemyVaultRepository
-from app.vault_lifecycle.models import SecretRotationPolicy, RotationStatus, RotationResultStatus
+from app.vault_lifecycle.models import (
+    RotationResultStatus,
+    RotationStatus,
+    SecretRotationPolicy,
+)
 from app.vault_lifecycle.repository import SecretRotationPolicyRepository
 from app.vault_lifecycle.service import VaultLifecycleService
 
@@ -61,6 +63,7 @@ WORKER_ACTOR_ID: UUID = UUID("00000000-0000-0000-0000-000000000001")
 # Privileged authorization stub
 # ---------------------------------------------------------------------------
 
+
 class _PrivilegedAuthorizationService:
     """Always-allow authorization service for trusted background workers.
 
@@ -70,17 +73,22 @@ class _PrivilegedAuthorizationService:
     interface without touching the database.
     """
 
-    def authorize(self, user_id: UUID, resource_code: str, action: PermissionAction) -> None:  # noqa: D401
+    def authorize(
+        self, user_id: UUID, resource_code: str, action: PermissionAction
+    ) -> None:  # noqa: D401
         """Always permits – background workers are privileged."""
         return  # no-op
 
-    def has_permission(self, user_id: UUID, resource_code: str, action: PermissionAction) -> bool:
+    def has_permission(
+        self, user_id: UUID, resource_code: str, action: PermissionAction
+    ) -> bool:
         return True
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def run_rotation_job(
     session: Session,
@@ -173,10 +181,12 @@ def run_rotation_job(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _fetch_eligible_policies(session: Session) -> List[SecretRotationPolicy]:
     """Return all active policies whose ``next_rotation_at`` is in the past."""
-    from app.vault.models import VaultSecret
     from app.vault.domain import SecretStatus
+    from app.vault.models import VaultSecret
+
     now = datetime.now(timezone.utc)
     stmt = (
         select(SecretRotationPolicy)
@@ -231,12 +241,13 @@ def _process_policy(
             return "skipped"
         except Exception as exc:
             from app.vault.exceptions import SecretCheckedOutError
+
             if isinstance(exc, SecretCheckedOutError):
                 savepoint.rollback()
                 logger.info(
                     "RotationWorker: Secret %s is checked out – deferring rotation",
                     secret_id_str,
-                    extra={"run_id": run_id, "policy_id": policy_id_str}
+                    extra={"run_id": run_id, "policy_id": policy_id_str},
                 )
                 audit_service.log_event(
                     actor_user_id=actor_id,
@@ -245,7 +256,11 @@ def _process_policy(
                     resource_id=secret_id_str,
                     status=AuditStatus.SUCCESS,
                     severity=AuditSeverity.INFO,
-                    details={"run_id": run_id, "policy_id": policy_id_str, "reason": "Secret is checked out"}
+                    details={
+                        "run_id": run_id,
+                        "policy_id": policy_id_str,
+                        "reason": "Secret is checked out",
+                    },
                 )
                 return "deferred"
             elif isinstance(exc, ValueError):
@@ -255,7 +270,7 @@ def _process_policy(
                     "RotationWorker: Cannot start rotation for secret %s: %s",
                     secret_id_str,
                     exc,
-                    extra={"run_id": run_id, "policy_id": policy_id_str}
+                    extra={"run_id": run_id, "policy_id": policy_id_str},
                 )
                 _audit_failure(
                     run_id=run_id,
@@ -273,7 +288,11 @@ def _process_policy(
         executor = executor_registry.get_executor(secret_id)
         if executor is None:
             reason = f"No executor registered for secret {secret_id_str}"
-            logger.warning("RotationWorker: %s", reason, extra={"run_id": run_id, "policy_id": policy_id_str})
+            logger.warning(
+                "RotationWorker: %s",
+                reason,
+                extra={"run_id": run_id, "policy_id": policy_id_str},
+            )
             _handle_fail_rotation(
                 run_id=run_id,
                 lifecycle_service=lifecycle_service,
@@ -335,13 +354,13 @@ def _process_policy(
                 current_version.encrypted_payload,
                 current_version.metadata,
             )
-        except Exception as exc:
+        except Exception:
             reason = "Failed to decrypt current secret payload"
             logger.error(
                 "RotationWorker: %s for secret %s (details omitted for security)",
                 reason,
                 secret_id_str,
-                extra={"run_id": run_id, "policy_id": policy_id_str}
+                extra={"run_id": run_id, "policy_id": policy_id_str},
             )
             _handle_fail_rotation(
                 run_id=run_id,
@@ -372,14 +391,14 @@ def _process_policy(
                 new_secret_bytes = result.get("new_secret_version")
         except RuntimeError as exc:
             # Wipe plaintext reference first.
-            del plaintext
+            del plaintext  # noqa: F821 – bound in try block before executor.execute()
             msg = str(exc)
             exec_error = "retryable" if "retryable" in msg.lower() else "terminal"
             logger.warning(
                 "RotationWorker: Executor raised RuntimeError for secret %s (classified as %s)",
                 secret_id_str,
                 exec_error,
-                extra={"run_id": run_id, "policy_id": policy_id_str}
+                extra={"run_id": run_id, "policy_id": policy_id_str},
             )
 
         # 6. Handle executor error outcome.
@@ -391,22 +410,29 @@ def _process_policy(
                 policy.updated_at = datetime.now(timezone.utc)
                 policy_repo.save(policy)
                 _audit_failure(
-                run_id=run_id,
-                audit_service=audit_service,
+                    run_id=run_id,
+                    audit_service=audit_service,
                     actor_id=actor_id,
                     secret_id_str=secret_id_str,
                     action="SECRET_ROTATION_RETRYABLE_FAILURE",
                     reason=exec_error,
                     severity=AuditSeverity.MEDIUM,
-                    details={"policy_id": policy_id_str, "retry_count": policy.retry_count},
+                    details={
+                        "policy_id": policy_id_str,
+                        "retry_count": policy.retry_count,
+                    },
                 )
                 # Revert secret back to ACTIVE (from ROTATING) without marking DESYNCED.
                 # We must commit the policy retry_count update, so we cannot simply
                 # rollback the entire SAVEPOINT.  Instead, restore secret status.
                 try:
                     secret_for_revert = secret_repo.find_by_id(secret_id)
-                    if secret_for_revert and secret_for_revert.status.value == "rotating":
+                    if (
+                        secret_for_revert
+                        and secret_for_revert.status.value == "rotating"
+                    ):
                         from app.vault.domain import SecretStatus
+
                         secret_for_revert.status = SecretStatus.ACTIVE
                         secret_for_revert.updated_at = datetime.now(timezone.utc)
                         secret_repo.save(secret_for_revert)
@@ -419,8 +445,8 @@ def _process_policy(
                 # Terminal failure – transition secret to DESYNCED, policy to ERROR.
                 reason = "Terminal executor failure"
                 _handle_fail_rotation(
-                run_id=run_id,
-                lifecycle_service=lifecycle_service,
+                    run_id=run_id,
+                    lifecycle_service=lifecycle_service,
                     audit_service=audit_service,
                     policy=policy,
                     policy_repo=policy_repo,
@@ -471,8 +497,10 @@ def _process_policy(
             return "unexpected"
 
         try:
-            encrypted_dek, encrypted_payload, metadata = encryption_service.encrypt_payload(
-                secret.resource_id, secret.id, new_secret_bytes
+            encrypted_dek, encrypted_payload, metadata = (
+                encryption_service.encrypt_payload(
+                    secret.resource_id, secret.id, new_secret_bytes
+                )
             )
         finally:
             # Always wipe new_secret_bytes once passed to encrypt_payload.
@@ -508,7 +536,11 @@ def _process_policy(
         )
 
         savepoint.commit()
-        logger.info("RotationWorker: rotation completed for secret %s", secret_id_str, extra={"run_id": run_id, "policy_id": policy_id_str})
+        logger.info(
+            "RotationWorker: rotation completed for secret %s",
+            secret_id_str,
+            extra={"run_id": run_id, "policy_id": policy_id_str},
+        )
         return "succeeded"
 
     except ConcurrencyError:
@@ -533,11 +565,11 @@ def _process_policy(
             "RotationWorker: Unexpected error processing secret %s: %s",
             secret_id_str,
             exc,
-            extra={"run_id": run_id, "policy_id": policy_id_str}
+            extra={"run_id": run_id, "policy_id": policy_id_str},
         )
         _audit_failure(
-                run_id=run_id,
-                audit_service=audit_service,
+            run_id=run_id,
+            audit_service=audit_service,
             actor_id=actor_id,
             secret_id_str=secret_id_str,
             action="SECRET_ROTATION_FAILED",
@@ -550,6 +582,7 @@ def _process_policy(
 # ---------------------------------------------------------------------------
 # Shared audit helpers
 # ---------------------------------------------------------------------------
+
 
 def _audit_failure(
     *,
@@ -618,8 +651,8 @@ def _handle_fail_rotation(
         )
 
     _audit_failure(
-                run_id=run_id,
-                audit_service=audit_service,
+        run_id=run_id,
+        audit_service=audit_service,
         actor_id=actor_id,
         secret_id_str=secret_id_str,
         action=action,

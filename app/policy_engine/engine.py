@@ -21,7 +21,9 @@ class PolicyEngine:
         self._session = session
         self._authz = authz_service
 
-    def evaluate_vault_retrieval(self, user_id: UUID, resource_id: UUID) -> PolicyDecision:
+    def evaluate_vault_retrieval(
+        self, user_id: UUID, resource_id: UUID
+    ) -> PolicyDecision:
         """Evaluate if the user can retrieve secrets for the given resource."""
 
         # 1. Gather all roles for the user
@@ -32,24 +34,18 @@ class PolicyEngine:
         role_ids = [r.id for r in roles]
 
         # 2. Check if any ResourceAccessPolicy applies to these roles for the resource
-        stmt = (
-            select(ResourceAccessPolicy)
-            .where(
-                ResourceAccessPolicy.resource_id == resource_id,
-                ResourceAccessPolicy.role_id.in_(role_ids)
-            )
+        stmt = select(ResourceAccessPolicy).where(
+            ResourceAccessPolicy.resource_id == resource_id,
+            ResourceAccessPolicy.role_id.in_(role_ids),
         )
         policies = self._session.execute(stmt).scalars().all()
 
         if not policies:
             # Check if there is an active APPROVED access request directly for this resource
-            direct_ar_stmt = (
-                select(AccessRequest)
-                .where(
-                    AccessRequest.requester_id == user_id,
-                    AccessRequest.requested_resource_id == resource_id,
-                    AccessRequest.status == AccessRequestStatus.APPROVED,
-                )
+            direct_ar_stmt = select(AccessRequest).where(
+                AccessRequest.requester_id == user_id,
+                AccessRequest.requested_resource_id == resource_id,
+                AccessRequest.status == AccessRequestStatus.APPROVED,
             )
             direct_ars = self._session.execute(direct_ar_stmt).scalars().all()
 
@@ -81,13 +77,10 @@ class PolicyEngine:
             return PolicyDecision.ALLOW
 
         # 4. Check for active approved access requests
-        ar_stmt = (
-            select(AccessRequest)
-            .where(
-                AccessRequest.requester_id == user_id,
-                AccessRequest.requested_resource_id == resource_id,
-                AccessRequest.status == AccessRequestStatus.APPROVED,
-            )
+        ar_stmt = select(AccessRequest).where(
+            AccessRequest.requester_id == user_id,
+            AccessRequest.requested_resource_id == resource_id,
+            AccessRequest.status == AccessRequestStatus.APPROVED,
         )
         approved_requests = self._session.execute(ar_stmt).scalars().all()
 

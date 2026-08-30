@@ -1,5 +1,5 @@
-import os
 import base64
+import os
 
 import pytest
 
@@ -7,7 +7,7 @@ from app import create_app
 from app.auth.service import AuthService
 from app.identity.repository import IdentityRepository
 from app.shared.database import db as _db
-from tests.fixtures.factories import UserFactory, RoleFactory
+from tests.fixtures.factories import RoleFactory, UserFactory
 
 
 @pytest.fixture(scope="session")
@@ -16,7 +16,7 @@ def app():
     os.environ["SECRET_KEY"] = "super-secret-key-for-testing-12345678"
     # Ensure master key is set for KMS provider initialization
     os.environ["VAULT_MASTER_KEY"] = base64.b64encode(os.urandom(32)).decode()
-    
+
     app = create_app(testing_bootstrap=True)
     with app.app_context():
         yield app
@@ -34,9 +34,8 @@ def db_session(app):
     session = _db.session
     session.begin_nested()
     # Patch commit to flush to prevent test data from leaking
-    original_commit = session.commit
+    original_commit = session.commit  # noqa: F841 – saved for potential restore
     session.commit = session.flush
-
 
     from tests.fixtures import factories
 
@@ -92,6 +91,7 @@ def normal_user(db_session):
 def normal_token(security_auth_service, normal_user):
     return security_auth_service.generate_access_token(normal_user.id)
 
+
 @pytest.fixture
 def user_token(security_auth_service, normal_user):
     return security_auth_service.generate_access_token(normal_user.id)
@@ -128,12 +128,15 @@ def sec_admin_user(db_session):
 @pytest.fixture
 def sec_admin_token(security_auth_service, sec_admin_user):
     return security_auth_service.generate_access_token(sec_admin_user.id)
+
+
 @pytest.fixture
 def test_role(db_session):
     role = RoleFactory()
     db_session.add(role)
     db_session.flush()
     return role
+
 
 @pytest.fixture
 def test_user(db_session):

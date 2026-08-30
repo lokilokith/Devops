@@ -10,7 +10,7 @@ from werkzeug.exceptions import (
 )
 
 from app.api.errors import errors_bp
-from app.extensions import db
+from app.platform.extensions import db
 
 
 @pytest.fixture

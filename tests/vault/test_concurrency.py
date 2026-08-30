@@ -6,9 +6,10 @@ rolls back all changes.
 """
 
 import pytest
+from sqlalchemy import text as sa_text
 from sqlalchemy.orm import sessionmaker
 
-from app.extensions import db
+from app.platform.extensions import db
 from app.resources.models import (
     Criticality,
     Environment,
@@ -17,9 +18,8 @@ from app.resources.models import (
     ResourceType,
 )
 from app.vault.domain import SecretFactory, SecretMetadata, SecretVersion
-from app.vault.repository import SqlAlchemyVaultRepository, ConcurrencyError
-from app.shared.database import db
-from sqlalchemy import text as sa_text
+from app.vault.repository import ConcurrencyError, SqlAlchemyVaultRepository
+
 
 @pytest.fixture(autouse=True)
 def teardown_concurrency_data():
@@ -32,8 +32,12 @@ def teardown_concurrency_data():
         conn.execute(sa_text("DELETE FROM access_requests"))
         conn.execute(sa_text("DELETE FROM vault_secret_versions"))
         conn.execute(sa_text("DELETE FROM vault_secrets"))
-        conn.execute(sa_text("DELETE FROM resources WHERE resource_code LIKE 'RES01_%'"))
-        conn.execute(sa_text("DELETE FROM users WHERE username LIKE 'concurrency_test_%'"))
+        conn.execute(
+            sa_text("DELETE FROM resources WHERE resource_code LIKE 'RES01_%'")
+        )
+        conn.execute(
+            sa_text("DELETE FROM users WHERE username LIKE 'concurrency_test_%'")
+        )
 
 
 def _new_sessions():
@@ -50,6 +54,7 @@ def _setup_resource_and_secret(session):
     Returns the secret domain object.
     """
     import uuid
+
     uid = uuid.uuid4().hex[:6]
     resource = Resource(
         resource_code=f"RES01_{uid}",
@@ -134,8 +139,10 @@ def test_secret_version_duplication_prevented(app):
 
     # Create a dedicated test user in sess_a to guarantee FK validity
     # Independent sessions (sessionmaker) may not see Flask-bootstrap data reliably
-    from app.identity.models import User, UserStatus
     import uuid
+
+    from app.identity.models import User, UserStatus
+
     test_user_id = uuid.uuid4()
     test_user = User(
         id=test_user_id,
@@ -207,6 +214,7 @@ def test_rollback_on_failure(app):
     repo = SqlAlchemyVaultRepository(session)
 
     import uuid
+
     uid = uuid.uuid4().hex[:6]
     resource = Resource(
         resource_code=f"RES02_{uid}",
@@ -226,6 +234,7 @@ def test_rollback_on_failure(app):
 
     # Get the admin user from DB for created_by
     from app.identity.models import User
+
     admin_user = session.query(User).filter_by(username="admin").first()
     if not admin_user:
         raise RuntimeError("Admin user not found. RBAC seed failed.")
@@ -241,6 +250,7 @@ def test_rollback_on_failure(app):
             encryption_context={"resource_id": str(secret_tx.resource_id)},
         )
         import uuid
+
         new_version = SecretVersion(
             id=uuid.uuid4(),
             secret_id=secret_tx.id,

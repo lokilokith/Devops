@@ -9,8 +9,9 @@ credential bytes.
 
 from __future__ import annotations
 
-from typing import Protocol, TypedDict, Any
+from typing import Any, Protocol, TypedDict
 from uuid import UUID
+
 
 class ExecutionResult(TypedDict, total=False):
     """Result of a credential rotation execution.
@@ -22,9 +23,11 @@ class ExecutionResult(TypedDict, total=False):
     * ``error`` – optional error message for retryable failures; the caller
       should treat a non‑empty ``error`` as a transient problem.
     """
+
     new_secret_version: bytes
     metadata: dict[str, Any]
     error: str
+
 
 class CredentialExecutor(Protocol):
     """Protocol for rotating a secret's underlying credential.

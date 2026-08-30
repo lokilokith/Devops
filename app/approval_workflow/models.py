@@ -76,8 +76,9 @@ class ApprovalWorkflow(BaseModel):
     approved_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    
+
     from sqlalchemy.orm import relationship
+
     access_request = relationship("AccessRequest", lazy="joined")
 
 

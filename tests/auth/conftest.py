@@ -2,9 +2,9 @@ import pytest
 from flask import Flask
 
 from app.auth.service import AuthService
-from app.extensions import db
 from app.identity.models import User, UserStatus
 from app.identity.repository import IdentityRepository
+from app.platform.extensions import db
 
 
 @pytest.fixture

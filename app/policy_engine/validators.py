@@ -41,18 +41,24 @@ def validate_conditions(conditions: dict) -> None:
     if "allowed_hours" in conditions:
         hours = conditions["allowed_hours"]
         if not isinstance(hours, dict) or "start" not in hours or "end" not in hours:
-            raise UnprocessableEntity("allowed_hours must be an object with 'start' and 'end' keys")
+            raise UnprocessableEntity(
+                "allowed_hours must be an object with 'start' and 'end' keys"
+            )
         if not validate_time_format(hours["start"]):
-            raise UnprocessableEntity(f"Invalid start time format (use HH:MM): {hours['start']}")
+            raise UnprocessableEntity(
+                f"Invalid start time format (use HH:MM): {hours['start']}"
+            )
         if not validate_time_format(hours["end"]):
-            raise UnprocessableEntity(f"Invalid end time format (use HH:MM): {hours['end']}")
+            raise UnprocessableEntity(
+                f"Invalid end time format (use HH:MM): {hours['end']}"
+            )
 
     # Validate roles
     if "allowed_roles" in conditions:
         roles = conditions["allowed_roles"]
         if not isinstance(roles, list):
             raise UnprocessableEntity("allowed_roles must be a list of role strings")
-            
+
     # Resource Attributes
     if "environment" in conditions:
         if not isinstance(conditions["environment"], str):
@@ -67,12 +73,14 @@ def validate_policy_create(data: dict) -> None:
 
     if not data["name"] or len(data["name"]) < 3:
         raise UnprocessableEntity("Policy name must be at least 3 characters long")
-        
+
     if "effect" in data:
         try:
             PolicyEffect(data["effect"].lower())
         except ValueError:
-            raise UnprocessableEntity(f"Invalid effect. Must be one of: {[e.value for e in PolicyEffect]}")
+            raise UnprocessableEntity(
+                f"Invalid effect. Must be one of: {[e.value for e in PolicyEffect]}"
+            )
 
     validate_conditions(data["conditions"])
 
@@ -84,4 +92,6 @@ def validate_policy_update(data: dict) -> None:
         try:
             PolicyEffect(data["effect"].lower())
         except ValueError:
-            raise UnprocessableEntity(f"Invalid effect. Must be one of: {[e.value for e in PolicyEffect]}")
+            raise UnprocessableEntity(
+                f"Invalid effect. Must be one of: {[e.value for e in PolicyEffect]}"
+            )

@@ -1,4 +1,4 @@
-﻿# OpsForge 🛡️
+# OpsForge 🛡️
 
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/lokilokith/Devops/ci.yml?branch=main&label=CI%2FCD&style=flat-square)](https://github.com/lokilokith/Devops/actions)
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/lokilokith/Devops/main/coverage.json&style=flat-square)](#)
@@ -9,13 +9,20 @@
 [![Security: Bandit](https://img.shields.io/badge/security-bandit-yellow.svg?style=flat-square)](https://github.com/PyCQA/bandit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-**OpsForge** is a mature, enterprise-grade DevSecOps Threat Intelligence Management Platform. Designed for modern security operations centers (SOCs) and infrastructure teams, OpsForge provides centralized resource governance, strict Role-Based Access Control (RBAC), and automated approval workflows.
+**OpsForge** is a security-first Privileged Access Management (PAM) platform. Designed for modern security operations centers (SOCs) and infrastructure teams, OpsForge provides centralized resource governance, strict Role-Based Access Control (RBAC), automated approval workflows, and envelope-encrypted credential vaulting.
 
-## 🚀 Features
+## 🚀 Features (Control & Vault Planes - Currently Implemented)
 - **Strict RBAC & Governance**: Granular, role-based access to security resources and API endpoints.
-- **DevSecOps Integrations**: Native threat intelligence workflow handling.
+- **Secure Credential Vaulting**: Transparent envelope encryption via KMS abstraction and Compare-And-Swap (CAS) concurrency control.
+- **Approval Workflows**: Multi-party authorization for vault retrieval and access requests.
 - **Enterprise Security**: Production-ready JWT authentication, CORS, rate limiting, and SAST/SCA hardening.
-- **Audit Logging & Notifications**: Complete observability of system mutations.
+- **Audit Logging & Notifications**: Complete observability of system mutations across all active planes.
+
+## 🚧 Planned Features (Execution & Session Planes - Future Phases)
+- Target Bootstrap & SSH Executor
+- SSH Credential Rotation & Target Account Provisioning
+- JIT Privilege Elevation
+- Brokered SSH Sessions & Privilege Enforcement
 
 ## 🏗 Architecture
 OpsForge follows a clean architecture pattern within a modular Flask monorepo.

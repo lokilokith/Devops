@@ -5,8 +5,8 @@ import pytest
 from flask import Flask
 
 from app.api.errors import errors_bp
-from app.extensions import db
 from app.permissions.routes import permissions_ns
+from app.platform.extensions import db
 from app.routes import CustomApi
 
 

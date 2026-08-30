@@ -5,9 +5,11 @@ Provides a `seed_kms` function that creates a default KMS configuration
 used by the `seed-kms` CLI command.
 """
 
+from sqlalchemy.exc import IntegrityError
+
 from app.shared.database import db
 from app.vault.models import KMSConfiguration, KMSProviderType
-from sqlalchemy.exc import IntegrityError
+
 
 def seed_kms():
     """Create a default active KMS configuration.
@@ -18,6 +20,7 @@ def seed_kms():
     record untouched.
     """
     from flask import current_app
+
     logger = current_app.logger
 
     # Check if an active configuration already exists

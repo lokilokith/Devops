@@ -10,8 +10,12 @@ vault_ns = Namespace("vault", description="Credential Vault operations")
 secret_create_dto = vault_ns.model(
     "SecretCreate",
     {
-        "resource_id": fields.String(required=True, description="Phase 0 Resource UUID"),
-        "payload": fields.String(required=True, description="The plaintext secret material"),
+        "resource_id": fields.String(
+            required=True, description="Phase 0 Resource UUID"
+        ),
+        "payload": fields.String(
+            required=True, description="The plaintext secret material"
+        ),
     },
 )
 
@@ -31,7 +35,7 @@ resource_nested_dto = vault_ns.model(
         "resource_name": fields.String(description="Resource Name"),
         "resource_code": fields.String(description="Resource Code"),
         "resource_type": fields.String(description="Resource Type"),
-    }
+    },
 )
 
 secret_response_dto = vault_ns.model(
@@ -49,7 +53,9 @@ secret_reveal_dto = vault_ns.model(
     "SecretReveal",
     {
         "id": fields.String(description="Secret UUID"),
-        "payload": fields.String(description="The decrypted plaintext payload over TLS"),
+        "payload": fields.String(
+            description="The decrypted plaintext payload over TLS"
+        ),
         "metadata": fields.Nested(secret_metadata_dto),
     },
 )
@@ -99,4 +105,3 @@ vault_reveal_wrapper = vault_ns.model(
         "data": fields.Nested(secret_reveal_dto),
     },
 )
-

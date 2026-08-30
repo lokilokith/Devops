@@ -13,7 +13,7 @@ from sqlalchemy import DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
-from app.extensions import db
+from app.platform.extensions import db
 
 METADATA_NAMING_CONVENTION: dict[str, str] = {
     "pk": "pk_%(table_name)s",

@@ -6,8 +6,8 @@ from flask import Flask
 from flask_restx import Api
 
 from app.api.errors import errors_bp
-from app.extensions import db
 from app.identity.routes import identity_ns
+from app.platform.extensions import db
 
 
 @pytest.fixture
@@ -313,8 +313,11 @@ def test_get_service(app):
 def test_disable_user(client, mock_auth, mock_service):
     uid = str(uuid4())
     mock_service.deactivate_user.return_value = {"id": uid}
-    res = client.post(f"/users/{uid}/disable", headers={"Authorization": "Bearer token"})
+    res = client.post(
+        f"/users/{uid}/disable", headers={"Authorization": "Bearer token"}
+    )
     assert res.status_code == 200
+
 
 def test_enable_user(client, mock_auth, mock_service):
     uid = str(uuid4())

@@ -8,9 +8,9 @@ from werkzeug.exceptions import Forbidden, Unauthorized
 from app.auth.exceptions import TokenError, TokenExpiredError, TokenRevokedError
 from app.auth.service import AuthService
 from app.authorization.service import AuthorizationService
-from app.extensions import db
 from app.identity.repository import IdentityRepository
 from app.permissions.models import PermissionAction
+from app.platform.extensions import db
 
 
 def login_required(f):

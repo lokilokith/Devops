@@ -57,13 +57,21 @@ class PrivilegedAccessSession(BaseModel):
         index=True,
         default=SessionStatus.PENDING,
     )
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    terminated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    terminated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     recording_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
-    
+
     session_token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    last_activity_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_activity_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class SessionEvent(BaseModel):
@@ -84,5 +92,6 @@ class SessionEvent(BaseModel):
         nullable=False,
         index=True,
     )
+
 
 __all__ = ["PrivilegedAccessSession", "SessionEvent", "SessionStatus"]

@@ -7,17 +7,17 @@ from werkzeug.exceptions import Conflict, NotFound
 from app.api.decorators import login_required, requires_permission
 from app.api.pagination import DEFAULT_PAGE_SIZE, validate_pagination
 from app.api.responses import success_response
-from app.extensions import db
+from app.platform.extensions import db
 from app.policy_engine.exceptions import PolicyNotFoundError, PolicyValidationError
 from app.policy_engine.repository import PolicyRepository
 from app.policy_engine.schemas import (
     policies_ns,
     policy_create_model,
+    policy_evaluate_request_model,
+    policy_evaluate_response_model,
     policy_list_response_model,
     policy_response_model,
     policy_update_model,
-    policy_evaluate_request_model,
-    policy_evaluate_response_model,
 )
 from app.policy_engine.service import PolicyService
 from app.policy_engine.validators import (
@@ -28,9 +28,9 @@ from app.policy_engine.validators import (
 
 
 def get_service() -> PolicyService:
-    from app.authorization.service import AuthorizationService
-    from app.audit.service import AuditService
     from app.audit.repository import AuditRepository
+    from app.audit.service import AuditService
+    from app.authorization.service import AuthorizationService
 
     return PolicyService(
         PolicyRepository(db.session),
@@ -41,7 +41,9 @@ def get_service() -> PolicyService:
 
 @policies_ns.route("/policies")
 class PolicyCollection(Resource):
-    @policies_ns.doc(summary="List policies", description="Retrieve a paginated list of policies.")
+    @policies_ns.doc(
+        summary="List policies", description="Retrieve a paginated list of policies."
+    )
     @policies_ns.marshal_with(policy_list_response_model)
     @login_required
     @requires_permission("policies", "read")
@@ -49,7 +51,7 @@ class PolicyCollection(Resource):
         skip, limit = validate_pagination(
             request.args.get("skip", 1), request.args.get("limit", DEFAULT_PAGE_SIZE)
         )
-        
+
         enabled_str = request.args.get("enabled")
         enabled = None
         if enabled_str:
@@ -57,15 +59,15 @@ class PolicyCollection(Resource):
 
         service = get_service()
         # skip is 'page' logic in our get_service, actually wait.
-        # Roles pagination uses skip/limit where skip is offset. 
+        # Roles pagination uses skip/limit where skip is offset.
         # In my PolicyService I made page and page_size.
         # Convert skip (offset) back to page if needed, or adjust service list_policies.
         # Actually I can just pass page and page_size.
         page = (skip // limit) + 1 if limit else 1
-        
+
         policies = service.list_policies(enabled=enabled, page=page, page_size=limit)
         total = service._repo.count_policies(enabled=enabled)
-        
+
         return success_response(
             data=policies, meta={"total": total, "skip": skip, "limit": limit}
         )
@@ -137,7 +139,10 @@ class PolicyResource(Resource):
 
 @policies_ns.route("/evaluate")
 class PolicyEvaluateResource(Resource):
-    @policies_ns.doc(summary="Evaluate policy", description="Simulate/test policy evaluation for a user and resource.")
+    @policies_ns.doc(
+        summary="Evaluate policy",
+        description="Simulate/test policy evaluation for a user and resource.",
+    )
     @policies_ns.expect(policy_evaluate_request_model)
     @policies_ns.marshal_with(policy_evaluate_response_model)
     @login_required
@@ -151,5 +156,5 @@ class PolicyEvaluateResource(Resource):
 
         service = get_service()
         decision = service.evaluate_policy(user_id, resource_id, action, context)
-        
+
         return success_response(data=decision, message="Evaluation completed")

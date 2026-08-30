@@ -30,6 +30,7 @@ def create_mock_token(
         return "invalid.token.here"
 
     from uuid import uuid4
+
     payload = {
         "jti": str(uuid4()),
         "sub": str(user_id),
@@ -45,6 +46,7 @@ def create_mock_token(
         from app.auth.service import AuthService
         from app.identity.repository import IdentityRepository
         from app.platform.extensions import db
+
         auth_service = AuthService(IdentityRepository(db.session))
         auth_service.revoke_token(token)
 
@@ -64,7 +66,7 @@ def test_login_required_invalid_format(app, client):
 
 
 def test_login_required_success(app, client, db_session):
-    app.config['PROPAGATE_EXCEPTIONS'] = True
+    app.config["PROPAGATE_EXCEPTIONS"] = True
     setup_app_routes(app)
     from uuid import uuid4
 

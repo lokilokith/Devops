@@ -1,6 +1,9 @@
 import uuid
+
 import pytest
+
 from app.vault.executor_stub import StubCredentialExecutor
+
 
 def test_success_execution_returns_opaque_bytes():
     resource_id = uuid.uuid4()
@@ -12,6 +15,7 @@ def test_success_execution_returns_opaque_bytes():
     assert result["metadata"]["generated_by"] == "stub"
     assert result.get("error", "") == ""
 
+
 def test_retry_mode_raises_generic_error():
     resource_id = uuid.uuid4()
     stub = StubCredentialExecutor({resource_id: "retry"})
@@ -22,6 +26,7 @@ def test_retry_mode_raises_generic_error():
     assert "retryable" in msg
     assert "old_secret" not in msg
 
+
 def test_terminal_mode_raises_generic_error():
     resource_id = uuid.uuid4()
     stub = StubCredentialExecutor({resource_id: "terminal"})
@@ -30,6 +35,7 @@ def test_terminal_mode_raises_generic_error():
     msg = str(exc.value).lower()
     assert "terminal" in msg
     assert "old_secret" not in msg
+
 
 def test_can_execute_returns_false_for_unknown_resource():
     known_id = uuid.uuid4()

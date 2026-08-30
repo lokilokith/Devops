@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import uuid
 from typing import Dict
-from .executor import CredentialExecutor, ExecutionResult
+
+from .executor import ExecutionResult
 
 
 class StubCredentialExecutor:

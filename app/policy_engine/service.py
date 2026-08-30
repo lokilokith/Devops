@@ -8,11 +8,14 @@ from datetime import datetime, timezone
 from typing import Sequence
 from uuid import UUID
 
-from app.authorization.service import AuthorizationService
+from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.service import AuditService
-from app.audit.models import AuditStatus, AuditSeverity
+from app.authorization.service import AuthorizationService
 from app.permissions.models import PermissionAction
-from app.policy_engine.exceptions import PolicyNotFoundError, PolicyValidationError, PolicyEvaluationError
+from app.policy_engine.exceptions import (
+    PolicyNotFoundError,
+    PolicyValidationError,
+)
 from app.policy_engine.models import AccessPolicy, PolicyEffect
 from app.policy_engine.repository import PolicyRepository
 
@@ -32,7 +35,9 @@ class PolicyService:
 
     def create_policy(self, data: dict) -> AccessPolicy:
         if self._repo.exists_by_name(data["name"]):
-            raise PolicyValidationError(f"Policy with name '{data['name']}' already exists")
+            raise PolicyValidationError(
+                f"Policy with name '{data['name']}' already exists"
+            )
 
         policy = AccessPolicy(
             name=data["name"],
@@ -93,18 +98,22 @@ class PolicyService:
             pass
         return False
 
-    def _check_time_condition(self, request_time_iso: str | None, allowed_hours: dict) -> bool:
+    def _check_time_condition(
+        self, request_time_iso: str | None, allowed_hours: dict
+    ) -> bool:
         try:
             if request_time_iso:
-                req_time = datetime.fromisoformat(request_time_iso.replace("Z", "+00:00"))
+                req_time = datetime.fromisoformat(
+                    request_time_iso.replace("Z", "+00:00")
+                )
             else:
                 req_time = datetime.now(timezone.utc)
-            
+
             # Extract HH:MM
             req_hhmm = req_time.strftime("%H:%M")
             start = allowed_hours.get("start", "00:00")
             end = allowed_hours.get("end", "23:59")
-            
+
             if start <= end:
                 return start <= req_hhmm <= end
             else:
@@ -122,7 +131,13 @@ class PolicyService:
     def _check_resource_attributes(self, resource_env: str, policy_env: str) -> bool:
         return resource_env == policy_env
 
-    def _evaluate_conditions(self, conditions: dict, user_roles: Sequence, context: dict, resource_attributes: dict = None) -> bool:
+    def _evaluate_conditions(
+        self,
+        conditions: dict,
+        user_roles: Sequence,
+        context: dict,
+        resource_attributes: dict = None,
+    ) -> bool:
         """
         Evaluate if a policy's conditions MATCH the given context.
         All specified conditions in the policy must match (AND logic).
@@ -132,24 +147,32 @@ class PolicyService:
             return True
 
         if "allowed_ip_ranges" in conditions:
-            if not self._check_ip_condition(context.get("ip"), conditions["allowed_ip_ranges"]):
+            if not self._check_ip_condition(
+                context.get("ip"), conditions["allowed_ip_ranges"]
+            ):
                 return False
 
         if "allowed_hours" in conditions:
-            if not self._check_time_condition(context.get("time"), conditions["allowed_hours"]):
+            if not self._check_time_condition(
+                context.get("time"), conditions["allowed_hours"]
+            ):
                 return False
 
         if "allowed_roles" in conditions:
             if not self._check_role_condition(user_roles, conditions["allowed_roles"]):
                 return False
-                
+
         if "environment" in conditions and resource_attributes:
-            if not self._check_resource_attributes(resource_attributes.get("environment"), conditions["environment"]):
+            if not self._check_resource_attributes(
+                resource_attributes.get("environment"), conditions["environment"]
+            ):
                 return False
 
         return True
 
-    def evaluate_policy(self, user_id: UUID, resource_id: str, action: str, context: dict = None) -> dict:
+    def evaluate_policy(
+        self, user_id: UUID, resource_id: str, action: str, context: dict = None
+    ) -> dict:
         """
         Evaluate access combining RBAC and ABAC rules.
         """
@@ -162,13 +185,21 @@ class PolicyService:
             "policy_id": None,
             "requires_approval": False,
             "max_duration_seconds": None,
-            "trace": []
+            "trace": [],
         }
 
         def log_and_return():
-            status = AuditStatus.SUCCESS if decision["decision"] == "ALLOW" else AuditStatus.DENIED
-            severity = AuditSeverity.INFO if decision["decision"] == "ALLOW" else AuditSeverity.HIGH
-            
+            status = (
+                AuditStatus.SUCCESS
+                if decision["decision"] == "ALLOW"
+                else AuditStatus.DENIED
+            )
+            severity = (
+                AuditSeverity.INFO
+                if decision["decision"] == "ALLOW"
+                else AuditSeverity.HIGH
+            )
+
             self._audit_service.log_event(
                 actor_user_id=user_id,
                 action=f"POLICY_EVAL_{action.upper()}",
@@ -177,11 +208,13 @@ class PolicyService:
                 status=status,
                 severity=severity,
                 details={
-                    "policy_id": str(decision["policy_id"]) if decision["policy_id"] else None,
+                    "policy_id": (
+                        str(decision["policy_id"]) if decision["policy_id"] else None
+                    ),
                     "reason": decision["reason"],
                     "trace": decision["trace"],
-                    "decision": decision["decision"]
-                }
+                    "decision": decision["decision"],
+                },
             )
             return decision
 
@@ -198,12 +231,12 @@ class PolicyService:
             decision["reason"] = "RBAC permission missing"
             decision["trace"].append(decision["reason"])
             return log_and_return()
-            
+
         decision["trace"].append("RBAC permission granted")
 
         # 2. ABAC Evaluation
         active_policies = self._repo.get_active_policies()
-        
+
         if not active_policies:
             decision["decision"] = "ALLOW"
             decision["reason"] = "RBAC granted and no active ABAC policies"
@@ -211,20 +244,25 @@ class PolicyService:
             return log_and_return()
 
         user_roles = self._auth_service.get_user_roles(user_id)
-        
+
         matching_policies = []
         has_any_allow_policy = False
-        
+
         for p in active_policies:
             if p.effect == PolicyEffect.ALLOW:
                 has_any_allow_policy = True
-                
-            if self._evaluate_conditions(p.conditions, user_roles, context, resource_attributes={"environment": "production"}):
+
+            if self._evaluate_conditions(
+                p.conditions,
+                user_roles,
+                context,
+                resource_attributes={"environment": "production"},
+            ):
                 matching_policies.append(p)
 
         # Sort matching policies by priority desc
         matching_policies.sort(key=lambda x: x.priority, reverse=True)
-        
+
         # Evaluate Explicit DENY
         for p in matching_policies:
             if p.effect == PolicyEffect.DENY:
@@ -233,7 +271,7 @@ class PolicyService:
                 decision["policy_id"] = str(p.id)
                 decision["trace"].append(decision["reason"])
                 return log_and_return()
-                
+
         # Evaluate Explicit ALLOW
         for p in matching_policies:
             if p.effect == PolicyEffect.ALLOW:
@@ -244,19 +282,20 @@ class PolicyService:
                 decision["max_duration_seconds"] = p.max_duration_seconds
                 decision["trace"].append(decision["reason"])
                 return log_and_return()
-                
-        # No matching policies. 
+
+        # No matching policies.
         # If the system has ANY ALLOW policies, and we didn't match them, implicit DENY.
         if has_any_allow_policy:
             decision["decision"] = "DENY"
             decision["reason"] = "Implicit DENY: matched no ALLOW policies"
             decision["trace"].append("No applicable ALLOW policies found for context")
             return log_and_return()
-            
+
         # No ALLOW policies exist, and no DENY policies matched. Base RBAC allows.
         decision["decision"] = "ALLOW"
         decision["reason"] = "RBAC granted and no matching DENY policies"
         decision["trace"].append("ABAC evaluated (no ALLOW policies required)")
         return log_and_return()
+
 
 __all__ = ["PolicyService"]

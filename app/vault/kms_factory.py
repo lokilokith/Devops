@@ -15,12 +15,12 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.vault.models import KMSConfiguration, KMSProviderType
 from app.vault.crypto import (
+    KMSConfigurationError,
     LocalKMSProvider,
     UnsupportedKMSProviderError,
-    KMSConfigurationError,
 )
+from app.vault.models import KMSConfiguration, KMSProviderType
 
 
 class KMSProviderFactory:

@@ -1,5 +1,3 @@
-import uuid
-
 from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
 from app.notifications.models import (
@@ -30,6 +28,7 @@ def test_create_notification_success(app, db_session):
 
     svc = NotificationService(repo, audit, provider, db_session)
     from tests.fixtures.factories import UserFactory
+
     test_user = UserFactory()
     db_session.add(test_user)
     db_session.flush()
@@ -55,6 +54,7 @@ def test_create_notification_provider_failure(app, db_session):
 
     svc = NotificationService(repo, audit, provider, db_session)
     from tests.fixtures.factories import UserFactory
+
     test_user = UserFactory()
     db_session.add(test_user)
     db_session.flush()
@@ -80,6 +80,7 @@ def test_retry_failed_notifications(app, db_session):
 
     svc = NotificationService(repo, audit, provider, db_session)
     from tests.fixtures.factories import UserFactory
+
     test_user = UserFactory()
     db_session.add(test_user)
     db_session.flush()
@@ -112,6 +113,7 @@ def test_mark_as_read(app, db_session):
 
     svc = NotificationService(repo, audit, provider, db_session)
     from tests.fixtures.factories import UserFactory
+
     test_user = UserFactory()
     db_session.add(test_user)
     db_session.flush()

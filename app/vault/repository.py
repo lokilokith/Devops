@@ -7,9 +7,9 @@ from uuid import UUID
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
-from app.vault.exceptions import ConcurrencyError
 
 from app.vault.domain import Secret, SecretMetadata, SecretVersion
+from app.vault.exceptions import ConcurrencyError
 from app.vault.models import VaultSecret, VaultSecretVersion
 
 
@@ -43,7 +43,6 @@ class SecretRepository(Protocol):
     def count_by_status(self, status: str) -> int:
         """Count secrets by status."""
         ...
-
 
 
 class SqlAlchemyVaultRepository:
@@ -135,7 +134,9 @@ class SqlAlchemyVaultRepository:
             self._session.refresh(model)
 
         # Upsert versions
-        existing_version_ids = {v.id for v in model.versions} if model.versions else set()
+        existing_version_ids = (
+            {v.id for v in model.versions} if model.versions else set()
+        )
         for v in secret.versions:
             if v.id not in existing_version_ids:
                 v_model = VaultSecretVersion(
@@ -178,11 +179,13 @@ class SqlAlchemyVaultRepository:
 
     def list_active_secrets(self) -> list[Secret]:
         from app.vault.models import SecretStatus
+
         stmt = select(VaultSecret).where(VaultSecret.status == SecretStatus.ACTIVE)
         models = self._session.execute(stmt).scalars().unique().all()
         return [self._to_domain(model) for model in models]
 
     def count_by_status(self, status: str) -> int:
         from sqlalchemy import func
+
         stmt = select(func.count(VaultSecret.id)).where(VaultSecret.status == status)
         return self._session.execute(stmt).scalar_one()

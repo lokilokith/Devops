@@ -154,6 +154,7 @@ class ApprovalWorkflowService:
             if req:
                 self._ar_repo.approve(req.id, approver_id)  # repo handles flush inside
                 from app.notifications.events import request_approved
+
                 request_approved.send(
                     self,
                     payload={

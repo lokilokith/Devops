@@ -22,6 +22,7 @@ class SecretStatus(str, enum.Enum):
 @dataclass
 class SecretMetadata:
     """Value Object for cryptographic metadata."""
+
     key_version: str
     algorithm: str
     nonce: str
@@ -31,6 +32,7 @@ class SecretMetadata:
 @dataclass
 class SecretVersion:
     """Entity representing a specific iteration of a secret's payload."""
+
     id: UUID
     secret_id: UUID
     encrypted_dek: bytes
@@ -43,6 +45,7 @@ class SecretVersion:
 @dataclass
 class Secret:
     """Aggregate Root for a Privileged Secret."""
+
     id: UUID
     resource_id: UUID
     status: SecretStatus
@@ -61,7 +64,12 @@ class Secret:
         # We don't automatically set ACTIVE here if it's called from complete_rotation or initialization,
         # but for backward compatibility with Phase 1, we preserve it.
         # However, for Phase 2, rotation lifecycle manages status.
-        if self.status not in (SecretStatus.ROTATING, SecretStatus.ACTIVE, SecretStatus.JIT_EPHEMERAL, SecretStatus.CHECKED_OUT):
+        if self.status not in (
+            SecretStatus.ROTATING,
+            SecretStatus.ACTIVE,
+            SecretStatus.JIT_EPHEMERAL,
+            SecretStatus.CHECKED_OUT,
+        ):
             self.status = SecretStatus.ACTIVE
         self.updated_at = datetime.now(timezone.utc)
 
@@ -77,24 +85,24 @@ class Secret:
         self.status = SecretStatus.ROTATING
         self.updated_at = datetime.now(timezone.utc)
 
-
     def begin_rotation(self) -> None:
         if self.status == SecretStatus.CHECKED_OUT:
             from app.vault.exceptions import SecretCheckedOutError
+
             raise SecretCheckedOutError("Cannot begin rotation from checked_out state.")
         if self.status not in (SecretStatus.ACTIVE, SecretStatus.ROTATING):
             raise ValueError(f"Cannot begin rotation from {self.status.value} state.")
         self.status = SecretStatus.ROTATING
         self.updated_at = datetime.now(timezone.utc)
 
-
     def complete_rotation(self, version: SecretVersion) -> None:
         if self.status != SecretStatus.ROTATING:
-            raise ValueError(f"Cannot complete rotation from {self.status.value} state.")
+            raise ValueError(
+                f"Cannot complete rotation from {self.status.value} state."
+            )
         self.add_version(version)
         self.status = SecretStatus.ACTIVE
         self.updated_at = datetime.now(timezone.utc)
-
 
     def fail_rotation(self) -> None:
         if self.status != SecretStatus.ROTATING:
@@ -102,13 +110,11 @@ class Secret:
         self.status = SecretStatus.DESYNCED
         self.updated_at = datetime.now(timezone.utc)
 
-
     def restore_from_desynced(self) -> None:
         if self.status != SecretStatus.DESYNCED:
             raise ValueError(f"Cannot restore from {self.status.value} state.")
         self.status = SecretStatus.ACTIVE
         self.updated_at = datetime.now(timezone.utc)
-
 
     def disable(self) -> None:
         if self.status == SecretStatus.TOMBSTONED:
@@ -116,13 +122,11 @@ class Secret:
         self.status = SecretStatus.DISABLED
         self.updated_at = datetime.now(timezone.utc)
 
-
     def tombstone(self) -> None:
         if self.status == SecretStatus.TOMBSTONED:
             raise ValueError("Secret is already tombstoned.")
         self.status = SecretStatus.TOMBSTONED
         self.updated_at = datetime.now(timezone.utc)
-
 
     def get_current_version(self) -> Optional[SecretVersion]:
         if not self.current_version_id:
@@ -147,7 +151,7 @@ class SecretFactory:
             row_version=1,
             created_at=now,
             updated_at=now,
-            versions=[]
+            versions=[],
         )
 
 

@@ -8,7 +8,7 @@ import time
 from flask_restx import Namespace, Resource, fields
 from sqlalchemy import text
 
-from app.extensions import db
+from app.platform.extensions import db
 
 # Namespace definition
 ns = Namespace("health", description="System health and telemetry check")

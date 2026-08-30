@@ -8,7 +8,6 @@ from app.api.decorators import login_required, requires_permission
 from app.api.pagination import DEFAULT_PAGE_SIZE, validate_pagination
 from app.api.responses import success_response
 from app.auth.service import AuthService
-from app.extensions import db
 from app.identity.exceptions import DuplicateUserError, UserNotFoundError
 from app.identity.repository import IdentityRepository
 from app.identity.schemas import (
@@ -26,6 +25,7 @@ from app.identity.validators import (
     validate_user_update,
     validate_uuid,
 )
+from app.platform.extensions import db
 
 
 def get_service():
@@ -144,7 +144,9 @@ class UserResource(Resource):
 
 @identity_ns.route("/<string:user_id>/disable")
 class UserDisableResource(Resource):
-    @identity_ns.doc(summary="Disable user", description="Disable a user account by UUID.")
+    @identity_ns.doc(
+        summary="Disable user", description="Disable a user account by UUID."
+    )
     @identity_ns.marshal_with(user_response_model)
     @login_required
     @requires_permission("users", "update")

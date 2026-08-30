@@ -133,7 +133,7 @@ def test_update_permission(service, mock_repo):
             "action": "execute",
             "status": "inactive",
         },
-        uuid4()
+        uuid4(),
     )
 
     assert res.permission_name == "new_n"

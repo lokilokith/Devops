@@ -25,9 +25,9 @@ from app.access_requests.validators import validate_access_request_create
 from app.api.decorators import login_required, requires_permission
 from app.api.pagination import validate_pagination
 from app.authorization.service import AuthorizationService
-from app.extensions import db
 from app.identity.repository import IdentityRepository
 from app.permissions.models import PermissionAction
+from app.platform.extensions import db
 from app.resources.repository import ResourcesRepository
 from app.roles.repository import RolesRepository
 from app.user_roles.repository import UserRolesRepository
@@ -50,8 +50,14 @@ class AccessRequestList(Resource):
     @access_requests_ns.param(
         "limit", "Number of records to return", type=int, default=50
     )
-    @access_requests_ns.param("search", "Text search (request_number, justification)", type=str)
-    @access_requests_ns.param("status", "Filter by status (pending/approved/rejected/cancelled/expired)", type=str)
+    @access_requests_ns.param(
+        "search", "Text search (request_number, justification)", type=str
+    )
+    @access_requests_ns.param(
+        "status",
+        "Filter by status (pending/approved/rejected/cancelled/expired)",
+        type=str,
+    )
     @access_requests_ns.marshal_with(access_requests_list_response_model)
     @login_required
     def get(self):
@@ -227,13 +233,17 @@ class AccessRequestApprove(Resource):
         """Approve an access request."""
         service = get_service()
         try:
+            from werkzeug.exceptions import Forbidden
+
+            from app.approval_workflow.exceptions import (
+                ApprovalWorkflowInvalidStateError,
+                ApprovalWorkflowValidationError,
+            )
             from app.approval_workflow.repository import ApprovalWorkflowRepository
             from app.approval_workflow.service import ApprovalWorkflowService
             from app.audit.repository import AuditRepository
             from app.audit.service import AuditService
             from app.user_roles.repository import UserRolesRepository
-            from app.approval_workflow.exceptions import ApprovalWorkflowValidationError, ApprovalWorkflowInvalidStateError
-            from werkzeug.exceptions import Forbidden
 
             wf_svc = ApprovalWorkflowService(
                 ApprovalWorkflowRepository(db.session),
@@ -244,7 +254,9 @@ class AccessRequestApprove(Resource):
             )
 
             workflows = wf_svc._repo.get_by_request(request_id)
-            pending_wf = next((wf for wf in workflows if wf.status.value == "pending"), None)
+            pending_wf = next(
+                (wf for wf in workflows if wf.status.value == "pending"), None
+            )
             if not pending_wf:
                 raise Conflict("No pending approval workflow found for this request.")
 
@@ -322,6 +334,7 @@ class AccessRequestCancel(Resource):
 
         if not can_cancel_all and req.requester_id != UUID(g.user_id):
             from werkzeug.exceptions import Forbidden
+
             raise Forbidden("You do not have permission to cancel this request.")
 
         try:

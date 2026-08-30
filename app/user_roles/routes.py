@@ -6,8 +6,8 @@ from werkzeug.exceptions import NotFound
 
 from app.api.decorators import login_required, requires_permission
 from app.api.responses import success_response
-from app.extensions import db
 from app.identity.repository import IdentityRepository
+from app.platform.extensions import db
 from app.roles.repository import RolesRepository
 from app.user_roles.exceptions import ValidationError
 from app.user_roles.repository import UserRolesRepository

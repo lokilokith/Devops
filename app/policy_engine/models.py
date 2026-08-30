@@ -23,11 +23,15 @@ class AccessPolicy(BaseModel):
 
     __tablename__ = "access_policies"
 
-    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(
+        String(255), nullable=False, unique=True, index=True
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     conditions: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     max_duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    requires_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    requires_approval: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )
     effect: Mapped[PolicyEffect] = mapped_column(
         Enum(
             PolicyEffect,
@@ -42,5 +46,6 @@ class AccessPolicy(BaseModel):
     )
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
 
 __all__ = ["AccessPolicy", "PolicyEffect"]

@@ -1,5 +1,4 @@
-from unittest.mock import patch
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -108,7 +107,7 @@ def test_assign_role_repo_error(service, mock_repo, mock_users_repo, mock_roles_
         service.assign_role(user_id, role_id)
 
 
-@patch('app.notifications.events.permission_revoked.send')
+@patch("app.notifications.events.permission_revoked.send")
 def test_remove_role_success(mock_send, service, mock_repo):
     user_id = uuid4()
     role_id = uuid4()

@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, TypeVar
+from typing import Sequence, TypeVar
 from uuid import UUID
 
-from sqlalchemy import Select, exists, func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.policy_engine.exceptions import PolicyNotFoundError, PolicyRepositoryError
-from app.policy_engine.models import AccessPolicy, PolicyEffect
+from app.policy_engine.models import AccessPolicy
 from app.shared.database import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
@@ -42,7 +42,9 @@ class PolicyRepository:
             return self._commit_and_refresh(policy)
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise PolicyRepositoryError("Failed to create policy database record.") from err
+            raise PolicyRepositoryError(
+                "Failed to create policy database record."
+            ) from err
 
     def get_by_id(self, policy_id: UUID) -> AccessPolicy | None:
         try:
@@ -66,7 +68,9 @@ class PolicyRepository:
             return bool(self._session.execute(stmt).scalar())
         except SQLAlchemyError as err:
             self._session.rollback()
-            raise PolicyRepositoryError("Failed to check policy name existence.") from err
+            raise PolicyRepositoryError(
+                "Failed to check policy name existence."
+            ) from err
 
     def list_policies(
         self,
@@ -78,13 +82,15 @@ class PolicyRepository:
         try:
             bounded_limit, normalized_offset = self._normalize_pagination(limit, offset)
             stmt = select(AccessPolicy)
-            
+
             if enabled is not None:
                 stmt = stmt.where(AccessPolicy.enabled == enabled)
-                
-            stmt = stmt.order_by(AccessPolicy.priority.desc(), AccessPolicy.created_at.desc())
+
+            stmt = stmt.order_by(
+                AccessPolicy.priority.desc(), AccessPolicy.created_at.desc()
+            )
             stmt = stmt.offset(normalized_offset).limit(bounded_limit)
-            
+
             return self._session.execute(stmt).scalars().all()
         except SQLAlchemyError as err:
             self._session.rollback()
@@ -113,7 +119,7 @@ class PolicyRepository:
             policy = self.get_by_id(policy_id)
             if not policy:
                 raise PolicyNotFoundError(f"Policy with ID '{policy_id}' not found.")
-            
+
             # Policy dependencies checks could be implemented here.
             # E.g., check if policy is currently attached to active requests/sessions.
 
@@ -138,5 +144,6 @@ class PolicyRepository:
         except SQLAlchemyError as err:
             self._session.rollback()
             raise PolicyRepositoryError("Failed to fetch active policies.") from err
+
 
 __all__ = ["PolicyRepository"]

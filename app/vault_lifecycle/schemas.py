@@ -1,13 +1,18 @@
 """Vault Lifecycle API Schemas."""
 
 from marshmallow import Schema, fields, validate
+
 from app.vault_lifecycle.models import RotationStatus
 
 
 class SecretRotationPolicyCreateSchema(Schema):
     vault_secret_id = fields.UUID(required=True)
-    rotation_interval_seconds = fields.Int(required=True, validate=validate.Range(min=60))
-    status = fields.Enum(RotationStatus, by_value=True, load_default=RotationStatus.ACTIVE)
+    rotation_interval_seconds = fields.Int(
+        required=True, validate=validate.Range(min=60)
+    )
+    status = fields.Enum(
+        RotationStatus, by_value=True, load_default=RotationStatus.ACTIVE
+    )
     rotation_script_id = fields.UUID(allow_none=True)
 
 

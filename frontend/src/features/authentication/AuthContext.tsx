@@ -35,17 +35,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(true)
   const queryClient = useQueryClient()
 
-  const logout = useCallback(() => {
-    setToken(null)
-    setUser(null)
-    localStorage.removeItem("opsforge_token")
-    localStorage.removeItem("opsforge_refresh_token")
-    localStorage.removeItem("opsforge_user")
-    
-    // Clear query cache to prevent stale data
-    queryClient.clear()
-    
-    router.navigate("/login", { replace: true })
+  const logout = useCallback(async () => {
+    try {
+      await authService.logout()
+    } catch (e) {
+      console.error("Backend logout failed", e)
+    } finally {
+      setToken(null)
+      setUser(null)
+      localStorage.removeItem("opsforge_token")
+      localStorage.removeItem("opsforge_refresh_token")
+      localStorage.removeItem("opsforge_user")
+      
+      // Clear query cache to prevent stale data
+      queryClient.clear()
+      
+      router.navigate("/login", { replace: true })
+    }
   }, [queryClient])
 
   useEffect(() => {

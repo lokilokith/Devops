@@ -1,7 +1,7 @@
 import pytest
 from flask import Flask
 
-from app.extensions import db
+from app.platform.extensions import db
 from app.resources.models import Resource, ResourceStatus, ResourceType
 from app.resources.repository import ResourcesRepository
 

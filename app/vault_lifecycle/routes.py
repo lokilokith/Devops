@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from flask import request, g
-from flask_restx import Resource, Namespace, marshal
+
+from flask import g, request
+from flask_restx import Namespace, Resource
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from app.api.decorators import login_required
@@ -13,19 +14,19 @@ from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
 from app.authorization.exceptions import AuthorizationDeniedError
 from app.authorization.service import AuthorizationService
-from app.extensions import db
+from app.platform.extensions import db
 from app.vault_lifecycle.exceptions import PolicyNotFoundError, PolicyValidationError
 from app.vault_lifecycle.repository import SecretRotationPolicyRepository
 from app.vault_lifecycle.schemas import (
     SecretRotationPolicyCreateSchema,
-    SecretRotationPolicyUpdateSchema,
     SecretRotationPolicyResponseSchema,
-    RotationEligibilityResponseSchema
+    SecretRotationPolicyUpdateSchema,
 )
 from app.vault_lifecycle.service import VaultLifecycleService
 
-
-vault_lifecycle_ns = Namespace("vault-lifecycle", description="Vault Lifecycle Operations")
+vault_lifecycle_ns = Namespace(
+    "vault-lifecycle", description="Vault Lifecycle Operations"
+)
 
 create_schema = SecretRotationPolicyCreateSchema()
 update_schema = SecretRotationPolicyUpdateSchema()
@@ -37,7 +38,7 @@ def get_lifecycle_service() -> VaultLifecycleService:
         repository=SecretRotationPolicyRepository(db.session),
         audit_service=AuditService(AuditRepository(db.session)),
         authz_service=AuthorizationService(db.session),
-        session=db.session
+        session=db.session,
     )
 
 
@@ -50,7 +51,7 @@ class LifecyclePoliciesCollection(Resource):
             data = create_schema.load(request.json)
         except Exception as e:
             raise BadRequest(str(e))
-            
+
         service = get_lifecycle_service()
         try:
             policy = service.create_policy(uuid.UUID(g.user_id), data)
@@ -84,7 +85,7 @@ class LifecyclePolicyItem(Resource):
             data = update_schema.load(request.json)
         except Exception as e:
             raise BadRequest(str(e))
-            
+
         service = get_lifecycle_service()
         try:
             policy = service.update_policy(uuid.UUID(g.user_id), policy_id, data)

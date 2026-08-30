@@ -1,11 +1,12 @@
 """CLI commands for Credential Checkout."""
 
-import click
-from flask.cli import with_appcontext
 from uuid import UUID
 
-from app.platform.extensions import db
+import click
+from flask.cli import with_appcontext
+
 from app.checkout.routes import get_checkout_service
+from app.platform.extensions import db
 from app.workers.expiration_worker import run_expiration_job
 
 
@@ -52,8 +53,10 @@ def process_expirations_cmd():
     try:
         result = run_expiration_job(db.session, service)
         click.echo(f"Run ID: {result['run_id']}")
-        click.echo(f"Processed {result['succeeded']} of {result['attempted']} expired leases.")
-        if result['failed'] > 0:
+        click.echo(
+            f"Processed {result['succeeded']} of {result['attempted']} expired leases."
+        )
+        if result["failed"] > 0:
             click.echo(f"Failed: {result['failed']}")
     except Exception as e:
         click.secho(f"Expiration processing failed: {e}", fg="red")

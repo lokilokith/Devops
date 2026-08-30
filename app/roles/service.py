@@ -73,6 +73,9 @@ class RolesService:
     def update_role(self, role_id: UUID, data: dict) -> Role:
         role = self.get_role(role_id)
 
+        if str(role.role_type.value) == RoleType.SYSTEM.value:
+            raise ValidationError("Cannot modify system roles.")
+
         if "role_name" in data and data["role_name"] != role.role_name:
             try:
                 if self._repository.exists_by_role_name(data["role_name"]):
@@ -130,8 +133,9 @@ class RolesService:
             raise RolesServiceError(f"Failed to activate role: {e}") from e
 
     def deactivate_role(self, role_id: UUID) -> Role:
-        # Check if role exists
-        self.get_role(role_id)
+        role = self.get_role(role_id)
+        if str(role.role_type.value) == RoleType.SYSTEM.value:
+            raise ValidationError("Cannot deactivate system roles.")
         try:
             return self._repository.deactivate(role_id)
         except RolesRepositoryError as e:

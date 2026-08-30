@@ -7,7 +7,7 @@ from werkzeug.exceptions import Conflict, NotFound
 from app.api.decorators import login_required, requires_permission
 from app.api.pagination import DEFAULT_PAGE_SIZE, validate_pagination
 from app.api.responses import success_response
-from app.extensions import db
+from app.platform.extensions import db
 from app.roles.exceptions import DuplicateRoleError
 from app.roles.repository import RolesRepository
 from app.roles.schemas import (

@@ -1,17 +1,21 @@
 import logging
 from datetime import datetime, timezone
+
 import click
 from flask.cli import with_appcontext
 
-from app.platform.extensions import db
 from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
-from app.vault.kms_factory import KMSProviderFactory
+from app.platform.extensions import db
 from app.vault.crypto import EncryptionService
+from app.vault.executor_registry import ExecutorRegistry
+from app.vault.kms_factory import KMSProviderFactory
 from app.vault_lifecycle.repository import SecretRotationPolicyRepository
 from app.vault_lifecycle.service import VaultLifecycleService
-from app.vault.executor_registry import ExecutorRegistry
-from app.workers.rotation_worker import run_rotation_job, _PrivilegedAuthorizationService
+from app.workers.rotation_worker import (
+    _PrivilegedAuthorizationService,
+    run_rotation_job,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +24,9 @@ logger = logging.getLogger(__name__)
 @with_appcontext
 def rotate_secrets_command():
     """Manually dispatch the credential rotation background job."""
-    click.echo(f"[{datetime.now(timezone.utc).isoformat()}] Starting rotation dispatch...")
+    click.echo(
+        f"[{datetime.now(timezone.utc).isoformat()}] Starting rotation dispatch..."
+    )
 
     try:
         # 1. Database session
@@ -76,7 +82,7 @@ def rotate_secrets_command():
         raise
     except Exception as e:
         logger.error(f"Rotation CLI dispatch failed: {e}")
-        click.secho(f"Rotation CLI dispatch failed unexpectedly.", fg="red")
+        click.secho("Rotation CLI dispatch failed unexpectedly.", fg="red")
         raise click.Abort()
 
 

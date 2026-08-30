@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from app.cli.checkout_commands import process_expirations_cmd
 
@@ -19,7 +20,9 @@ def test_process_expirations_command_success(runner):
         "duration_seconds": 0.5,
     }
 
-    with patch("app.cli.checkout_commands.run_expiration_job", return_value=expected_result) as mock_run:
+    with patch(
+        "app.cli.checkout_commands.run_expiration_job", return_value=expected_result
+    ) as mock_run:
         result = runner.invoke(process_expirations_cmd)
 
         assert result.exit_code == 0
@@ -34,9 +37,14 @@ def test_process_expirations_command_success(runner):
 
 def test_process_expirations_command_exception(runner):
     """Test that the command handles exceptions safely."""
-    with patch("app.cli.checkout_commands.run_expiration_job", side_effect=Exception("Database down")) as mock_run:
+    with patch(
+        "app.cli.checkout_commands.run_expiration_job",
+        side_effect=Exception("Database down"),
+    ) as mock_run:
         result = runner.invoke(process_expirations_cmd)
 
-        assert result.exit_code == 0 # click.secho just prints red, exit code might be 0 unless sys.exit(1) is called
+        assert (
+            result.exit_code == 0
+        )  # click.secho just prints red, exit code might be 0 unless sys.exit(1) is called
         assert "Expiration processing failed: Database down" in result.output
         mock_run.assert_called_once()

@@ -1,31 +1,33 @@
 """JIT Access API Routes."""
 
 from uuid import UUID
+
 from flask import g, request
 from flask_restx import Namespace, Resource
 from marshmallow import ValidationError
 
-from app.api.decorators import login_required, requires_permission
-from app.permissions.models import PermissionAction
-from app.platform.extensions import db
-from app.shared.exceptions import ValidationException
-from app.jit_access.schemas import JITAccessRequestSchema, JITAccessGrantResponseSchema
-from app.jit_access.service import JITAccessService
-from app.jit_access.repository import JITAccessRepository
 from app.access_requests.repository import AccessRequestRepository
 from app.access_requests.service import AccessRequestService
-from app.policy_engine.repository import PolicyRepository
-from app.policy_engine.service import PolicyService
+from app.api.decorators import login_required, requires_permission
 from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
 from app.authorization.service import AuthorizationService
+from app.jit_access.repository import JITAccessRepository
+from app.jit_access.schemas import JITAccessGrantResponseSchema, JITAccessRequestSchema
+from app.jit_access.service import JITAccessService
+from app.permissions.models import PermissionAction
+from app.platform.extensions import db
+from app.policy_engine.repository import PolicyRepository
+from app.policy_engine.service import PolicyService
+from app.shared.exceptions import ValidationException
 
 jit_ns = Namespace("jit", description="JIT Privileged Access operations")
 
+
 def build_jit_service() -> JITAccessService:
     from app.identity.repository import IdentityRepository
-    from app.roles.repository import RolesRepository
     from app.resources.repository import ResourcesRepository
+    from app.roles.repository import RolesRepository
     from app.user_roles.repository import UserRolesRepository
 
     ar_repo = AccessRequestRepository(db.session)
@@ -35,23 +37,18 @@ def build_jit_service() -> JITAccessService:
     ur_repo = UserRolesRepository(db.session)
 
     ar_service = AccessRequestService(ar_repo, user_repo, role_repo, res_repo, ur_repo)
-    
+
     auth_service = AuthorizationService(db.session)
     audit_service = AuditService(AuditRepository(db.session))
-    
+
     policy_service = PolicyService(
-        PolicyRepository(db.session),
-        auth_service,
-        audit_service
+        PolicyRepository(db.session), auth_service, audit_service
     )
-    
+
     return JITAccessService(
-        JITAccessRepository(),
-        ar_service,
-        policy_service,
-        audit_service,
-        auth_service
+        JITAccessRepository(), ar_service, policy_service, audit_service, auth_service
     )
+
 
 @jit_ns.route("/request")
 class JITRequestResource(Resource):
@@ -64,16 +61,22 @@ class JITRequestResource(Resource):
             data = schema.load(request.get_json())
         except ValidationError as e:
             raise ValidationException(str(e.messages))
-            
+
         svc = build_jit_service()
-        
+
         if str(data["user_id"]) != g.user_id:
             try:
-                is_admin = svc._auth.has_permission(UUID(g.user_id), "jit_grants", PermissionAction.UPDATE)
+                is_admin = svc._auth.has_permission(
+                    UUID(g.user_id), "jit_grants", PermissionAction.UPDATE
+                )
                 if not is_admin:
-                    raise ValidationException("Cannot request access for another user without admin privileges")
+                    raise ValidationException(
+                        "Cannot request access for another user without admin privileges"
+                    )
             except ValueError:
-                raise ValidationException("Cannot request access for another user without admin privileges")
+                raise ValidationException(
+                    "Cannot request access for another user without admin privileges"
+                )
 
         grant = svc.request_access(
             requester_id=data["user_id"],
@@ -81,7 +84,7 @@ class JITRequestResource(Resource):
             resource_id=data["resource_id"],
             duration_minutes=data["duration_minutes"],
             reason=data["reason"],
-            context=data.get("context", {})
+            context=data.get("context", {}),
         )
         return JITAccessGrantResponseSchema().dump(grant), 201
 
@@ -96,24 +99,22 @@ class JITGrantsResource(Resource):
         offset = request.args.get("offset", 0, type=int)
         status = request.args.get("status")
         user_id_str = request.args.get("user_id")
-        
+
         user_id = UUID(user_id_str) if user_id_str else None
-        
+
         from app.jit_access.models import JITGrantStatus
+
         status_enum = JITGrantStatus(status) if status else None
-        
+
         grants, total = JITAccessRepository.list_grants(
-            user_id=user_id,
-            status=status_enum,
-            limit=limit,
-            offset=offset
+            user_id=user_id, status=status_enum, limit=limit, offset=offset
         )
-        
+
         return {
             "items": JITAccessGrantResponseSchema(many=True).dump(grants),
             "total": total,
             "limit": limit,
-            "offset": offset
+            "offset": offset,
         }, 200
 
 
@@ -143,9 +144,8 @@ class JITCurrentSessionResource(Resource):
     def get(self):
         """Get active JIT sessions for the current user."""
         from app.jit_access.models import JITGrantStatus
+
         grants, _ = JITAccessRepository.list_grants(
-            user_id=UUID(g.user_id),
-            status=JITGrantStatus.ACTIVE,
-            limit=100
+            user_id=UUID(g.user_id), status=JITGrantStatus.ACTIVE, limit=100
         )
         return JITAccessGrantResponseSchema(many=True).dump(grants), 200

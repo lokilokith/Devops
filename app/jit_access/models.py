@@ -4,7 +4,7 @@ import enum
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String
+from sqlalchemy import DateTime, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -13,7 +13,7 @@ from app.shared.database import BaseModel
 
 class JITGrantStatus(str, enum.Enum):
     """Lifecycle states for JIT Access Grants."""
-    
+
     PENDING = "pending"
     ACTIVE = "active"
     EXPIRED = "expired"
@@ -68,9 +68,17 @@ class JITAccessGrant(BaseModel):
         index=True,
         default=JITGrantStatus.PENDING,
     )
-    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    activated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 class JITAccessSession(BaseModel):
     """Tracks ephemeral credentials created for Just-In-Time access."""
 
@@ -88,12 +96,17 @@ class JITAccessSession(BaseModel):
         nullable=False,
         unique=True,
     )
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     def expire(self) -> bool:
         """Expire the session. Returns True if state changed, False if already expired."""
         from datetime import datetime, timezone
+
         now = datetime.now(timezone.utc)
         if self.revoked_at is not None:
             raise ValueError("Cannot expire a revoked session.")
@@ -109,6 +122,7 @@ class JITAccessSession(BaseModel):
     def revoke(self) -> bool:
         """Revoke the session. Returns True if state changed, False if already revoked."""
         from datetime import datetime, timezone
+
         if self.revoked_at is not None:
             return False
         self.revoked_at = datetime.now(timezone.utc)

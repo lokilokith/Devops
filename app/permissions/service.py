@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Sequence
 from uuid import UUID
 
+from app.audit.models import AuditSeverity, AuditStatus
+from app.audit.service import AuditService
 from app.permissions.exceptions import (
     DuplicatePermissionError,
     PermissionNotFoundError,
@@ -16,11 +18,10 @@ from app.permissions.models import Permission, PermissionAction
 from app.permissions.repository import PermissionsRepository
 
 
-from app.audit.service import AuditService
-from app.audit.models import AuditStatus, AuditSeverity
-
 class PermissionsService:
-    def __init__(self, repository: PermissionsRepository, audit_service: AuditService = None):
+    def __init__(
+        self, repository: PermissionsRepository, audit_service: AuditService = None
+    ):
         self._repository = repository
         self._audit_service = audit_service
 
@@ -63,7 +64,10 @@ class PermissionsService:
                     resource_id=str(created_permission.id),
                     status=AuditStatus.SUCCESS,
                     severity=AuditSeverity.INFO,
-                    details={"permission_code": permission_code, "permission_name": permission_name}
+                    details={
+                        "permission_code": permission_code,
+                        "permission_name": permission_name,
+                    },
                 )
                 self._repository._session.commit()
             return created_permission
@@ -98,7 +102,9 @@ class PermissionsService:
         except PermissionsRepositoryError as e:
             raise PermissionsServiceError(f"Failed to list permissions: {e}") from e
 
-    def update_permission(self, permission_id: UUID, data: dict, actor_id: UUID) -> Permission:
+    def update_permission(
+        self, permission_id: UUID, data: dict, actor_id: UUID
+    ) -> Permission:
         permission = self.get_permission(permission_id)
 
         if (
@@ -137,7 +143,9 @@ class PermissionsService:
         except PermissionsRepositoryError as e:
             raise PermissionsServiceError(f"Failed to update permission: {e}") from e
 
-    def patch_permission(self, permission_id: UUID, data: dict, actor_id: UUID) -> Permission:
+    def patch_permission(
+        self, permission_id: UUID, data: dict, actor_id: UUID
+    ) -> Permission:
         return self.update_permission(permission_id, data, actor_id)
 
     def delete_permission(self, permission_id: UUID, actor_id: UUID) -> bool:

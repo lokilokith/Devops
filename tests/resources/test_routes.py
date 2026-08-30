@@ -5,7 +5,7 @@ import pytest
 from flask import Flask
 
 from app.api.errors import errors_bp
-from app.extensions import db
+from app.platform.extensions import db
 from app.resources.routes import resources_ns
 from app.routes.__init__ import CustomApi
 

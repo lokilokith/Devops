@@ -4,32 +4,34 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select as sa_select
+from sqlalchemy import text as sa_text
+from sqlalchemy.orm import sessionmaker
 
-from app.checkout.exceptions import CheckoutError, InvalidCheckoutStateError
-from app.checkout.models import CredentialLease, LeaseStatus
+from app.access_requests.models import AccessRequest, AccessRequestStatus
+from app.audit.models import AuditLog
+from app.audit.repository import AuditRepository
+from app.audit.service import AuditService
+from app.auth.service import AuthService
+from app.checkout.exceptions import InvalidCheckoutStateError
+from app.checkout.models import LeaseStatus
 from app.checkout.repository import CredentialLeaseRepository
 from app.checkout.service import CheckoutService
-from app.extensions import db
-from app.resources.models import Criticality, Environment, Resource, ResourceStatus, ResourceType
+from app.identity.models import User, UserStatus
+from app.identity.repository import IdentityRepository
+from app.platform.extensions import db
+from app.resources.models import (
+    Criticality,
+    Environment,
+    Resource,
+    ResourceStatus,
+    ResourceType,
+)
 from app.vault.crypto import EncryptionService
-from app.vault.domain import SecretFactory, SecretMetadata, SecretVersion, SecretStatus
+from app.vault.domain import SecretFactory, SecretMetadata, SecretStatus, SecretVersion
 from app.vault.kms_factory import KMSProviderFactory
 from app.vault.repository import SqlAlchemyVaultRepository
 from app.vault_lifecycle.repository import SecretRotationPolicyRepository
-from app.identity.models import User, UserStatus
-from app.authorization.service import AuthorizationService
-from app.identity.repository import IdentityRepository
-from app.auth.service import AuthService
-from app.access_requests.models import AccessRequest, AccessRequestStatus
-from app.audit.repository import AuditRepository
-from app.audit.service import AuditService
-from app.workers.rotation_worker import _process_policy
-from app.vault.exceptions import ConcurrencyError
-from app.shared.database import db
-from sqlalchemy import text as sa_text
-from app.audit.models import AuditLog
 
 
 @pytest.fixture(autouse=True)
@@ -60,6 +62,7 @@ def _setup_service(session, app):
     policy_repo = SecretRotationPolicyRepository(session)
 
     from app.access_requests.repository import AccessRequestRepository
+
     ar_repo = AccessRequestRepository(session)
     audit_repo = AuditRepository(session)
     audit_service = AuditService(audit_repo)
@@ -68,8 +71,17 @@ def _setup_service(session, app):
     encryption_service = EncryptionService(kms_provider)
 
     identity_repo = IdentityRepository(session)
-    auth_service = AuthService(identity_repo)
-    authz_service = AuthorizationService(session)
+    _auth_service = AuthService(identity_repo)  # noqa: F841
+
+    from unittest.mock import MagicMock
+
+    from app.policy_engine.decisions import PolicyDecision
+
+    mock_authz = MagicMock()
+    mock_authz.authorize.return_value = None
+
+    mock_policy_engine = MagicMock()
+    mock_policy_engine.evaluate_vault_retrieval.return_value = PolicyDecision.ALLOW
 
     return CheckoutService(
         session=session,
@@ -78,8 +90,9 @@ def _setup_service(session, app):
         policy_repo=policy_repo,
         ar_repo=ar_repo,
         audit_service=audit_service,
-        authz_service=authz_service,
+        authz_service=mock_authz,
         encryption_service=encryption_service,
+        policy_engine=mock_policy_engine,
     )
 
 
@@ -116,7 +129,7 @@ def _setup_test_data(session):
         encrypted_payload=b"payload",
         metadata=meta,
         created_at=datetime.now(timezone.utc),
-        created_by=user_id
+        created_by=user_id,
     )
     secret.add_version(sv)
 
@@ -130,21 +143,13 @@ def _setup_test_data(session):
         requested_resource_id=resource.id,
         status=AccessRequestStatus.APPROVED,
         requested_end=datetime.now(timezone.utc) + timedelta(hours=1),
-        business_justification="test"
+        business_justification="test",
     )
     session.add(ar)
     session.commit()
 
     return user, resource, secret, ar
 
-
-def test_expiration_vs_checkin_concurrency(app):
-    """Race condition between Expiration Worker and manual Check-in."""
-    sess_a, sess_b = _new_sessions()
-
-    user, resource, secret, ar = _setup_test_data(sess_a)
-    svc_a = _setup_service(sess_a, app)
-    svc_b = _setup_service(sess_b, app)
 
 def test_expiration_vs_checkin_concurrency(app):
     """Race condition between Expiration Worker and manual Check-in."""
@@ -271,10 +276,16 @@ def test_expiration_worker_vs_expiration_worker_concurrency(app):
     assert final_lease.status == LeaseStatus.EXPIRED
 
     # Audit log should only have one EXPIRED event
-    logs = sess_a.execute(sa_select(AuditLog).where(
-        AuditLog.action == "LEASE_EXPIRED",
-        AuditLog.resource_id == str(lease.id)
-    )).scalars().all()
+    logs = (
+        sess_a.execute(
+            sa_select(AuditLog).where(
+                AuditLog.action == "LEASE_EXPIRED",
+                AuditLog.resource_id == str(lease.id),
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert len(logs) == 1
 
 
@@ -284,18 +295,19 @@ def test_expiration_vs_rotation_concurrency(app):
 
     user, resource, secret, ar = _setup_test_data(sess_a)
 
-    from app.vault_lifecycle.models import SecretRotationPolicy, RotationStatus
+    from app.vault_lifecycle.models import RotationStatus, SecretRotationPolicy
+
     policy = SecretRotationPolicy(
         id=uuid.uuid4(),
         vault_secret_id=secret.id,
         plugin_name="manual",
         rotation_interval_days=30,
-        rotation_interval_seconds=30*86400,
+        rotation_interval_seconds=30 * 86400,
         status=RotationStatus.ACTIVE,
         next_rotation_at=datetime.now(timezone.utc) - timedelta(days=1),
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
-        retry_count=0
+        retry_count=0,
     )
     sess_a.add(policy)
 
@@ -308,8 +320,8 @@ def test_expiration_vs_rotation_concurrency(app):
     lease.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
     sess_a.commit()
 
-    from app.workers.rotation_worker import _fetch_eligible_policies
     from app.vault.models import VaultSecret
+    from app.workers.rotation_worker import _fetch_eligible_policies
 
     # Refresh sess_b so it sees the latest DB state
     sess_b.expire_all()
@@ -319,14 +331,18 @@ def test_expiration_vs_rotation_concurrency(app):
     # So rotation worker fetches eligible policies and gets nothing.
 
     # Debug: Check secret status in DB from sess_b
-    db_secret = sess_b.execute(sa_select(VaultSecret).where(VaultSecret.id == secret.id)).scalar_one()
+    db_secret = sess_b.execute(
+        sa_select(VaultSecret).where(VaultSecret.id == secret.id)
+    ).scalar_one()
     print(f"\nDEBUG My Secret ID: {secret.id}")
     print(f"DEBUG DB Secret Status: {db_secret.status}")
 
     from sqlalchemy.dialects import postgresql
+
     now = datetime.now(timezone.utc)
-    from app.vault_lifecycle.models import RotationStatus
     from app.vault.domain import SecretStatus
+    from app.vault_lifecycle.models import RotationStatus
+
     stmt = (
         sa_select(SecretRotationPolicy)
         .join(VaultSecret, SecretRotationPolicy.vault_secret_id == VaultSecret.id)
@@ -336,7 +352,14 @@ def test_expiration_vs_rotation_concurrency(app):
             VaultSecret.status != SecretStatus.CHECKED_OUT,
         )
     )
-    print("DEBUG SQL:", str(stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})))
+    print(
+        "DEBUG SQL:",
+        str(
+            stmt.compile(
+                dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+            )
+        ),
+    )
 
     policies = _fetch_eligible_policies(sess_b)
     # Filter to only the policy we care about to avoid cross-test pollution

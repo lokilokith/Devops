@@ -14,30 +14,36 @@ from app.vault.domain import SecretMetadata
 
 class KMSProviderError(Exception):
     """Base exception for KMS provider errors."""
+
     pass
+
 
 class UnsupportedKMSProviderError(KMSProviderError):
     """Raised when an unsupported KMS provider is requested."""
+
     pass
+
 
 class KMSConfigurationError(KMSProviderError):
     """Raised when the KMS configuration is invalid or missing."""
+
     pass
+
 
 class KMSProvider(Protocol):
     """Abstract interface for Master Key operations."""
 
-    def encrypt_dek(self, plaintext_dek: bytes, key_version: str, aad: bytes) -> bytes:
-        ...
+    def encrypt_dek(
+        self, plaintext_dek: bytes, key_version: str, aad: bytes
+    ) -> bytes: ...
 
-    def decrypt_dek(self, encrypted_dek: bytes, key_version: str, aad: bytes) -> bytes:
-        ...
+    def decrypt_dek(
+        self, encrypted_dek: bytes, key_version: str, aad: bytes
+    ) -> bytes: ...
 
-    def get_active_key_version(self) -> str:
-        ...
+    def get_active_key_version(self) -> str: ...
 
-    def supports_key_version(self, key_version: str) -> bool:
-        ...
+    def supports_key_version(self, key_version: str) -> bool: ...
 
 
 class LocalKMSProvider:
@@ -54,7 +60,9 @@ class LocalKMSProvider:
             raise ValueError(f"VAULT_MASTER_KEY is not a valid base64 string: {e}")
 
         if len(self._key) != 32:
-            raise ValueError(f"VAULT_MASTER_KEY must be exactly 32 bytes for AES-256 (got {len(self._key)})")
+            raise ValueError(
+                f"VAULT_MASTER_KEY must be exactly 32 bytes for AES-256 (got {len(self._key)})"
+            )
 
         self._active_version = "v1"
 
@@ -73,7 +81,7 @@ class LocalKMSProvider:
         if not self.supports_key_version(key_version):
             raise ValueError(f"Unsupported master key version: {key_version}")
 
-        if len(encrypted_dek) < 28: # 12 (nonce) + 16 (tag)
+        if len(encrypted_dek) < 28:  # 12 (nonce) + 16 (tag)
             raise ValueError("Encrypted DEK is too short")
 
         aesgcm = AESGCM(self._key)
@@ -97,7 +105,9 @@ class LocalEnvironmentKeyProvider(LocalKMSProvider):
     loads the master key from the `VAULT_MASTER_KEY` environment variable and
     provides the same encrypt/decrypt semantics as `LocalKMSProvider`.
     """
+
     pass
+
 
 class EncryptionService:
     """Domain service for handling envelope encryption lifecycles."""
@@ -139,7 +149,7 @@ class EncryptionService:
             encryption_context={
                 "resource_id": str(resource_id),
                 "secret_id": str(secret_id),
-            }
+            },
         )
 
         return encrypted_dek, encrypted_payload, metadata
@@ -150,7 +160,7 @@ class EncryptionService:
         secret_id: UUID,
         encrypted_dek: bytes,
         encrypted_payload: bytes,
-        metadata: SecretMetadata
+        metadata: SecretMetadata,
     ) -> bytes:
         """
         Decrypts a payload using envelope encryption.

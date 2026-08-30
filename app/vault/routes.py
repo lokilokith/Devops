@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import uuid
-import json
 
-from flask import request, g
+from flask import g, request
 from flask_restx import Resource, marshal
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -15,31 +14,32 @@ from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
 from app.authorization.exceptions import AuthorizationDeniedError
 from app.authorization.service import AuthorizationService
-from app.extensions import db
+from app.platform.extensions import db
 from app.policy_engine.engine import PolicyEngine
-from app.vault.crypto import EncryptionService, LocalKMSProvider
-from app.vault.kms_factory import KMSProviderFactory
+from app.vault.crypto import EncryptionService
 from app.vault.domain import SecretDomainService
+from app.vault.kms_factory import KMSProviderFactory
 from app.vault.repository import SqlAlchemyVaultRepository
 from app.vault.schemas import (
     secret_create_dto,
     secret_response_dto,
     secret_reveal_dto,
-    vault_statistics_dto,
-    vault_secret_response_wrapper,
-    vault_secret_list_wrapper,
-    vault_stats_wrapper,
-    vault_reveal_wrapper,
     vault_ns,
+    vault_reveal_wrapper,
+    vault_secret_list_wrapper,
+    vault_secret_response_wrapper,
+    vault_statistics_dto,
+    vault_stats_wrapper,
 )
 from app.vault.service import ApprovalRequiredError, VaultApplicationService
-from flask_restx import marshal
 
 
 def get_vault_service() -> VaultApplicationService:
     return VaultApplicationService(
         domain_service=SecretDomainService(),
-        encryption_service=EncryptionService(KMSProviderFactory.resolve_active_provider(db.session)),
+        encryption_service=EncryptionService(
+            KMSProviderFactory.resolve_active_provider(db.session)
+        ),
         repository=SqlAlchemyVaultRepository(db.session),
         policy_engine=PolicyEngine(db.session, AuthorizationService(db.session)),
         audit_service=AuditService(AuditRepository(db.session)),
@@ -80,7 +80,7 @@ class SecretCollection(Resource):
             secret = service.create_secret(
                 actor_id=uuid.UUID(g.user_id),
                 resource_id=resource_id,
-                plaintext=payload_bytes
+                plaintext=payload_bytes,
             )
             data = marshal(secret, secret_response_dto)
             return success_response(data=data, status_code=201)
@@ -118,16 +118,19 @@ class SecretReveal(Resource):
             secret = service._repository.find_by_id(secret_id)
             version = secret.get_current_version()
 
-            data = marshal({
-                "id": str(secret.id),
-                "payload": plaintext_bytes.decode("utf-8"),
-                "metadata": {
-                    "key_version": version.metadata.key_version,
-                    "algorithm": version.metadata.algorithm,
-                    "created_at": version.created_at
-                }
-            }, secret_reveal_dto)
-            
+            data = marshal(
+                {
+                    "id": str(secret.id),
+                    "payload": plaintext_bytes.decode("utf-8"),
+                    "metadata": {
+                        "key_version": version.metadata.key_version,
+                        "algorithm": version.metadata.algorithm,
+                        "created_at": version.created_at,
+                    },
+                },
+                secret_reveal_dto,
+            )
+
             return success_response(data=data, status_code=200)
 
         except ApprovalRequiredError as e:
@@ -136,7 +139,7 @@ class SecretReveal(Resource):
                 "error": "APPROVAL_REQUIRED",
                 "message": "Vault access requires approval",
                 "resource_id": str(e.resource_id),
-                "request_action": "CREATE_ACCESS_REQUEST"
+                "request_action": "CREATE_ACCESS_REQUEST",
             }, 403
         except AuthorizationDeniedError as e:
             raise Forbidden(str(e))
@@ -161,7 +164,7 @@ class SecretRotate(Resource):
             secret = service.rotate_secret(
                 actor_id=uuid.UUID(g.user_id),
                 secret_id=secret_id,
-                new_plaintext=payload_bytes
+                new_plaintext=payload_bytes,
             )
             data_resp = marshal(secret, secret_response_dto)
             return success_response(data=data_resp, status_code=200)
@@ -205,4 +208,3 @@ class VaultStatistics(Resource):
             return success_response(data=data_resp, status_code=200)
         except AuthorizationDeniedError as e:
             raise Forbidden(str(e))
-

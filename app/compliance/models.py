@@ -52,4 +52,5 @@ class ComplianceReport(BaseModel):
     report_url: Mapped[str] = mapped_column(String(1024), nullable=False)
     parameters: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
 
+
 __all__ = ["ComplianceReport", "ReportType"]

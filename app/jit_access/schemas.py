@@ -1,7 +1,9 @@
 """JIT Access API Schemas."""
 
 from marshmallow import Schema, fields, validate
+
 from app.jit_access.models import JITGrantStatus
+
 
 class JITAccessRequestSchema(Schema):
     user_id = fields.UUID(required=True)
@@ -10,6 +12,7 @@ class JITAccessRequestSchema(Schema):
     duration_minutes = fields.Int(required=True, validate=validate.Range(min=1))
     reason = fields.String(required=True, validate=validate.Length(min=3))
     context = fields.Dict(keys=fields.String(), required=False)
+
 
 class JITAccessGrantResponseSchema(Schema):
     id = fields.UUID()

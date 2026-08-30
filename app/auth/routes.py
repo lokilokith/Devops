@@ -1,6 +1,7 @@
 """Auth REST API Routes."""
 
 import logging
+import os
 from uuid import UUID
 
 from flask import g, request
@@ -18,9 +19,8 @@ from app.auth.schemas import (
     user_me_response_model,
 )
 from app.auth.service import AuthService
-from app.extensions import db
 from app.identity.repository import IdentityRepository
-from app.platform.extensions import limiter
+from app.platform.extensions import db, limiter
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,9 @@ def get_auth_service():
 
 @auth_ns.route("/login")
 class LoginResource(Resource):
-    decorators = [limiter.limit("5 per minute")]
+    decorators = [
+        limiter.limit(lambda: os.environ.get("LOGIN_RATE_LIMIT", "5 per minute"))
+    ]
 
     @auth_ns.doc(summary="Login", description="Authenticate a user and return tokens.")
     @auth_ns.expect(login_model)
@@ -83,7 +85,9 @@ class LogoutResource(Resource):
 
 @auth_ns.route("/refresh")
 class RefreshResource(Resource):
-    decorators = [limiter.limit("5 per minute")]
+    decorators = [
+        limiter.limit(lambda: os.environ.get("LOGIN_RATE_LIMIT", "5 per minute"))
+    ]
 
     @auth_ns.doc(
         summary="Refresh Token", description="Refresh an existing access token."

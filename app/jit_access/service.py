@@ -1,7 +1,6 @@
 """JIT Access Service."""
 
 from datetime import datetime, timedelta, timezone
-from typing import List, Tuple
 from uuid import UUID
 
 from app.access_requests.models import AccessRequestPriority, AccessRequestStatus
@@ -10,16 +9,15 @@ from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.service import AuditService
 from app.authorization.service import AuthorizationService
 from app.jit_access.exceptions import (
-    GrantNotFoundError,
     InvalidGrantStateError,
-    UnauthorizedActivationError,
     JITAccessError,
+    UnauthorizedActivationError,
 )
 from app.jit_access.models import JITAccessGrant, JITGrantStatus
 from app.jit_access.repository import JITAccessRepository
 from app.permissions.models import PermissionAction
-from app.policy_engine.service import PolicyService
 from app.platform.extensions import db
+from app.policy_engine.service import PolicyService
 
 
 class JITAccessService:
@@ -59,16 +57,22 @@ class JITAccessService:
                 user_id=requester_id,
                 action="create",
                 resource_id="jit_grants",
-                context={"role_id": str(role_id), "resource_id": str(resource_id), **(context or {})},
+                context={
+                    "role_id": str(role_id),
+                    "resource_id": str(resource_id),
+                    **(context or {}),
+                },
             )
             if decision.get("decision") != "ALLOW":
                 raise JITAccessError(f"Policy denied: {decision.get('reason')}")
-                
+
             # If duration exceeds policy limit
             if "max_duration_seconds" in decision and decision["max_duration_seconds"]:
                 max_minutes = decision["max_duration_seconds"] / 60
                 if duration_minutes > max_minutes:
-                    raise JITAccessError(f"Duration cannot exceed policy limit of {max_minutes} minutes")
+                    raise JITAccessError(
+                        f"Duration cannot exceed policy limit of {max_minutes} minutes"
+                    )
         except Exception as e:
             if isinstance(e, JITAccessError):
                 raise
@@ -94,7 +98,7 @@ class JITAccessService:
         # 3. Create JITAccessGrant
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(minutes=duration_minutes)
-        
+
         grant = JITAccessGrant(
             user_id=requester_id,
             role_id=role_id,
@@ -113,13 +117,17 @@ class JITAccessService:
             resource_id=str(created_grant.id),
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.INFO,
-            details={"role_id": str(role_id), "resource_id": str(resource_id), "duration": duration_minutes},
+            details={
+                "role_id": str(role_id),
+                "resource_id": str(resource_id),
+                "duration": duration_minutes,
+            },
         )
         return created_grant
 
     def activate_grant(self, grant_id: UUID, user_id: UUID) -> JITAccessGrant:
         grant = self._repo.get_by_id(grant_id)
-        
+
         if grant.status != JITGrantStatus.PENDING:
             raise InvalidGrantStateError("Only pending grants can be activated")
 
@@ -127,24 +135,32 @@ class JITAccessService:
         if grant.user_id == user_id:
             try:
                 # Can the user activate grants? (Admins might)
-                is_admin = self._auth.has_permission(user_id, "jit_grants", PermissionAction("update"))
+                is_admin = self._auth.has_permission(
+                    user_id, "jit_grants", PermissionAction("update")
+                )
                 if not is_admin:
-                    raise UnauthorizedActivationError("User cannot activate their own grant directly")
+                    raise UnauthorizedActivationError(
+                        "User cannot activate their own grant directly"
+                    )
             except ValueError:
-                raise UnauthorizedActivationError("User cannot activate their own grant directly")
+                raise UnauthorizedActivationError(
+                    "User cannot activate their own grant directly"
+                )
 
         # Ensure associated AccessRequest is in APPROVED state
         ar = self._ar_service._repo.get_by_id(grant.approval_request_id)
         if not ar:
             raise JITAccessError("Associated access request not found")
         if ar.status != AccessRequestStatus.APPROVED:
-            raise InvalidGrantStateError(f"Cannot activate grant. Access request is {ar.status.value}")
+            raise InvalidGrantStateError(
+                f"Cannot activate grant. Access request is {ar.status.value}"
+            )
 
         # Activate
         grant.status = JITGrantStatus.ACTIVE
         grant.activated_at = datetime.now(timezone.utc)
         grant.approved_by = ar.approved_by
-        
+
         # Recalculate expires_at from activation time (assuming duration is from requested_start/end or just keeping original duration relative to activation)
         # For simplicity, we just use the original expires_at if it's still in the future, or shift it.
         # Actually, let's keep it simple: the expires_at was set during creation. If it's already expired, fail.
@@ -165,33 +181,34 @@ class JITAccessService:
         )
         return updated_grant
 
-
     def create_session(
-        self, 
-        grant_id: UUID, 
-        system_actor_id: UUID,
-        vault_service,
-        plaintext: bytes
+        self, grant_id: UUID, system_actor_id: UUID, vault_service, plaintext: bytes
     ):
-        from app.jit_access.models import JITAccessSession
-        from app.jit_access.events import jit_session_created
         from sqlalchemy import select
-        
+
+        from app.jit_access.events import jit_session_created
+        from app.jit_access.models import JITAccessSession
+
         grant = self._repo.get_by_id(grant_id)
         if grant.status != JITGrantStatus.ACTIVE:
             raise InvalidGrantStateError("Grant must be ACTIVE to create a session")
-            
+
         # Check idempotency
-        stmt = select(JITAccessSession).where(JITAccessSession.access_request_id == grant.approval_request_id)
+        stmt = select(JITAccessSession).where(
+            JITAccessSession.access_request_id == grant.approval_request_id
+        )
         existing = db.session.execute(stmt).scalar_one_or_none()
         if existing:
             return existing
 
         # Delegate secret creation to vault service
-        secret = vault_service.create_secret(system_actor_id, grant.resource_id, plaintext)
-        
+        secret = vault_service.create_secret(
+            system_actor_id, grant.resource_id, plaintext
+        )
+
         # Transition secret to JIT_EPHEMERAL
         from app.vault.domain import SecretStatus
+
         secret.status = SecretStatus.JIT_EPHEMERAL
         vault_service._repository.save(secret)
         db.session.commit()
@@ -202,7 +219,7 @@ class JITAccessService:
             expires_at=grant.expires_at,
         )
         db.session.add(session)
-        
+
         self._audit.log_event(
             actor_user_id=grant.user_id,
             action="JIT_SESSION_CREATED",
@@ -210,10 +227,10 @@ class JITAccessService:
             resource_id=str(grant.approval_request_id),
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.INFO,
-            details={"grant_id": str(grant.id), "secret_id": str(secret.id)}
+            details={"grant_id": str(grant.id), "secret_id": str(secret.id)},
         )
         db.session.commit()
-        
+
         jit_session_created.send(
             self,
             payload={
@@ -221,7 +238,7 @@ class JITAccessService:
                 "session_id": str(grant.approval_request_id),
                 "grant_id": str(grant.id),
                 "actor_id": str(grant.user_id),
-            }
+            },
         )
         return session
 
@@ -231,16 +248,20 @@ class JITAccessService:
             return grant
         if grant.status != JITGrantStatus.ACTIVE:
             raise InvalidGrantStateError("Only active grants can be expired")
-            
+
         grant.status = JITGrantStatus.EXPIRED
         updated_grant = self._repo.update(grant)
-        
-        from app.jit_access.models import JITAccessSession
-        from app.jit_access.events import jit_session_expired
+
         from sqlalchemy import select
-        stmt = select(JITAccessSession).where(JITAccessSession.access_request_id == grant.approval_request_id)
+
+        from app.jit_access.events import jit_session_expired
+        from app.jit_access.models import JITAccessSession
+
+        stmt = select(JITAccessSession).where(
+            JITAccessSession.access_request_id == grant.approval_request_id
+        )
         session = db.session.execute(stmt).scalar_one_or_none()
-        
+
         if session:
             if session.expire():
                 db.session.add(session)
@@ -259,9 +280,9 @@ class JITAccessService:
                         "session_id": str(session.access_request_id),
                         "grant_id": str(grant.id),
                         "actor_id": str(grant.user_id),
-                    }
+                    },
                 )
-        
+
         self._audit.log_event(
             actor_user_id=grant.user_id,
             action="jit.expired",
@@ -274,32 +295,42 @@ class JITAccessService:
 
     def revoke_access(self, grant_id: UUID, revoker_id: UUID) -> JITAccessGrant:
         grant = self._repo.get_by_id(grant_id)
-        
+
         if grant.status == JITGrantStatus.REVOKED:
             return grant
-            
+
         # Check authorization: non-admin cannot revoke another user's grant
         if grant.user_id != revoker_id:
             try:
-                is_admin = self._auth.has_permission(revoker_id, "jit_grants", PermissionAction("delete"))
+                is_admin = self._auth.has_permission(
+                    revoker_id, "jit_grants", PermissionAction("delete")
+                )
                 if not is_admin:
-                    raise UnauthorizedActivationError("User cannot revoke another user's grant")
+                    raise UnauthorizedActivationError(
+                        "User cannot revoke another user's grant"
+                    )
             except ValueError:
-                raise UnauthorizedActivationError("User cannot revoke another user's grant")
+                raise UnauthorizedActivationError(
+                    "User cannot revoke another user's grant"
+                )
 
         if grant.status not in (JITGrantStatus.PENDING, JITGrantStatus.ACTIVE):
             raise InvalidGrantStateError("Only pending or active grants can be revoked")
-            
+
         grant.status = JITGrantStatus.REVOKED
         grant.revoked_at = datetime.now(timezone.utc)
         updated_grant = self._repo.update(grant)
-        
-        from app.jit_access.models import JITAccessSession
-        from app.jit_access.events import jit_session_revoked
+
         from sqlalchemy import select
-        stmt = select(JITAccessSession).where(JITAccessSession.access_request_id == grant.approval_request_id)
+
+        from app.jit_access.events import jit_session_revoked
+        from app.jit_access.models import JITAccessSession
+
+        stmt = select(JITAccessSession).where(
+            JITAccessSession.access_request_id == grant.approval_request_id
+        )
         session = db.session.execute(stmt).scalar_one_or_none()
-        
+
         if session:
             if session.revoke():
                 db.session.add(session)
@@ -318,9 +349,9 @@ class JITAccessService:
                         "session_id": str(session.access_request_id),
                         "grant_id": str(grant.id),
                         "actor_id": str(revoker_id),
-                    }
+                    },
                 )
-        
+
         self._audit.log_event(
             actor_user_id=revoker_id,
             action="jit.revoked",
@@ -334,10 +365,11 @@ class JITAccessService:
     def check_and_expire(self) -> int:
         """Helper to find and expire all ACTIVE grants that have passed expires_at."""
         from sqlalchemy import select
+
         now = datetime.now(timezone.utc)
         stmt = select(JITAccessGrant).where(
             JITAccessGrant.status == JITGrantStatus.ACTIVE,
-            JITAccessGrant.expires_at < now
+            JITAccessGrant.expires_at < now,
         )
         grants = db.session.execute(stmt).scalars().all()
         count = 0

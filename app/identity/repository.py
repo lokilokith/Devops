@@ -245,10 +245,12 @@ class IdentityRepository:
         try:
             # BUGFIX-008: Exclude archived users by default so deleted usernames can be reused
             if exclude_archived:
-                stmt = select(exists().where(
-                    User.username == username,
-                    User.status != UserStatus.ARCHIVED,
-                ))
+                stmt = select(
+                    exists().where(
+                        User.username == username,
+                        User.status != UserStatus.ARCHIVED,
+                    )
+                )
             else:
                 stmt = select(exists().where(User.username == username))
             return bool(self._session.scalar(stmt))
@@ -276,10 +278,12 @@ class IdentityRepository:
         try:
             # BUGFIX-008: Exclude archived users by default so deleted emails can be reused
             if exclude_archived:
-                stmt = select(exists().where(
-                    User.email == email,
-                    User.status != UserStatus.ARCHIVED,
-                ))
+                stmt = select(
+                    exists().where(
+                        User.email == email,
+                        User.status != UserStatus.ARCHIVED,
+                    )
+                )
             else:
                 stmt = select(exists().where(User.email == email))
             return bool(self._session.scalar(stmt))
