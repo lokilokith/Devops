@@ -6,13 +6,13 @@ tag: v1.2.0-architecture-contract
 
 ## Target
 image: opsforge-opsforge-target:latest (debian:bookworm-slim base)
-reproducibility: Fully reproducible via `docker compose -f docker-compose.target.yml up -d --build`
+reproducibility: Fully reproducible via `docker compose -f docker-compose.target.yml up -d --build` (verified via clean --no-cache rebuild and dual teardown/recreation)
 network: Isolated bridge network `opsforge_target_net`
 
 ## Bootstrap
 opsforge-svc: Dedicated unprivileged non-human service account (UID >= 1000)
-authentication: Ed25519 public-key authentication only; password authentication locked and disabled in sshd_config
-privilege boundary: Sudo permission strictly restricted to `/usr/local/sbin/opsforge-helper` with NOPASSWD; direct root access, shell execution, and file writing prohibited
+authentication: Ed25519 public-key authentication only; password authentication locked (passwd -l) and disabled in sshd_config
+privilege boundary: Sudo permission strictly restricted to `/usr/local/sbin/opsforge-helper` with NOPASSWD; direct root access, shell execution, compilers, and file writing prohibited
 
 ## Helper
 path: `/usr/local/sbin/opsforge-helper`
@@ -31,7 +31,7 @@ permissions: `0600` (readable/writable exclusively by root helper)
 
 ## Account Provisioning
 result: PASS
-verification: Validates POSIX account regex (`^[a-z_][a-z0-9_-]{0,31}$`), rejects protected/system accounts, installs authorized_keys atomically with 0600 mode, registers in manifest, performs direct state verification, and executes compensating rollback on any intermediate failure.
+verification: Validates POSIX account regex (`^[a-z_][a-z0-9_-]{0,31}$`), rejects protected/system accounts, locks password authentication, installs authorized_keys atomically with 0600 mode, registers in manifest, performs direct state verification, and executes compensating rollback on any intermediate failure.
 failure handling: Deterministic compensating rollback cleans up partial accounts and manifest entries if provisioning is interrupted.
 
 ## Account Removal
@@ -56,31 +56,34 @@ verification: Implemented `TargetAddressValidator` in `app/execution/network_val
 
 ## Security Tests
 result: PASS
-verification: 58 dedicated execution plane and live container security tests passing:
+verification: 77 dedicated execution plane tests passing (including 14 live container integration/adversarial tests):
   - Attempt to remove `root` rejected.
-  - Attempt to provision protected system accounts (`root`, `daemon`, `www-data`, `opsforge-svc`) rejected.
+  - Attempt to provision protected system accounts (`root`, `daemon`, `www-data`, `opsforge-svc`, etc.) rejected.
   - Command injection payloads in account names rejected.
   - Arbitrary / wildcard command set IDs in JIT grants rejected.
   - JIT grants for unmanaged accounts rejected.
   - Direct manipulation of `/var/lib/opsforge/ownership_manifest.json` by `opsforge-svc` prohibited (Permission denied).
   - Direct writing to `/etc/sudoers.d/` by `opsforge-svc` prohibited (Permission denied).
 
-## Regression
-total: 757
-passed: 757
-failed: 0
-coverage: 82% total repository coverage
+## Regression & Coverage
+tests: 791 passed, 0 failed
+coverage: 85.82% total repository coverage (verified with `pytest --cov=app --cov-report=term-missing --cov-fail-under=85`)
+status: PASS (exceeds mandatory >= 85% baseline)
 
 ## Quality
-black: PASS (361 files compliant)
-isort: PASS (361 files compliant)
+black: PASS (367 files compliant)
+isort: PASS (367 files compliant)
 flake8: PASS (0 errors)
 ruff: PASS (0 errors)
-mypy: PASS (Success: no issues found in app/execution)
+mypy: PASS (app/execution: Success: no issues found in 8 source files)
 
 ## Security
-bandit: PASS (0 issues found across execution plane)
+bandit: PASS (0 issues found across full application scan)
 pip-audit: PASS (No known vulnerabilities found)
+
+## Docker
+reproducibility: PASS (Verified with `--no-cache` full build and multi-cycle destroy/recreate)
+live target: PASS (All SSH auth, sudo restriction, helper operations, and adversarial tests passed against live container)
 
 ## Known Limitations
 1. Disposable target test credentials (`id_ed25519_opsforge_svc`) are strictly for local testing and CI test environments.
@@ -93,4 +96,4 @@ pip-audit: PASS (No known vulnerabilities found)
 - HostKeyVerifier and TargetAddressValidator primitives: READY.
 
 ## Final Decision
-PASS
+CERTIFIED

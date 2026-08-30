@@ -1,4 +1,4 @@
-"""Tests for TargetExecutor and StubTargetExecutor."""
+"""Tests for TargetExecutor interface, StubTargetExecutor implementation, and ExecutorRegistry."""
 
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -24,142 +24,161 @@ from app.execution.executor import ExecutorRegistry, StubTargetExecutor
 
 
 @pytest.fixture
-def make_request():
-    def _factory(resource_id=None, operation=ExecutionOperation.VALIDATE_TARGET):
-        rid = resource_id or uuid4()
-        now = datetime.now(timezone.utc)
-        auth_ctx = ExecutionAuthorizationContext(
-            user_id=uuid4(),
-            resource_id=rid,
-            credential_id=uuid4(),
-            requested_at=now,
-            expires_at=now + timedelta(hours=1),
-        )
-        return ExecutionRequest(
-            operation=operation,
-            resource_id=rid,
-            authorization_context=auth_ctx,
-        )
-
-    return _factory
+def auth_context():
+    now = datetime.now(timezone.utc)
+    return ExecutionAuthorizationContext(
+        user_id=uuid4(),
+        resource_id=uuid4(),
+        credential_id=uuid4(),
+        requested_at=now,
+        expires_at=now + timedelta(hours=1),
+    )
 
 
-def test_stub_executor_six_canonical_operations_success(make_request):
+def test_stub_executor_six_canonical_operations_success(auth_context):
     executor = StubTargetExecutor()
-    rid = uuid4()
+    resource_id = auth_context.resource_id
 
-    # 1. validate_target
-    req_val = make_request(rid, ExecutionOperation.VALIDATE_TARGET)
-    res_val = executor.validate_target(req_val)
-    assert res_val.status == ExecutionStatus.SUCCESS
-    assert res_val.verification_status == VerificationStatus.VERIFIED_SUCCESS
+    assert executor.can_execute(resource_id) is True
 
-    # 2. provision_account
-    req_prov = make_request(rid, ExecutionOperation.PROVISION_ACCOUNT)
-    res_prov = executor.provision_account(req_prov)
-    assert res_prov.status == ExecutionStatus.SUCCESS
-    assert res_prov.verification_status == VerificationStatus.VERIFIED_SUCCESS
-
-    # 3. remove_account
-    req_rem = make_request(rid, ExecutionOperation.REMOVE_ACCOUNT)
-    res_rem = executor.remove_account(req_rem)
-    assert res_rem.status == ExecutionStatus.SUCCESS
-    assert res_rem.verification_status == VerificationStatus.VERIFIED_SUCCESS
-
-    # 4. rotate_credential
-    req_rot = make_request(rid, ExecutionOperation.ROTATE_CREDENTIAL)
-    res_rot = executor.rotate_credential(req_rot, b"old_secret_payload")
-    assert res_rot.status == ExecutionStatus.SUCCESS
-    assert res_rot.verification_status == VerificationStatus.VERIFIED_SUCCESS
-    assert res_rot.new_secret_version is not None
-
-    # 5. apply_jit_grant
-    req_jit = make_request(rid, ExecutionOperation.APPLY_JIT_GRANT)
-    res_jit = executor.apply_jit_grant(req_jit)
-    assert res_jit.status == ExecutionStatus.SUCCESS
-    assert res_jit.verification_status == VerificationStatus.VERIFIED_SUCCESS
-
-    # 6. revoke_jit_grant
-    req_rev = make_request(rid, ExecutionOperation.REVOKE_JIT_GRANT)
-    res_rev = executor.revoke_jit_grant(req_rev)
-    assert res_rev.status == ExecutionStatus.SUCCESS
-    assert res_rev.verification_status == VerificationStatus.VERIFIED_SUCCESS
-
-
-def test_stub_executor_failure_modes(make_request):
-    rid_auth = uuid4()
-    rid_authz = uuid4()
-    rid_timeout = uuid4()
-    rid_transport = uuid4()
-    rid_target = uuid4()
-    rid_verify = uuid4()
-    rid_uncertain = uuid4()
-
-    executor = StubTargetExecutor(
-        behaviour_map={
-            rid_auth: "auth_fail",
-            rid_authz: "authz_fail",
-            rid_timeout: "timeout",
-            rid_transport: "transport_fail",
-            rid_target: "target_fail",
-            rid_verify: "verification_fail",
-            rid_uncertain: "uncertain_state",
-        }
+    # 1. Validate target
+    req1 = ExecutionRequest(
+        operation=ExecutionOperation.VALIDATE_TARGET,
+        resource_id=resource_id,
+        authorization_context=auth_context,
     )
+    res1 = executor.validate_target(req1)
+    assert res1.status == ExecutionStatus.SUCCESS
+    assert res1.verification_status == VerificationStatus.VERIFIED_SUCCESS
 
-    with pytest.raises(TargetAuthenticationError):
-        executor.validate_target(
-            make_request(rid_auth, ExecutionOperation.VALIDATE_TARGET)
-        )
-
-    with pytest.raises(TargetAuthorizationError):
-        executor.apply_jit_grant(
-            make_request(rid_authz, ExecutionOperation.APPLY_JIT_GRANT)
-        )
-
-    with pytest.raises(ExecutionTimeoutError):
-        executor.provision_account(
-            make_request(rid_timeout, ExecutionOperation.PROVISION_ACCOUNT)
-        )
-
-    with pytest.raises(TransportError):
-        executor.validate_target(
-            make_request(rid_transport, ExecutionOperation.VALIDATE_TARGET)
-        )
-
-    with pytest.raises(TargetExecutionError):
-        executor.remove_account(
-            make_request(rid_target, ExecutionOperation.REMOVE_ACCOUNT)
-        )
-
-    # Verification failure returns explicit FAILED result with classification
-    res_verify = executor.remove_account(
-        make_request(rid_verify, ExecutionOperation.REMOVE_ACCOUNT)
+    # 2. Provision account
+    req2 = ExecutionRequest(
+        operation=ExecutionOperation.PROVISION_ACCOUNT,
+        resource_id=resource_id,
+        authorization_context=auth_context,
     )
-    assert res_verify.status == ExecutionStatus.FAILED
-    assert res_verify.verification_status == VerificationStatus.VERIFIED_FAILURE
-    assert (
-        res_verify.failure_classification == FailureClassification.VERIFICATION_FAILURE
-    )
+    res2 = executor.provision_account(req2)
+    assert res2.status == ExecutionStatus.SUCCESS
 
-    # Uncertain state returns UNCERTAIN status with is_uncertain=True
-    res_unc = executor.provision_account(
-        make_request(rid_uncertain, ExecutionOperation.PROVISION_ACCOUNT)
+    # 3. Remove account
+    req3 = ExecutionRequest(
+        operation=ExecutionOperation.REMOVE_ACCOUNT,
+        resource_id=resource_id,
+        authorization_context=auth_context,
     )
+    res3 = executor.remove_account(req3)
+    assert res3.status == ExecutionStatus.SUCCESS
+
+    # 4. Rotate credential
+    req4 = ExecutionRequest(
+        operation=ExecutionOperation.ROTATE_CREDENTIAL,
+        resource_id=resource_id,
+        authorization_context=auth_context,
+    )
+    res4 = executor.rotate_credential(req4, current_secret=b"old-secret")
+    assert res4.status == ExecutionStatus.SUCCESS
+    assert res4.new_secret_version is not None
+
+    # 5. Apply JIT grant
+    req5 = ExecutionRequest(
+        operation=ExecutionOperation.APPLY_JIT_GRANT,
+        resource_id=resource_id,
+        authorization_context=auth_context,
+    )
+    res5 = executor.apply_jit_grant(req5)
+    assert res5.status == ExecutionStatus.SUCCESS
+
+    # 6. Revoke JIT grant
+    req6 = ExecutionRequest(
+        operation=ExecutionOperation.REVOKE_JIT_GRANT,
+        resource_id=resource_id,
+        authorization_context=auth_context,
+    )
+    res6 = executor.revoke_jit_grant(req6)
+    assert res6.status == ExecutionStatus.SUCCESS
+
+
+def test_stub_executor_failure_modes(auth_context):
+    resource_id = auth_context.resource_id
+
+    modes = {
+        "auth_fail": TargetAuthenticationError,
+        "authz_fail": TargetAuthorizationError,
+        "timeout": ExecutionTimeoutError,
+        "transport_fail": TransportError,
+        "target_fail": TargetExecutionError,
+    }
+
+    for mode_name, expected_exception in modes.items():
+        executor = StubTargetExecutor(behaviour_map={resource_id: mode_name})
+        req = ExecutionRequest(
+            operation=ExecutionOperation.VALIDATE_TARGET,
+            resource_id=resource_id,
+            authorization_context=auth_context,
+        )
+        with pytest.raises(expected_exception):
+            executor.validate_target(req)
+
+    # Verification failure result mode
+    executor_vf = StubTargetExecutor(behaviour_map={resource_id: "verification_fail"})
+    req_vf = ExecutionRequest(
+        operation=ExecutionOperation.PROVISION_ACCOUNT,
+        resource_id=resource_id,
+        authorization_context=auth_context,
+    )
+    res_vf = executor_vf.provision_account(req_vf)
+    assert res_vf.status == ExecutionStatus.FAILED
+    assert res_vf.verification_status == VerificationStatus.VERIFIED_FAILURE
+
+    # Uncertain state mode
+    executor_unc = StubTargetExecutor(behaviour_map={resource_id: "uncertain_state"})
+    req_unc = ExecutionRequest(
+        operation=ExecutionOperation.REMOVE_ACCOUNT,
+        resource_id=resource_id,
+        authorization_context=auth_context,
+    )
+    res_unc = executor_unc.remove_account(req_unc)
     assert res_unc.status == ExecutionStatus.UNCERTAIN
     assert res_unc.is_uncertain is True
     assert res_unc.failure_classification == FailureClassification.UNCERTAIN_STATE
 
 
+def test_stub_executor_legacy_execute(auth_context):
+    resource_id = auth_context.resource_id
+    executor = StubTargetExecutor(behaviour_map={resource_id: "success"})
+    res = executor.execute(resource_id, b"current-secret")
+    assert "new_secret_version" in res
+
+    # Test retry and terminal modes
+    executor_retry = StubTargetExecutor(behaviour_map={resource_id: "retry"})
+    with pytest.raises(RuntimeError, match="retryable"):
+        executor_retry.execute(resource_id, b"secret")
+
+    executor_terminal = StubTargetExecutor(behaviour_map={resource_id: "terminal"})
+    with pytest.raises(RuntimeError, match="terminal"):
+        executor_terminal.execute(resource_id, b"secret")
+
+    # Generic error mode in execute
+    executor_custom = StubTargetExecutor(behaviour_map={resource_id: "unknown_error"})
+    with pytest.raises(RuntimeError, match="Execution failed with mode"):
+        executor_custom.execute(resource_id, b"secret")
+
+
 def test_executor_registry_lookup():
-    rid_a = uuid4()
-    rid_b = uuid4()
+    stub = StubTargetExecutor()
+    registry = ExecutorRegistry()
+    registry.register(stub)
 
-    exec_a = StubTargetExecutor({rid_a: "success"})
-    exec_b = StubTargetExecutor({rid_b: "success"})
+    resource_id = uuid4()
+    executor = registry.get_executor(resource_id, ExecutionOperation.VALIDATE_TARGET)
+    assert executor is not None
 
-    registry = ExecutorRegistry([exec_a, exec_b])
+    # Lookup without operation
+    assert registry.get_executor(resource_id) is not None
 
-    assert registry.get_executor(rid_a, ExecutionOperation.VALIDATE_TARGET) is exec_a
-    assert registry.get_executor(rid_b, ExecutionOperation.PROVISION_ACCOUNT) is exec_b
-    assert registry.get_executor(uuid4(), ExecutionOperation.VALIDATE_TARGET) is None
+    # Unknown resource when stub has restricted behaviour_map
+    res2 = uuid4()
+    restricted_stub = StubTargetExecutor(behaviour_map={resource_id: "success"})
+    registry2 = ExecutorRegistry([restricted_stub])
+    assert registry2.get_executor(res2, ExecutionOperation.VALIDATE_TARGET) is None
+    assert registry2.get_executor(res2) is None

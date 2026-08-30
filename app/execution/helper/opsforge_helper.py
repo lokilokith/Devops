@@ -25,6 +25,7 @@ import datetime
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Set
@@ -136,6 +137,17 @@ def _get_uid() -> int:
 def _get_euid() -> int:
     """Return caller EUID safely across POSIX and non-POSIX platforms."""
     return int(getattr(os, "geteuid", lambda: 0)())
+
+
+def _safe_unlink(path: str) -> None:
+    """Remove a file safely across POSIX and Windows (handling read-only flags)."""
+    if os.path.exists(path):
+        try:
+            if os.name == "nt":
+                os.chmod(path, stat.S_IWRITE)
+            os.unlink(path)
+        except Exception:
+            pass
 
 
 def _chown(path: str, uid: int, gid: int) -> None:
@@ -304,7 +316,7 @@ def save_manifest(data: Dict[str, Any]) -> None:
                 os.close(dir_fd)
     except Exception as e:
         if os.path.exists(temp_path):
-            os.unlink(temp_path)
+            _safe_unlink(temp_path)
         raise HelperExecutionError(f"Failed to persist ownership manifest: {e}") from e
 
 
@@ -472,9 +484,12 @@ def remove_account(account: str) -> None:
             if entry.startswith("opsforge-jit-"):
                 fpath = os.path.join(SUDOERS_DIR, entry)
                 try:
+                    should_remove = False
                     with open(fpath, "r", encoding="utf-8") as f:
                         if account in f.read():
-                            os.unlink(fpath)
+                            should_remove = True
+                    if should_remove:
+                        os.unlink(fpath)
                 except Exception:
                     pass
 
@@ -516,12 +531,13 @@ def add_jit_grant(grant_id: str, account: str, command_set_id: str) -> None:
     if not os.path.exists(SUDOERS_DIR):
         raise HelperExecutionError(f"Sudoers directory '{SUDOERS_DIR}' does not exist.")
 
-    # Check sudoers.d ownership and permissions
-    dir_stat = os.stat(SUDOERS_DIR)
-    if dir_stat.st_mode & 0o002:  # world-writable
-        raise HelperSecurityError(
-            f"Security violation: {SUDOERS_DIR} is world-writable!"
-        )
+    # Check sudoers.d ownership and permissions on POSIX
+    if os.name != "nt":
+        dir_stat = os.stat(SUDOERS_DIR)
+        if dir_stat.st_mode & 0o002:  # world-writable
+            raise HelperSecurityError(
+                f"Security violation: {SUDOERS_DIR} is world-writable!"
+            )
 
     # Format drop-in content: strict commands separated by commas
     cmd_string = ", ".join(allowed_commands)
@@ -578,7 +594,7 @@ def add_jit_grant(grant_id: str, account: str, command_set_id: str) -> None:
 
     except Exception as e:
         if os.path.exists(temp_file):
-            os.unlink(temp_file)
+            _safe_unlink(temp_file)
         raise HelperExecutionError(f"add_jit_grant failed: {e}") from e
 
 
@@ -588,7 +604,7 @@ def remove_jit_grant(grant_id: str) -> None:
 
     target_file = os.path.join(SUDOERS_DIR, f"opsforge-jit-{grant_id}")
     if os.path.exists(target_file):
-        os.unlink(target_file)
+        _safe_unlink(target_file)
 
         # Fsync directory on POSIX
         if os.name != "nt" and os.path.exists(SUDOERS_DIR):

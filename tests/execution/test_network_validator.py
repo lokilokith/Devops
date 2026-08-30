@@ -1,5 +1,6 @@
 """Unit tests for TargetAddressValidator and SSRF defense."""
 
+import ipaddress
 import socket
 
 import pytest
@@ -35,6 +36,28 @@ def test_target_address_validator_public_hostname(monkeypatch):
     assert dest.resolved_ip == "93.184.216.34"
     assert dest.port == 22
     assert not dest.is_ipv6
+
+
+def test_target_address_validator_ipv6_resolution(monkeypatch):
+    """Test valid IPv6 public address resolution."""
+
+    def fake_getaddrinfo(host, port, **kwargs):
+        return [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("2606:2800:220:1:248:1893:25c8:1946", port),
+            )
+        ]
+
+    monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
+
+    validator = TargetAddressValidator(allowed_ports={22})
+    dest = validator.validate_destination("ipv6.example.com", 22)
+    assert dest.is_ipv6 is True
+    assert dest.resolved_ip == "2606:2800:220:1:248:1893:25c8:1946"
 
 
 def test_target_address_validator_blocks_cloud_metadata(monkeypatch):
@@ -145,6 +168,52 @@ def test_target_address_validator_blocks_multicast(monkeypatch):
         validator.validate_destination("mdns.target", 22)
 
 
+def test_target_address_validator_blocks_ipv6_doc_network(monkeypatch):
+    """Test IPv6 documentation network 2001:db8::/32 is rejected."""
+
+    def fake_getaddrinfo(host, port, **kwargs):
+        return [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("2001:db8::1", port),
+            )
+        ]
+
+    monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
+
+    validator = TargetAddressValidator(allowed_ports={22})
+    with pytest.raises(TargetAddressValidationError, match="blocked IPv6 network"):
+        validator.validate_destination("doc.ipv6.target", 22)
+
+
+def test_target_address_validator_custom_blocked_network(monkeypatch):
+    """Test custom blocked network list."""
+
+    def fake_getaddrinfo(host, port, **kwargs):
+        return [
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("10.50.1.1", port),
+            )
+        ]
+
+    monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
+
+    custom_net = ipaddress.ip_network("10.50.0.0/16")
+    validator = TargetAddressValidator(
+        allowed_ports={22}, custom_blocked_networks=[custom_net]
+    )
+
+    with pytest.raises(TargetAddressValidationError, match="custom blocked network"):
+        validator.validate_destination("internal.corp", 22)
+
+
 def test_target_address_validator_port_boundary():
     """Test port boundaries (invalid ports, out of range, disallowed ports)."""
     validator = TargetAddressValidator(allowed_ports={22, 2222})
@@ -188,3 +257,14 @@ def test_target_address_validator_dns_failure(monkeypatch):
     validator = TargetAddressValidator()
     with pytest.raises(TargetAddressValidationError, match="DNS resolution failed"):
         validator.validate_destination("nonexistent-host-12345.local", 22)
+
+
+def test_target_address_validator_empty_addr_info(monkeypatch):
+    """Test empty addrinfo list raises TargetAddressValidationError."""
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **kw: [])
+
+    validator = TargetAddressValidator()
+    with pytest.raises(
+        TargetAddressValidationError, match="No address information resolved"
+    ):
+        validator.validate_destination("empty.local", 22)
