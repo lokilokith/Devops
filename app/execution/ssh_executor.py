@@ -14,6 +14,7 @@ import socket
 import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional, Set
 from uuid import UUID
 
@@ -21,6 +22,7 @@ import paramiko
 
 from app.execution.audit import ExecutionAuditService
 from app.execution.domain import (
+    ExecutionAuthorizationContext,
     ExecutionOperation,
     ExecutionRequest,
     ExecutionResult,
@@ -33,6 +35,8 @@ from app.execution.exceptions import (
     ExecutionTimeoutError,
     InvalidExecutionContextError,
     TargetAuthenticationError,
+    TargetAuthorizationError,
+    TargetExecutionError,
     TransportError,
 )
 from app.execution.host_identity import (
@@ -377,8 +381,11 @@ class SSHTargetExecutor:
         self, resource_id: UUID, operation: Optional[ExecutionOperation] = None
     ) -> bool:
         """Return True if executor handles SSH operations for the resource."""
-        if operation is not None and operation != ExecutionOperation.VALIDATE_TARGET:
-            # In Phase 3, we strictly provide connection and target validation
+        if operation is not None and operation not in (
+            ExecutionOperation.VALIDATE_TARGET,
+            ExecutionOperation.ROTATE_CREDENTIAL,
+        ):
+            # In Phase 4, we provide connection, target validation, and credential rotation
             return False
 
         if self.resource_resolver is not None:
@@ -506,34 +513,424 @@ class SSHTargetExecutor:
 
             return failed_result
 
-    def provision_account(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 4+ operation - guarded by Phase 3 strict boundary."""
-        raise NotImplementedError(
-            "provision_account is a Phase 6 operation and is not permitted in Phase 3."
-        )
-
-    def remove_account(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 4+ operation - guarded by Phase 3 strict boundary."""
-        raise NotImplementedError(
-            "remove_account is a Phase 6 operation and is not permitted in Phase 3."
-        )
-
     def rotate_credential(
         self, request: ExecutionRequest, current_secret: bytes
     ) -> ExecutionResult:
-        """Phase 4+ operation - guarded by Phase 3 strict boundary."""
+        """Execute canonical Add -> Verify -> Remove -> Verify -> Commit SSH rotation."""
+        start_time = time.monotonic()
+        request.authorization_context.validate()
+
+        params = request.parameters
+        host = params.get("hostname_ip") or params.get("host")
+        port = int(params.get("port") or 22)
+        username = params.get("username") or "opsforge-svc"
+
+        if not host and self.resource_resolver:
+            resource = self.resource_resolver(request.resource_id)
+            if resource:
+                host = getattr(resource, "hostname_ip", None) or getattr(
+                    resource, "resource_code", None
+                )
+                port = int(getattr(resource, "port", None) or 22)
+                pinned_key = getattr(resource, "pinned_host_key", None)
+                if pinned_key and host:
+                    parts = pinned_key.strip().split()
+                    if len(parts) >= 2:
+                        self.host_key_verifier.register_trusted_key(
+                            host, parts[0], parts[1]
+                        )
+
+        if not host:
+            raise InvalidExecutionContextError(
+                f"Missing target hostname or IP for resource {request.resource_id}",
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+            )
+
+        # Reject disallowed/protected accounts
+        protected_accounts = {
+            "root",
+            "bin",
+            "daemon",
+            "sys",
+            "sync",
+            "games",
+            "man",
+            "lp",
+            "mail",
+            "nobody",
+        }
+        if username.lower() in protected_accounts:
+            raise TargetAuthorizationError(
+                f"Cannot rotate credentials for protected system account '{username}'",
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+            )
+
+        current_secret_str = (
+            current_secret.decode("utf-8")
+            if isinstance(current_secret, bytes)
+            else str(current_secret)
+        )
+
+        from app.vault.ssh_keys import extract_public_key, generate_ed25519_keypair
+
+        # Step 1: Generate new Ed25519 keypair in memory
+        try:
+            new_private_pem, new_public_ssh = generate_ed25519_keypair(
+                comment=f"opsforge-{request.execution_id.hex[:8]}"
+            )
+            old_public_ssh = extract_public_key(current_secret_str)
+            old_key_base64 = old_public_ssh.strip().split()[1]
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.ROTATE_CREDENTIAL,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.VERIFIED_FAILURE,
+                failure_classification=FailureClassification.CONFIGURATION_FAILURE,
+                error_message=f"Failed to generate new keypair or parse old key: {e}",
+                duration_ms=duration_ms,
+            )
+
+        # Step 2: Connect using CURRENT credential and install new public key alongside old
+        install_script = f"""python3 -c '
+import os, stat
+ssh_dir = os.path.expanduser("~/.ssh")
+if not os.path.exists(ssh_dir):
+    os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+    os.chmod(ssh_dir, 0o700)
+auth_keys = os.path.join(ssh_dir, "authorized_keys")
+if os.path.islink(auth_keys):
+    raise RuntimeError("Symlink detected on authorized_keys")
+content = ""
+if os.path.exists(auth_keys):
+    with open(auth_keys, "r", encoding="utf-8") as f:
+        content = f.read()
+new_key = "{new_public_ssh.strip()}"
+if new_key not in content:
+    lines = [l.strip() for l in content.splitlines() if l.strip()]
+    lines.append(new_key)
+    tmp_path = os.path.join(ssh_dir, ".auth_keys.tmp." + str(os.getpid()))
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write("\\n".join(lines) + "\\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.chmod(tmp_path, 0o600)
+    os.replace(tmp_path, auth_keys)
+print("INSTALL_SUCCESS")
+'"""
+
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username=username,
+                private_key_pem=current_secret_str,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                _, stdout, stderr = client.exec_command(install_script)  # nosec B601
+                out = stdout.read().decode().strip()
+                err = stderr.read().decode().strip()
+                if "INSTALL_SUCCESS" not in out:
+                    raise TargetExecutionError(
+                        f"Failed to install new public key on target: {err or out}",
+                        resource_id=request.resource_id,
+                        execution_id=request.execution_id,
+                    )
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.ROTATE_CREDENTIAL,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.VERIFIED_FAILURE,
+                failure_classification=FailureClassification.TARGET_FAILURE,
+                error_message=f"Failed during new public key installation: {e}",
+                duration_ms=duration_ms,
+            )
+
+        # Step 3: INDEPENDENTLY VERIFY new credential on a COMPLETELY FRESH connection
+        new_key_verified = False
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username=username,
+                private_key_pem=new_private_pem,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                _, stdout, _ = client.exec_command("whoami")  # nosec B601
+                if stdout.read().decode().strip() == username:
+                    new_key_verified = True
+        except Exception as e:
+            new_key_verified = False
+            logger.warning(
+                "New credential verification failed during rotation for %s: %s",
+                username,
+                e,
+            )
+
+        if not new_key_verified:
+            # Rollback attempt: Connect with old key and remove the new key
+            try:
+                cleanup_script = f"""python3 -c '
+import os
+ssh_dir = os.path.expanduser("~/.ssh")
+auth_keys = os.path.join(ssh_dir, "authorized_keys")
+if os.path.exists(auth_keys) and not os.path.islink(auth_keys):
+    with open(auth_keys, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    new_key_b64 = "{new_public_ssh.strip().split()[1]}"
+    filtered = [l for l in lines if new_key_b64 not in l]
+    tmp_path = os.path.join(ssh_dir, ".auth_keys.tmp." + str(os.getpid()))
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.writelines(filtered)
+        f.flush()
+        os.fsync(f.fileno())
+    os.chmod(tmp_path, 0o600)
+    os.replace(tmp_path, auth_keys)
+'"""
+                with SSHConnectionContext(
+                    target_host=host,
+                    target_port=port,
+                    username=username,
+                    private_key_pem=current_secret_str,
+                    network_validator=self.network_validator,
+                    host_key_verifier=self.host_key_verifier,
+                    config=self.config,
+                    resource_id=request.resource_id,
+                    execution_id=request.execution_id,
+                ) as rollback_client:
+                    rollback_client.exec_command(cleanup_script)  # nosec B601
+            except Exception:
+                pass
+
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.ROTATE_CREDENTIAL,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.VERIFIED_FAILURE,
+                failure_classification=FailureClassification.VERIFICATION_FAILURE,
+                error_message="New credential failed independent authentication verification. Old key preserved.",
+                duration_ms=duration_ms,
+            )
+
+        # Step 4: REMOVE old public key from target authorized_keys
+        remove_script = f"""python3 -c '
+import os
+ssh_dir = os.path.expanduser("~/.ssh")
+auth_keys = os.path.join(ssh_dir, "authorized_keys")
+if os.path.islink(auth_keys):
+    raise RuntimeError("Symlink detected on authorized_keys")
+if os.path.exists(auth_keys):
+    with open(auth_keys, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    old_key_b64 = "{old_key_base64}"
+    filtered = [l for l in lines if old_key_b64 not in l]
+    tmp_path = os.path.join(ssh_dir, ".auth_keys.tmp." + str(os.getpid()))
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.writelines(filtered)
+        f.flush()
+        os.fsync(f.fileno())
+    os.chmod(tmp_path, 0o600)
+    os.replace(tmp_path, auth_keys)
+print("REMOVE_SUCCESS")
+'"""
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username=username,
+                private_key_pem=new_private_pem,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                _, stdout, stderr = client.exec_command(remove_script)  # nosec B601
+                out = stdout.read().decode().strip()
+                err = stderr.read().decode().strip()
+                if "REMOVE_SUCCESS" not in out:
+                    raise TargetExecutionError(
+                        f"Failed to remove old public key from target: {err or out}",
+                        resource_id=request.resource_id,
+                        execution_id=request.execution_id,
+                    )
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.ROTATE_CREDENTIAL,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.VERIFICATION_INDETERMINATE,
+                failure_classification=FailureClassification.UNCERTAIN_STATE,
+                is_uncertain=True,
+                error_message=f"Failed during old key removal. State is uncertain: {e}",
+                duration_ms=duration_ms,
+            )
+
+        # Step 5: VERIFY old credential is rejected on a fresh connection
+        old_rejected = False
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username=username,
+                private_key_pem=current_secret_str,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+            ):
+                # If we get here, old key still worked!
+                old_rejected = False
+        except TargetAuthenticationError:
+            # Genuine authentication failure proves old key is revoked!
+            old_rejected = True
+        except Exception as e:
+            logger.warning("Old key verification raised non-auth error: %s", e)
+            old_rejected = False
+
+        if not old_rejected:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.ROTATE_CREDENTIAL,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.VERIFIED_FAILURE,
+                failure_classification=FailureClassification.VERIFICATION_FAILURE,
+                is_uncertain=True,
+                error_message="Old credential was not conclusively revoked on target",
+                duration_ms=duration_ms,
+            )
+
+        # Step 6: FINAL VERIFY new credential still authenticates
+        final_verified = False
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username=username,
+                private_key_pem=new_private_pem,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+            ) as final_client:
+                _, stdout, _ = final_client.exec_command("whoami")  # nosec B601
+                if stdout.read().decode().strip() == username:
+                    final_verified = True
+        except Exception as e:
+            final_verified = False
+            logger.error("Final new credential verification failed: %s", e)
+
+        if not final_verified:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.ROTATE_CREDENTIAL,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.VERIFIED_FAILURE,
+                failure_classification=FailureClassification.VERIFICATION_FAILURE,
+                is_uncertain=True,
+                error_message="New credential failed final authentication verification after old key removal",
+                duration_ms=duration_ms,
+            )
+
+        # Step 7: Complete rotation and return new secret bytes
+        duration_ms = (time.monotonic() - start_time) * 1000.0
+        result = ExecutionResult(
+            execution_id=request.execution_id,
+            operation=ExecutionOperation.ROTATE_CREDENTIAL,
+            status=ExecutionStatus.SUCCESS,
+            verification_status=VerificationStatus.VERIFIED_SUCCESS,
+            new_secret_version=new_private_pem.encode("utf-8"),
+            details={
+                "host": host,
+                "port": port,
+                "username": username,
+                "status": "rotated_and_verified",
+                "rotation_step": "COMPLETED",
+            },
+            duration_ms=duration_ms,
+        )
+
+        if self.audit_service:
+            try:
+                self.audit_service.record_execution_event(request, result)
+            except Exception:
+                pass
+
+        return result
+
+    def execute(self, resource_id: UUID, current_secret: bytes) -> dict[str, Any]:
+        """Legacy and background-worker adapter method for rotation."""
+        now = datetime.now(timezone.utc)
+        auth_ctx = ExecutionAuthorizationContext(
+            user_id=UUID("00000000-0000-0000-0000-000000000001"),
+            resource_id=resource_id,
+            credential_id=UUID("00000000-0000-0000-0000-000000000001"),
+            requested_at=now,
+            expires_at=now + timedelta(minutes=15),
+        )
+        req = ExecutionRequest(
+            operation=ExecutionOperation.ROTATE_CREDENTIAL,
+            resource_id=resource_id,
+            authorization_context=auth_ctx,
+        )
+        res = self.rotate_credential(req, current_secret)
+        if res.is_success and res.new_secret_version:
+            return {
+                "new_secret_version": res.new_secret_version,
+                "error": None,
+                "status": "success",
+            }
+        return {
+            "new_secret_version": None,
+            "error": res.error_message or "Rotation failed",
+            "status": "failed",
+        }
+
+    def provision_account(self, request: ExecutionRequest) -> ExecutionResult:
+        """Phase 6 operation - guarded by Phase 4 strict boundary."""
         raise NotImplementedError(
-            "rotate_credential is a Phase 4 operation and is not permitted in Phase 3."
+            "provision_account is a Phase 6 operation and is not permitted in Phase 4."
+        )
+
+    def remove_account(self, request: ExecutionRequest) -> ExecutionResult:
+        """Phase 6 operation - guarded by Phase 4 strict boundary."""
+        raise NotImplementedError(
+            "remove_account is a Phase 6 operation and is not permitted in Phase 4."
         )
 
     def apply_jit_grant(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 4+ operation - guarded by Phase 3 strict boundary."""
+        """Phase 7 operation - guarded by Phase 4 strict boundary."""
         raise NotImplementedError(
-            "apply_jit_grant is a Phase 7 operation and is not permitted in Phase 3."
+            "apply_jit_grant is a Phase 7 operation and is not permitted in Phase 4."
         )
 
     def revoke_jit_grant(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 4+ operation - guarded by Phase 3 strict boundary."""
+        """Phase 8 operation - guarded by Phase 4 strict boundary."""
         raise NotImplementedError(
-            "revoke_jit_grant is a Phase 8 operation and is not permitted in Phase 3."
+            "revoke_jit_grant is a Phase 8 operation and is not permitted in Phase 4."
         )

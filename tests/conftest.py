@@ -144,3 +144,43 @@ def test_user(db_session):
     db_session.add(user)
     db_session.flush()
     return user
+
+
+def is_target_container_running() -> bool:
+    """Check if the disposable target container is running and listening."""
+    import subprocess
+
+    res = subprocess.run(
+        [
+            "docker",
+            "ps",
+            "--filter",
+            "name=opsforge-disposable-target",
+            "--format",
+            "{{.Status}}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    return "Up" in res.stdout
+
+
+@pytest.fixture(scope="session")
+def target_container():
+    """Ensure disposable target container is up for integration tests."""
+    import subprocess
+    import time
+
+    if not is_target_container_running():
+        compose_file = os.path.join(
+            os.path.dirname(__file__), "../docker-compose.target.yml"
+        )
+        subprocess.run(
+            ["docker", "compose", "-f", compose_file, "up", "-d"], capture_output=True
+        )
+        for _ in range(20):
+            if is_target_container_running():
+                time.sleep(1)
+                break
+            time.sleep(0.5)
+    return is_target_container_running()

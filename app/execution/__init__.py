@@ -11,6 +11,7 @@ from app.execution.domain import (
     ExecutionResult,
     ExecutionStatus,
     FailureClassification,
+    RotationStep,
     VerificationStatus,
 )
 from app.execution.exceptions import (
@@ -45,6 +46,7 @@ from app.execution.ssh_executor import (
 
 __all__ = [
     "ExecutionOperation",
+    "RotationStep",
     "ExecutionStatus",
     "FailureClassification",
     "VerificationStatus",

@@ -27,6 +27,20 @@ class ExecutionOperation(str, Enum):
     REVOKE_JIT_GRANT = "REVOKE_JIT_GRANT"
 
 
+class RotationStep(str, Enum):
+    """Canonical durable state machine steps for credential rotation."""
+
+    PENDING = "PENDING"
+    INSTALLING = "INSTALLING"
+    NEW_CREDENTIAL_VERIFIED = "NEW_CREDENTIAL_VERIFIED"
+    REMOVING_OLD = "REMOVING_OLD"
+    OLD_CREDENTIAL_REVOKED = "OLD_CREDENTIAL_REVOKED"
+    VERIFIED = "VERIFIED"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    RECOVERY_REQUIRED = "RECOVERY_REQUIRED"
+
+
 class ExecutionStatus(str, Enum):
     """High-level status of an execution operation."""
 
