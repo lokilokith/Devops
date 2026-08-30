@@ -37,6 +37,11 @@ from app.execution.network_validator import (
     TargetAddressValidator,
     ValidatedTargetDestination,
 )
+from app.execution.ssh_executor import (
+    SSHConnectionContext,
+    SSHExecutionConfig,
+    SSHTargetExecutor,
+)
 
 __all__ = [
     "ExecutionOperation",
@@ -67,4 +72,7 @@ __all__ = [
     "HostKeyVerificationError",
     "HostKeyMismatchError",
     "UntrustedHostError",
+    "SSHExecutionConfig",
+    "SSHConnectionContext",
+    "SSHTargetExecutor",
 ]

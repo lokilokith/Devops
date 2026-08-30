@@ -43,13 +43,25 @@ def create_app(validate_kms: bool = True, testing_bootstrap: bool = False) -> Fl
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
+    # Models are imported to register metadata
+    from app.audit import models as audit_models  # noqa: F401
+    from app.checkout import models as checkout_models  # noqa: F401
+    from app.compliance import models as compliance_models  # noqa: F401
+    from app.jit_access import models as jit_access_models  # noqa: F401
+    from app.notifications import models as notif_models  # noqa: F401
     from app.platform.extensions import limiter
+    from app.policy_engine import models as policy_models  # noqa: F401
+    from app.resources import models as resource_models  # noqa: F401
+    from app.sessions import models as session_models  # noqa: F401
+    from app.vault import models as vault_models  # noqa: F401
+    from app.vault_lifecycle import models as vault_lifecycle_models  # noqa: F401
 
     if testing_bootstrap:
         from app.security.bootstrap.rbac_seed_service import seed_rbac
         from app.vault.bootstrap import seed_kms
 
         with app.app_context():
+            db.drop_all()
             db.create_all()
             seed_kms()
             seed_rbac()
@@ -85,17 +97,6 @@ def create_app(validate_kms: bool = True, testing_bootstrap: bool = False) -> Fl
     from app.platform.middleware import register_middleware
 
     register_middleware(app)
-
-    # Models are imported at module level and exported via __all__ to register metadata
-    from app.audit import models as audit_models  # noqa: F401
-    from app.checkout import models as checkout_models  # noqa: F401
-    from app.compliance import models as compliance_models  # noqa: F401
-    from app.jit_access import models as jit_access_models  # noqa: F401
-    from app.notifications import models as notif_models  # noqa: F401
-    from app.policy_engine import models as policy_models  # noqa: F401
-    from app.sessions import models as session_models  # noqa: F401
-    from app.vault import models as vault_models  # noqa: F401
-    from app.vault_lifecycle import models as vault_lifecycle_models  # noqa: F401
 
     # Register error handlers
     register_error_handlers(app)

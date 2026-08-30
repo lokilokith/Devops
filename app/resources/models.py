@@ -6,10 +6,19 @@ This module defines the Resource entity for the infrastructure/asset domain.
 from __future__ import annotations
 
 import enum
+from datetime import datetime
 from typing import List
 from uuid import UUID
 
-from sqlalchemy import Boolean, CheckConstraint, Enum, ForeignKey, Integer, String
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
@@ -109,6 +118,11 @@ class Resource(BaseModel):
     hostname_ip: Mapped[str | None] = mapped_column(String(255), nullable=True)
     protocol: Mapped[str | None] = mapped_column(String(50), nullable=True)
     port: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pinned_host_key: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    host_key_fingerprint: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    host_key_trusted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     environment: Mapped[Environment] = mapped_column(
         Enum(
