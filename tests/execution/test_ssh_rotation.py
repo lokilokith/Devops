@@ -84,8 +84,8 @@ def test_ssh_target_executor_can_execute_rotation():
     rid = uuid4()
     assert executor.can_execute(rid, ExecutionOperation.VALIDATE_TARGET) is True
     assert executor.can_execute(rid, ExecutionOperation.ROTATE_CREDENTIAL) is True
-    # Future phase operations return False
-    assert executor.can_execute(rid, ExecutionOperation.PROVISION_ACCOUNT) is False
+    assert executor.can_execute(rid, ExecutionOperation.PROVISION_ACCOUNT) is True
+    assert executor.can_execute(rid, ExecutionOperation.REMOVE_ACCOUNT) is True
     assert executor.can_execute(rid, ExecutionOperation.APPLY_JIT_GRANT) is False
 
 

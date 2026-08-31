@@ -241,9 +241,11 @@ def test_ssh_target_executor_can_execute():
     rid = uuid4()
     assert executor.can_execute(rid, ExecutionOperation.VALIDATE_TARGET) is True
     assert executor.can_execute(rid, ExecutionOperation.ROTATE_CREDENTIAL) is True
-    # Future phase operations return False in Phase 4
-    assert executor.can_execute(rid, ExecutionOperation.PROVISION_ACCOUNT) is False
+    assert executor.can_execute(rid, ExecutionOperation.PROVISION_ACCOUNT) is True
+    assert executor.can_execute(rid, ExecutionOperation.REMOVE_ACCOUNT) is True
+    # Future phase operations return False in Phase 6
     assert executor.can_execute(rid, ExecutionOperation.APPLY_JIT_GRANT) is False
+    assert executor.can_execute(rid, ExecutionOperation.REVOKE_JIT_GRANT) is False
 
 
 def test_ssh_target_executor_validate_target_success(auth_context, monkeypatch):
@@ -300,12 +302,6 @@ def test_ssh_target_executor_phase_boundary_methods(auth_context):
         resource_id=auth_context.resource_id,
         authorization_context=auth_context,
     )
-
-    with pytest.raises(NotImplementedError, match="Phase 6"):
-        executor.provision_account(req)
-
-    with pytest.raises(NotImplementedError, match="Phase 6"):
-        executor.remove_account(req)
 
     with pytest.raises(NotImplementedError, match="Phase 7"):
         executor.apply_jit_grant(req)

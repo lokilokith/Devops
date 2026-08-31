@@ -174,6 +174,10 @@ from app.policy_engine.routes import policies_ns  # noqa: E402
 
 api.add_namespace(policies_ns, path="/policy-engine")
 
+from app.target_accounts.routes import target_accounts_ns  # noqa: E402
+
+api.add_namespace(target_accounts_ns, path="/target-accounts")
+
 from app.jit_access.routes import jit_ns  # noqa: E402
 
 api.add_namespace(jit_ns, path="/jit")

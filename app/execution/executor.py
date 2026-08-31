@@ -111,6 +111,10 @@ class StubTargetExecutor:
         self._behaviour: Dict[Any, str] = behaviour_map or {}
         self._default_mode = default_mode
 
+    def set_behaviour(self, resource_id: Any, mode: str) -> None:
+        """Set behaviour mode for a specific resource or tuple."""
+        self._behaviour[resource_id] = mode
+
     def _resolve_mode(
         self,
         resource_id: UUID,

@@ -384,8 +384,10 @@ class SSHTargetExecutor:
         if operation is not None and operation not in (
             ExecutionOperation.VALIDATE_TARGET,
             ExecutionOperation.ROTATE_CREDENTIAL,
+            ExecutionOperation.PROVISION_ACCOUNT,
+            ExecutionOperation.REMOVE_ACCOUNT,
         ):
-            # In Phase 4, we provide connection, target validation, and credential rotation
+            # In Phase 6, we provide validation, rotation, and account provisioning/removal
             return False
 
         if self.resource_resolver is not None:
@@ -912,25 +914,364 @@ print("REMOVE_SUCCESS")
         }
 
     def provision_account(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 6 operation - guarded by Phase 4 strict boundary."""
-        raise NotImplementedError(
-            "provision_account is a Phase 6 operation and is not permitted in Phase 4."
+        """Phase 6 operation: Provision human target account via helper boundary and verify."""
+        start_time = time.monotonic()
+        request.authorization_context.validate()
+
+        params = request.parameters
+        host = params.get("hostname_ip") or params.get("host")
+        port = int(params.get("port") or 22)
+        target_os_username = params.get("target_os_username")
+        public_key = params.get("public_key")
+        bootstrap_credential = params.get("bootstrap_credential")
+        user_private_key = params.get("user_private_key")
+
+        if not host and self.resource_resolver:
+            resource = self.resource_resolver(request.resource_id)
+            if resource:
+                host = getattr(resource, "hostname_ip", None) or getattr(
+                    resource, "resource_code", None
+                )
+                port = int(getattr(resource, "port", None) or 22)
+                pinned_key = getattr(resource, "pinned_host_key", None)
+                if pinned_key and host:
+                    parts = pinned_key.strip().split()
+                    if len(parts) >= 2:
+                        self.host_key_verifier.register_trusted_key(
+                            host, parts[0], parts[1]
+                        )
+
+        if not host:
+            raise InvalidExecutionContextError(
+                f"Missing target hostname or IP for resource {request.resource_id}",
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+            )
+
+        if not target_os_username or not public_key:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.PROVISION_ACCOUNT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.CONFIGURATION_FAILURE,
+                error_message="Missing target_os_username or public_key parameters",
+                duration_ms=duration_ms,
+            )
+
+        if not bootstrap_credential:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.PROVISION_ACCOUNT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.CONFIGURATION_FAILURE,
+                error_message="Missing bootstrap credential for target provisioning",
+                duration_ms=duration_ms,
+            )
+
+        bootstrap_cred_str = (
+            bootstrap_credential.decode("utf-8")
+            if isinstance(bootstrap_credential, bytes)
+            else str(bootstrap_credential)
         )
+
+        user_priv_str = (
+            user_private_key.decode("utf-8")
+            if isinstance(user_private_key, bytes)
+            else str(user_private_key) if user_private_key else None
+        )
+
+        # Step 1: Connect as bootstrap user (opsforge-svc) and invoke helper
+        helper_cmd = f"sudo -n /usr/local/sbin/opsforge-helper provision_account {target_os_username} '{public_key.strip()}'"
+
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username="opsforge-svc",
+                private_key_pem=bootstrap_cred_str,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                _, stdout, stderr = client.exec_command(helper_cmd)  # nosec B601
+                out = stdout.read().decode().strip()
+                err = stderr.read().decode().strip()
+                exit_code = stdout.channel.recv_exit_status()
+                if exit_code != 0:
+                    err_msg = err or out or f"Helper exited with code {exit_code}"
+                    is_uncertain = "uncertain" in err_msg.lower()
+                    classification = (
+                        FailureClassification.UNCERTAIN_STATE
+                        if is_uncertain
+                        else FailureClassification.TARGET_FAILURE
+                    )
+                    duration_ms = (time.monotonic() - start_time) * 1000.0
+                    result = ExecutionResult(
+                        execution_id=request.execution_id,
+                        operation=ExecutionOperation.PROVISION_ACCOUNT,
+                        status=ExecutionStatus.FAILED,
+                        verification_status=VerificationStatus.VERIFIED_FAILURE,
+                        failure_classification=classification,
+                        error_message=f"Helper provision_account failed: {err_msg}",
+                        duration_ms=duration_ms,
+                    )
+                    if self.audit_service:
+                        try:
+                            self.audit_service.record_execution_event(request, result)
+                        except Exception:
+                            pass
+                    return result
+
+        except TargetAuthenticationError as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.PROVISION_ACCOUNT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.AUTHENTICATION_FAILURE,
+                error_message=f"Bootstrap authentication failed: {e}",
+                duration_ms=duration_ms,
+            )
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.PROVISION_ACCOUNT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.TRANSPORT_FAILURE,
+                error_message=f"Transport error communicating with target: {e}",
+                duration_ms=duration_ms,
+            )
+
+        # Step 2: Target-Side Independent Verification (MANDATORY)
+        # Open fresh SSH connection presenting ONLY the newly generated user private key
+        if user_priv_str:
+            try:
+                with SSHConnectionContext(
+                    target_host=host,
+                    target_port=port,
+                    username=target_os_username,
+                    private_key_pem=user_priv_str,
+                    network_validator=self.network_validator,
+                    host_key_verifier=self.host_key_verifier,
+                    config=self.config,
+                    resource_id=request.resource_id,
+                    execution_id=request.execution_id,
+                    audit_service=self.audit_service,
+                    semaphore=self._semaphore,
+                ) as user_client:
+                    # 1. Verify username
+                    _, stdout, _ = user_client.exec_command("whoami")  # nosec B601
+                    whoami_out = stdout.read().decode().strip()
+                    if whoami_out != target_os_username:
+                        raise ValueError(
+                            f"whoami check mismatch: expected {target_os_username}, got {whoami_out}"
+                        )
+
+                    # 2. Verify shell
+                    _, stdout, _ = user_client.exec_command("echo $SHELL")  # nosec B601
+                    shell_out = stdout.read().decode().strip()
+                    if "/bin/bash" not in shell_out:
+                        raise ValueError(
+                            f"Shell check mismatch: expected /bin/bash, got {shell_out}"
+                        )
+
+                    # 3. Verify no standing sudo privilege (must fail)
+                    _, stdout, _ = user_client.exec_command(
+                        "sudo -n true"
+                    )  # nosec B601
+                    sudo_code = stdout.channel.recv_exit_status()
+                    if sudo_code == 0:
+                        raise ValueError(
+                            "Security violation: user has unexpected standing sudo privilege!"
+                        )
+
+            except Exception as e:
+                duration_ms = (time.monotonic() - start_time) * 1000.0
+                result = ExecutionResult(
+                    execution_id=request.execution_id,
+                    operation=ExecutionOperation.PROVISION_ACCOUNT,
+                    status=ExecutionStatus.FAILED,
+                    verification_status=VerificationStatus.VERIFIED_FAILURE,
+                    failure_classification=FailureClassification.UNCERTAIN_STATE,
+                    error_message=f"Target-side independent verification failed: {e}",
+                    duration_ms=duration_ms,
+                )
+                if self.audit_service:
+                    try:
+                        self.audit_service.record_execution_event(request, result)
+                    except Exception:
+                        pass
+                return result
+
+        duration_ms = (time.monotonic() - start_time) * 1000.0
+        result = ExecutionResult(
+            execution_id=request.execution_id,
+            operation=ExecutionOperation.PROVISION_ACCOUNT,
+            status=ExecutionStatus.SUCCESS,
+            verification_status=VerificationStatus.VERIFIED_SUCCESS,
+            details={
+                "target_os_username": target_os_username,
+                "verified": True,
+            },
+            duration_ms=duration_ms,
+        )
+        if self.audit_service:
+            try:
+                self.audit_service.record_execution_event(request, result)
+            except Exception:
+                pass
+        return result
 
     def remove_account(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 6 operation - guarded by Phase 4 strict boundary."""
-        raise NotImplementedError(
-            "remove_account is a Phase 6 operation and is not permitted in Phase 4."
+        """Phase 6 operation: Remove human target account via helper boundary and verify."""
+        start_time = time.monotonic()
+        request.authorization_context.validate()
+
+        params = request.parameters
+        host = params.get("hostname_ip") or params.get("host")
+        port = int(params.get("port") or 22)
+        target_os_username = params.get("target_os_username")
+        bootstrap_credential = params.get("bootstrap_credential")
+
+        if not host and self.resource_resolver:
+            resource = self.resource_resolver(request.resource_id)
+            if resource:
+                host = getattr(resource, "hostname_ip", None) or getattr(
+                    resource, "resource_code", None
+                )
+                port = int(getattr(resource, "port", None) or 22)
+                pinned_key = getattr(resource, "pinned_host_key", None)
+                if pinned_key and host:
+                    parts = pinned_key.strip().split()
+                    if len(parts) >= 2:
+                        self.host_key_verifier.register_trusted_key(
+                            host, parts[0], parts[1]
+                        )
+
+        if not host:
+            raise InvalidExecutionContextError(
+                f"Missing target hostname or IP for resource {request.resource_id}",
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+            )
+
+        if not target_os_username or not bootstrap_credential:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.REMOVE_ACCOUNT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.CONFIGURATION_FAILURE,
+                error_message="Missing target_os_username or bootstrap_credential",
+                duration_ms=duration_ms,
+            )
+
+        bootstrap_cred_str = (
+            bootstrap_credential.decode("utf-8")
+            if isinstance(bootstrap_credential, bytes)
+            else str(bootstrap_credential)
         )
 
+        helper_cmd = f"sudo -n /usr/local/sbin/opsforge-helper remove_account {target_os_username}"
+
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username="opsforge-svc",
+                private_key_pem=bootstrap_cred_str,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                _, stdout, stderr = client.exec_command(helper_cmd)  # nosec B601
+                out = stdout.read().decode().strip()
+                err = stderr.read().decode().strip()
+                exit_code = stdout.channel.recv_exit_status()
+                if exit_code != 0:
+                    err_msg = err or out or f"Helper exited with code {exit_code}"
+                    duration_ms = (time.monotonic() - start_time) * 1000.0
+                    result = ExecutionResult(
+                        execution_id=request.execution_id,
+                        operation=ExecutionOperation.REMOVE_ACCOUNT,
+                        status=ExecutionStatus.FAILED,
+                        verification_status=VerificationStatus.VERIFIED_FAILURE,
+                        failure_classification=FailureClassification.TARGET_FAILURE,
+                        error_message=f"Helper remove_account failed: {err_msg}",
+                        duration_ms=duration_ms,
+                    )
+                    if self.audit_service:
+                        try:
+                            self.audit_service.record_execution_event(request, result)
+                        except Exception:
+                            pass
+                    return result
+
+                # Verification: confirm user is removed
+                _, v_stdout, _ = client.exec_command(
+                    f"id {target_os_username}"
+                )  # nosec B601
+                v_code = v_stdout.channel.recv_exit_status()
+                if v_code == 0:
+                    raise ValueError(
+                        f"Account {target_os_username} still exists on target after remove_account!"
+                    )
+
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.REMOVE_ACCOUNT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.TARGET_FAILURE,
+                error_message=f"remove_account error: {e}",
+                duration_ms=duration_ms,
+            )
+
+        duration_ms = (time.monotonic() - start_time) * 1000.0
+        result = ExecutionResult(
+            execution_id=request.execution_id,
+            operation=ExecutionOperation.REMOVE_ACCOUNT,
+            status=ExecutionStatus.SUCCESS,
+            verification_status=VerificationStatus.VERIFIED_SUCCESS,
+            details={
+                "target_os_username": target_os_username,
+                "removed": True,
+            },
+            duration_ms=duration_ms,
+        )
+        if self.audit_service:
+            try:
+                self.audit_service.record_execution_event(request, result)
+            except Exception:
+                pass
+        return result
+
     def apply_jit_grant(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 7 operation - guarded by Phase 4 strict boundary."""
+        """Phase 7 operation - guarded by Phase 6 strict boundary."""
         raise NotImplementedError(
-            "apply_jit_grant is a Phase 7 operation and is not permitted in Phase 4."
+            "apply_jit_grant is a Phase 7 operation and is not permitted in Phase 6."
         )
 
     def revoke_jit_grant(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 8 operation - guarded by Phase 4 strict boundary."""
+        """Phase 8 operation - guarded by Phase 6 strict boundary."""
         raise NotImplementedError(
-            "revoke_jit_grant is a Phase 8 operation and is not permitted in Phase 4."
+            "revoke_jit_grant is a Phase 8 operation and is not permitted in Phase 6."
         )
