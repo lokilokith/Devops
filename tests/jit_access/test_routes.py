@@ -119,15 +119,27 @@ def test_request_jit_access_missing_fields(client, user_token):
 
 
 def test_request_jit_access_success(client, admin_token, admin_user, db_session):
+    from app.target_accounts.models import (
+        TargetAccountBinding,
+        TargetAccountBindingStatus,
+    )
+
     role = RoleFactory()
     resource = ResourceFactory()
-    db_session.add_all([role, resource])
+    binding = TargetAccountBinding(
+        control_plane_user_id=admin_user.id,
+        resource_id=resource.id,
+        target_os_username="admin-user",
+        status=TargetAccountBindingStatus.ACTIVE,
+    )
+    db_session.add_all([role, resource, binding])
     db_session.flush()
 
     payload = {
         "user_id": str(admin_user.id),
         "role_id": str(role.id),
         "resource_id": str(resource.id),
+        "command_set_id": "system_health_check",
         "duration_minutes": 60,
         "reason": "Debugging PROD",
     }
@@ -188,18 +200,31 @@ def test_list_grants(client, admin_token, db_session, admin_user):
 
 
 def test_activate_grant(client, admin_token, db_session, admin_user):
+    from app.target_accounts.models import (
+        TargetAccountBinding,
+        TargetAccountBindingStatus,
+    )
+
     role = RoleFactory()
     resource = ResourceFactory()
     ar = AccessRequestFactory(
         status=AccessRequestStatus.APPROVED, requester_id=admin_user.id
     )
-    db_session.add_all([role, resource, ar])
+    binding = TargetAccountBinding(
+        control_plane_user_id=admin_user.id,
+        resource_id=resource.id,
+        target_os_username="admin-user",
+        status=TargetAccountBindingStatus.ACTIVE,
+    )
+    db_session.add_all([role, resource, ar, binding])
     db_session.flush()
 
     grant = JITAccessGrant(
         user_id=admin_user.id,
         role_id=role.id,
         resource_id=resource.id,
+        target_account_binding_id=binding.id,
+        command_set_id="system_health_check",
         approval_request_id=ar.id,
         status=JITGrantStatus.PENDING,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=1),

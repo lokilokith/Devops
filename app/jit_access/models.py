@@ -4,7 +4,7 @@ import enum
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -19,6 +19,8 @@ class JITGrantStatus(str, enum.Enum):
     EXPIRED = "expired"
     REVOKED = "revoked"
     DENIED = "denied"
+    FAILED = "failed"
+    SECURITY_UNCERTAIN = "security_uncertain"
 
 
 class JITAccessGrant(BaseModel):
@@ -43,6 +45,16 @@ class JITAccessGrant(BaseModel):
         ForeignKey("resources.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
+    )
+    target_account_binding_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("target_account_bindings.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    command_set_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
     )
     approved_by: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True),
@@ -77,6 +89,16 @@ class JITAccessGrant(BaseModel):
     revoked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    revocation_start: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revocation_complete: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    observed_overrun_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    failure_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class JITAccessSession(BaseModel):

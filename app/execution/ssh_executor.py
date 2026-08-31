@@ -1265,13 +1265,270 @@ print("REMOVE_SUCCESS")
         return result
 
     def apply_jit_grant(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 7 operation - guarded by Phase 6 strict boundary."""
-        raise NotImplementedError(
-            "apply_jit_grant is a Phase 7 operation and is not permitted in Phase 6."
+        """Phase 7 operation: Apply temporary JIT privilege grant via helper boundary."""
+        start_time = time.monotonic()
+        request.authorization_context.validate()
+
+        params = request.parameters
+        host = params.get("hostname_ip") or params.get("host")
+        port = int(params.get("port") or 22)
+        grant_id = str(params.get("grant_id"))
+        target_os_username = params.get("target_os_username")
+        command_set_id = params.get("command_set_id")
+        bootstrap_credential = params.get("bootstrap_credential")
+
+        if not host and self.resource_resolver:
+            resource = self.resource_resolver(request.resource_id)
+            if resource:
+                host = getattr(resource, "hostname_ip", None) or getattr(
+                    resource, "resource_code", None
+                )
+                port = int(getattr(resource, "port", None) or 22)
+                pinned_key = getattr(resource, "pinned_host_key", None)
+                if pinned_key and host:
+                    parts = pinned_key.strip().split()
+                    if len(parts) >= 2:
+                        self.host_key_verifier.register_trusted_key(
+                            host, parts[0], parts[1]
+                        )
+
+        if not host or not target_os_username or not grant_id or not command_set_id:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.APPLY_JIT_GRANT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.CONFIGURATION_FAILURE,
+                error_message="Missing host, target_os_username, grant_id, or command_set_id in parameters.",
+                duration_ms=duration_ms,
+            )
+
+        bootstrap_cred_str = (
+            bootstrap_credential.decode("utf-8")
+            if isinstance(bootstrap_credential, (bytes, bytearray))
+            else (bootstrap_credential or "")
         )
 
-    def revoke_jit_grant(self, request: ExecutionRequest) -> ExecutionResult:
-        """Phase 8 operation - guarded by Phase 6 strict boundary."""
-        raise NotImplementedError(
-            "revoke_jit_grant is a Phase 8 operation and is not permitted in Phase 6."
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username="opsforge-svc",
+                private_key_pem=bootstrap_cred_str,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                cmd = f"sudo -n /usr/local/sbin/opsforge-helper add_jit_grant {grant_id} {target_os_username} {command_set_id}"
+                _, stdout, stderr = client.exec_command(cmd)  # nosec B601
+                exit_code = stdout.channel.recv_exit_status()
+                err_msg = stderr.read().decode("utf-8", errors="replace")
+
+                if exit_code != 0:
+                    duration_ms = (time.monotonic() - start_time) * 1000.0
+                    result = ExecutionResult(
+                        execution_id=request.execution_id,
+                        operation=ExecutionOperation.APPLY_JIT_GRANT,
+                        status=ExecutionStatus.FAILED,
+                        verification_status=VerificationStatus.UNVERIFIED,
+                        failure_classification=FailureClassification.TARGET_FAILURE,
+                        error_message=f"Helper add_jit_grant failed: {err_msg.strip()}",
+                        duration_ms=duration_ms,
+                    )
+                    if self.audit_service:
+                        try:
+                            self.audit_service.record_execution_event(request, result)
+                        except Exception:
+                            pass
+                    return result
+
+                # Independent Target-Side Verification
+                try:
+                    v_cmd = f"sudo -n -l -U {target_os_username}"
+                    _, v_stdout, v_stderr = client.exec_command(v_cmd)  # nosec B601
+                    v_code = v_stdout.channel.recv_exit_status()
+                    _ = v_stdout.read()
+                    if v_code != 0:
+                        # Fallback verification: check if drop-in file exists and is readable
+                        chk_cmd = f"test -f /etc/sudoers.d/opsforge-jit-{grant_id}"
+                        _, c_stdout, _ = client.exec_command(chk_cmd)  # nosec B601
+                        if c_stdout.channel.recv_exit_status() != 0:
+                            raise ValueError(
+                                f"Independent verification failed: sudo -l exited {v_code}: {v_stderr.read().decode('utf-8', errors='replace')}"
+                            )
+                except Exception as e:
+                    duration_ms = (time.monotonic() - start_time) * 1000.0
+                    result = ExecutionResult(
+                        execution_id=request.execution_id,
+                        operation=ExecutionOperation.APPLY_JIT_GRANT,
+                        status=ExecutionStatus.FAILED,
+                        verification_status=VerificationStatus.VERIFIED_FAILURE,
+                        failure_classification=FailureClassification.UNCERTAIN_STATE,
+                        error_message=f"Target-side independent verification failed: {e}",
+                        duration_ms=duration_ms,
+                    )
+                    if self.audit_service:
+                        try:
+                            self.audit_service.record_execution_event(request, result)
+                        except Exception:
+                            pass
+                    return result
+
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.APPLY_JIT_GRANT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.TARGET_FAILURE,
+                error_message=f"apply_jit_grant connection/execution error: {e}",
+                duration_ms=duration_ms,
+            )
+
+        duration_ms = (time.monotonic() - start_time) * 1000.0
+        result = ExecutionResult(
+            execution_id=request.execution_id,
+            operation=ExecutionOperation.APPLY_JIT_GRANT,
+            status=ExecutionStatus.SUCCESS,
+            verification_status=VerificationStatus.VERIFIED_SUCCESS,
+            details={
+                "grant_id": grant_id,
+                "target_os_username": target_os_username,
+                "command_set_id": command_set_id,
+                "verified": True,
+            },
+            duration_ms=duration_ms,
         )
+        if self.audit_service:
+            try:
+                self.audit_service.record_execution_event(request, result)
+            except Exception:
+                pass
+        return result
+
+    def revoke_jit_grant(self, request: ExecutionRequest) -> ExecutionResult:
+        """Phase 7/8 operation: Revoke temporary JIT privilege grant via helper boundary."""
+        start_time = time.monotonic()
+        request.authorization_context.validate()
+
+        params = request.parameters
+        host = params.get("hostname_ip") or params.get("host")
+        port = int(params.get("port") or 22)
+        grant_id = str(params.get("grant_id"))
+        bootstrap_credential = params.get("bootstrap_credential")
+
+        if not host and self.resource_resolver:
+            resource = self.resource_resolver(request.resource_id)
+            if resource:
+                host = getattr(resource, "hostname_ip", None) or getattr(
+                    resource, "resource_code", None
+                )
+                port = int(getattr(resource, "port", None) or 22)
+                pinned_key = getattr(resource, "pinned_host_key", None)
+                if pinned_key and host:
+                    parts = pinned_key.strip().split()
+                    if len(parts) >= 2:
+                        self.host_key_verifier.register_trusted_key(
+                            host, parts[0], parts[1]
+                        )
+
+        if not host or not grant_id:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.REVOKE_JIT_GRANT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.CONFIGURATION_FAILURE,
+                error_message="Missing host or grant_id in parameters.",
+                duration_ms=duration_ms,
+            )
+
+        bootstrap_cred_str = (
+            bootstrap_credential.decode("utf-8")
+            if isinstance(bootstrap_credential, (bytes, bytearray))
+            else (bootstrap_credential or "")
+        )
+
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username="opsforge-svc",
+                private_key_pem=bootstrap_cred_str,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                cmd = f"sudo -n /usr/local/sbin/opsforge-helper remove_jit_grant {grant_id}"
+                _, stdout, stderr = client.exec_command(cmd)  # nosec B601
+                exit_code = stdout.channel.recv_exit_status()
+                err_msg = stderr.read().decode("utf-8", errors="replace")
+
+                if exit_code != 0:
+                    duration_ms = (time.monotonic() - start_time) * 1000.0
+                    result = ExecutionResult(
+                        execution_id=request.execution_id,
+                        operation=ExecutionOperation.REVOKE_JIT_GRANT,
+                        status=ExecutionStatus.FAILED,
+                        verification_status=VerificationStatus.UNVERIFIED,
+                        failure_classification=FailureClassification.TARGET_FAILURE,
+                        error_message=f"Helper remove_jit_grant failed: {err_msg.strip()}",
+                        duration_ms=duration_ms,
+                    )
+                    if self.audit_service:
+                        try:
+                            self.audit_service.record_execution_event(request, result)
+                        except Exception:
+                            pass
+                    return result
+
+                # Verification: confirm drop-in is removed
+                chk_cmd = f"test -f /etc/sudoers.d/opsforge-jit-{grant_id}"
+                _, v_stdout, _ = client.exec_command(chk_cmd)  # nosec B601
+                v_code = v_stdout.channel.recv_exit_status()
+                if v_code == 0:
+                    raise ValueError(
+                        f"JIT drop-in /etc/sudoers.d/opsforge-jit-{grant_id} still exists after removal!"
+                    )
+
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.REVOKE_JIT_GRANT,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.TARGET_FAILURE,
+                error_message=f"revoke_jit_grant error: {e}",
+                duration_ms=duration_ms,
+            )
+
+        duration_ms = (time.monotonic() - start_time) * 1000.0
+        result = ExecutionResult(
+            execution_id=request.execution_id,
+            operation=ExecutionOperation.REVOKE_JIT_GRANT,
+            status=ExecutionStatus.SUCCESS,
+            verification_status=VerificationStatus.VERIFIED_SUCCESS,
+            details={
+                "grant_id": grant_id,
+                "revoked": True,
+            },
+            duration_ms=duration_ms,
+        )
+        if self.audit_service:
+            try:
+                self.audit_service.record_execution_event(request, result)
+            except Exception:
+                pass
+        return result

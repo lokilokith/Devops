@@ -3,8 +3,6 @@
 import uuid
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.execution.domain import (
     ExecutionAuthorizationContext,
     ExecutionOperation,
@@ -153,12 +151,14 @@ def test_ssh_executor_remove_account_success():
 
 
 def test_ssh_executor_phase_boundary_methods():
-    """Test Phase 7 and Phase 8 methods raise NotImplementedError in Phase 6."""
+    """Test Phase 7 methods are implemented and parameter validation operates."""
     executor = SSHTargetExecutor()
     req, _, _ = _create_request()
 
-    with pytest.raises(NotImplementedError, match="Phase 7"):
-        executor.apply_jit_grant(req)
+    res_apply = executor.apply_jit_grant(req)
+    assert res_apply.status == ExecutionStatus.FAILED
+    assert "Missing host" in (res_apply.error_message or "")
 
-    with pytest.raises(NotImplementedError, match="Phase 8"):
-        executor.revoke_jit_grant(req)
+    res_revoke = executor.revoke_jit_grant(req)
+    assert res_revoke.status == ExecutionStatus.FAILED
+    assert res_revoke.error_message is not None

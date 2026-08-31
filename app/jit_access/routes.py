@@ -12,6 +12,7 @@ from app.api.decorators import login_required, requires_permission
 from app.audit.repository import AuditRepository
 from app.audit.service import AuditService
 from app.authorization.service import AuthorizationService
+from app.jit_access.exceptions import GrantNotFoundError
 from app.jit_access.repository import JITAccessRepository
 from app.jit_access.schemas import JITAccessGrantResponseSchema, JITAccessRequestSchema
 from app.jit_access.service import JITAccessService
@@ -84,6 +85,7 @@ class JITRequestResource(Resource):
             resource_id=data["resource_id"],
             duration_minutes=data["duration_minutes"],
             reason=data["reason"],
+            command_set_id=data.get("command_set_id", "system_health_check"),
             context=data.get("context", {}),
         )
         return JITAccessGrantResponseSchema().dump(grant), 201
@@ -116,6 +118,20 @@ class JITGrantsResource(Resource):
             "limit": limit,
             "offset": offset,
         }, 200
+
+
+@jit_ns.route("/<uuid:grant_id>")
+class JITDetailResource(Resource):
+    @login_required
+    @requires_permission("jit_grants", "read")
+    def get(self, grant_id: UUID):
+        """Get details of a JIT grant."""
+        svc = build_jit_service()
+        try:
+            grant = svc.get_grant(grant_id)
+        except GrantNotFoundError:
+            return {"message": f"Grant {grant_id} not found"}, 404
+        return JITAccessGrantResponseSchema().dump(grant), 200
 
 
 @jit_ns.route("/<uuid:grant_id>/activate")

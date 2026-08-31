@@ -303,8 +303,11 @@ def test_ssh_target_executor_phase_boundary_methods(auth_context):
         authorization_context=auth_context,
     )
 
-    with pytest.raises(NotImplementedError, match="Phase 7"):
-        executor.apply_jit_grant(req)
+    # In Phase 7, apply_jit_grant and revoke_jit_grant are implemented and validate parameters
+    res_apply = executor.apply_jit_grant(req)
+    assert res_apply.status == ExecutionStatus.FAILED
+    assert "Missing host" in (res_apply.error_message or "")
 
-    with pytest.raises(NotImplementedError, match="Phase 8"):
-        executor.revoke_jit_grant(req)
+    res_revoke = executor.revoke_jit_grant(req)
+    assert res_revoke.status == ExecutionStatus.FAILED
+    assert "Missing host" in (res_revoke.error_message or "")

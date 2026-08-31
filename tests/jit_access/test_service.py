@@ -101,10 +101,21 @@ def jit_service(db_session, security_auth_service):
 
 
 def test_request_access_duration_exceeds_limit(jit_service, db_session):
+    from app.target_accounts.models import (
+        TargetAccountBinding,
+        TargetAccountBindingStatus,
+    )
+
     user = UserFactory()
     role = RoleFactory()
     resource = ResourceFactory()
-    db_session.add_all([user, role, resource])
+    binding = TargetAccountBinding(
+        control_plane_user_id=user.id,
+        resource_id=resource.id,
+        target_os_username="test-user",
+        status=TargetAccountBindingStatus.ACTIVE,
+    )
+    db_session.add_all([user, role, resource, binding])
     db_session.flush()
 
     # Mock evaluate_policy
@@ -124,10 +135,21 @@ def test_request_access_duration_exceeds_limit(jit_service, db_session):
 
 
 def test_request_access_policy_denied(jit_service, db_session):
+    from app.target_accounts.models import (
+        TargetAccountBinding,
+        TargetAccountBindingStatus,
+    )
+
     user = UserFactory()
     role = RoleFactory()
     resource = ResourceFactory()
-    db_session.add_all([user, role, resource])
+    binding = TargetAccountBinding(
+        control_plane_user_id=user.id,
+        resource_id=resource.id,
+        target_os_username="test-user",
+        status=TargetAccountBindingStatus.ACTIVE,
+    )
+    db_session.add_all([user, role, resource, binding])
     db_session.flush()
 
     jit_service._policy_service.evaluate_policy = lambda **kwargs: {
@@ -140,17 +162,30 @@ def test_request_access_policy_denied(jit_service, db_session):
 
 
 def test_requester_cannot_activate_own_grant(jit_service, db_session):
+    from app.target_accounts.models import (
+        TargetAccountBinding,
+        TargetAccountBindingStatus,
+    )
+
     user = UserFactory()
     role = RoleFactory()
     resource = ResourceFactory()
     ar = AccessRequestFactory(requester_id=user.id, status=AccessRequestStatus.APPROVED)
-    db_session.add_all([user, role, resource, ar])
+    binding = TargetAccountBinding(
+        control_plane_user_id=user.id,
+        resource_id=resource.id,
+        target_os_username="test-user",
+        status=TargetAccountBindingStatus.ACTIVE,
+    )
+    db_session.add_all([user, role, resource, ar, binding])
     db_session.flush()
 
     grant = JITAccessGrant(
         user_id=user.id,
         role_id=role.id,
         resource_id=resource.id,
+        target_account_binding_id=binding.id,
+        command_set_id="system_health_check",
         approval_request_id=ar.id,
         status=JITGrantStatus.PENDING,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
@@ -163,17 +198,30 @@ def test_requester_cannot_activate_own_grant(jit_service, db_session):
 
 
 def test_activate_grant_requires_approved_request(jit_service, db_session, admin_user):
+    from app.target_accounts.models import (
+        TargetAccountBinding,
+        TargetAccountBindingStatus,
+    )
+
     user = UserFactory()
     role = RoleFactory()
     resource = ResourceFactory()
     ar = AccessRequestFactory(requester_id=user.id, status=AccessRequestStatus.PENDING)
-    db_session.add_all([user, role, resource, ar])
+    binding = TargetAccountBinding(
+        control_plane_user_id=user.id,
+        resource_id=resource.id,
+        target_os_username="test-user",
+        status=TargetAccountBindingStatus.ACTIVE,
+    )
+    db_session.add_all([user, role, resource, ar, binding])
     db_session.flush()
 
     grant = JITAccessGrant(
         user_id=user.id,
         role_id=role.id,
         resource_id=resource.id,
+        target_account_binding_id=binding.id,
+        command_set_id="system_health_check",
         approval_request_id=ar.id,
         status=JITGrantStatus.PENDING,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
@@ -188,17 +236,30 @@ def test_activate_grant_requires_approved_request(jit_service, db_session, admin
 
 
 def test_admin_can_activate_others_grant(jit_service, db_session, admin_user):
+    from app.target_accounts.models import (
+        TargetAccountBinding,
+        TargetAccountBindingStatus,
+    )
+
     user = UserFactory()
     role = RoleFactory()
     resource = ResourceFactory()
     ar = AccessRequestFactory(requester_id=user.id, status=AccessRequestStatus.APPROVED)
-    db_session.add_all([user, role, resource, ar])
+    binding = TargetAccountBinding(
+        control_plane_user_id=user.id,
+        resource_id=resource.id,
+        target_os_username="test-user",
+        status=TargetAccountBindingStatus.ACTIVE,
+    )
+    db_session.add_all([user, role, resource, ar, binding])
     db_session.flush()
 
     grant = JITAccessGrant(
         user_id=user.id,
         role_id=role.id,
         resource_id=resource.id,
+        target_account_binding_id=binding.id,
+        command_set_id="system_health_check",
         approval_request_id=ar.id,
         status=JITGrantStatus.PENDING,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
