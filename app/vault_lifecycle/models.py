@@ -11,6 +11,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
 from app.shared.database import BaseModel
+from app.vault_lifecycle.rotation_job import (
+    ACTIVE_JOB_STATES,
+    SAFE_ERROR_CODES,
+    TERMINAL_JOB_STATES,
+    RotationJob,
+    RotationJobState,
+    sanitize_error_code,
+    sanitize_error_message,
+)
 
 
 class RotationStatus(str, enum.Enum):
@@ -81,4 +90,15 @@ class SecretRotationPolicy(BaseModel):
     )
 
 
-__all__ = ["SecretRotationPolicy", "RotationStatus"]
+__all__ = [
+    "SecretRotationPolicy",
+    "RotationStatus",
+    "RotationResultStatus",
+    "RotationJob",
+    "RotationJobState",
+    "ACTIVE_JOB_STATES",
+    "TERMINAL_JOB_STATES",
+    "SAFE_ERROR_CODES",
+    "sanitize_error_code",
+    "sanitize_error_message",
+]

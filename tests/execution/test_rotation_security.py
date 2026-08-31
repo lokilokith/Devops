@@ -246,9 +246,7 @@ def test_authorization_binding_expired_or_invalid_context_rejected(
         requested_at=past - timedelta(minutes=15),
         expires_at=past,
     )
-    with pytest.raises(
-        ValueError, match="Execution authorization context has expired"
-    ):
+    with pytest.raises(ValueError, match="Execution authorization context has expired"):
         ExecutionRequest(
             operation=ExecutionOperation.ROTATE_CREDENTIAL,
             resource_id=expired_auth.resource_id,

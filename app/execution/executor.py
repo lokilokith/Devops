@@ -111,8 +111,18 @@ class StubTargetExecutor:
         self._behaviour: Dict[Any, str] = behaviour_map or {}
         self._default_mode = default_mode
 
-    def _resolve_mode(self, resource_id: UUID, operation: ExecutionOperation) -> str:
+    def _resolve_mode(
+        self,
+        resource_id: UUID,
+        operation: ExecutionOperation,
+        credential_id: Optional[UUID] = None,
+    ) -> str:
         """Resolve behavior mode for a given resource and operation."""
+        if credential_id:
+            if (credential_id, operation) in self._behaviour:
+                return self._behaviour[(credential_id, operation)]
+            if credential_id in self._behaviour:
+                return self._behaviour[credential_id]
         key_op = (resource_id, operation)
         if key_op in self._behaviour:
             return self._behaviour[key_op]
@@ -139,7 +149,8 @@ class StubTargetExecutor:
     ) -> ExecutionResult:
         """Internal generic dispatch for stub execution."""
         start_time = time.monotonic()
-        mode = self._resolve_mode(request.resource_id, operation)
+        cred_id = getattr(request.authorization_context, "credential_id", None)
+        mode = self._resolve_mode(request.resource_id, operation, credential_id=cred_id)
         duration_ms = (time.monotonic() - start_time) * 1000.0
 
         if mode == "success":
