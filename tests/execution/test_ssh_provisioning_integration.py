@@ -14,7 +14,8 @@ from app.execution.domain import (
     VerificationStatus,
 )
 from app.execution.host_identity import HostKeyVerifier
-from app.execution.ssh_executor import SSHTargetExecutor
+from app.execution.network_validator import TargetAddressValidator
+from app.execution.ssh_executor import SSHExecutionConfig, SSHTargetExecutor
 from app.vault.ssh_keys import generate_ed25519_keypair
 from tests.execution.test_target_bootstrap import (
     HOST_ED25519_PUB_PATH,
@@ -52,7 +53,13 @@ def test_real_target_account_provisioning_lifecycle(
         pytest.skip("Disposable target container is not running")
 
     now = datetime.now(timezone.utc)
-    executor = SSHTargetExecutor(host_key_verifier=trusted_verifier)
+    config = SSHExecutionConfig(allow_loopback=True, allowed_ports={22, TARGET_PORT})
+    validator = TargetAddressValidator(
+        allow_loopback=True, allowed_ports={22, TARGET_PORT}
+    )
+    executor = SSHTargetExecutor(
+        config=config, network_validator=validator, host_key_verifier=trusted_verifier
+    )
 
     # 1. Generate human user keypair
     user1_priv, user1_pub = generate_ed25519_keypair(comment="opsforge-human-1")

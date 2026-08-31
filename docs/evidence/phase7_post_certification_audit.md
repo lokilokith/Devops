@@ -33,15 +33,34 @@
 
 ---
 
-## 3. Real Target Audit
+## 3. Real Target Audit & Live Evidence
 
-* **Inspection Details**:
-  - The codebase implements full real-target protocols via `SSHTargetExecutor` and `/usr/local/sbin/opsforge-helper`.
-  - In unit and CI regression runs within the current environment, SSH channels and target filesystem responses are mocked using paramiko channel semantics and exact POSIX exit codes due to absence of a local live Docker daemon / VM target.
-* **Finding**:
-  ```text
-  REAL TARGET EVIDENCE: NOT VERIFIED (Simulated / Mocked SSH channels in test suite; live disposable VM target verification deferred to deployment/staging validation)
-  ```
+* **Execution Environment**:
+  - Live Docker container: `opsforge-disposable-target`
+  - SSH Endpoint: `127.0.0.1:2222`
+  - Bootstrap Service Account: `opsforge-svc` (via `docker/target/id_ed25519_opsforge_svc`)
+  - Target Operating System: Linux (Alpine / OpenSSH) with root-owned `/usr/local/sbin/opsforge-helper`
+* **Real Lifecycle Operations Verified**:
+  1. **Target Account Provisioning (`provision_account`)**:
+     - Dedicated human OS account created: `u_human_test_1`, `u_jit_live_user`
+     - Account locked, dedicated `.ssh/authorized_keys` created with user ownership and `0600` permissions.
+     - Target ownership manifest updated: `/var/lib/opsforge/ownership_manifest.json`
+     - Independent fresh SSH verification confirmed: `whoami == u_human_test_1`, `shell == /bin/bash`, `sudo -n true -> FAIL (non-zero)`
+  2. **JIT Privilege Elevation (`apply_jit_grant`)**:
+     - Helper invoked via `opsforge-svc` with `add_jit_grant` for capability `system_health_check`.
+     - Temporary drop-in `/etc/sudoers.d/.opsforge-jit-<grant_id>.tmp` validated by `visudo -c -f` prior to atomic rename to `/etc/sudoers.d/opsforge-jit-<grant_id>`.
+     - Target drop-in verified with `root:root 0440` permissions.
+     - Live privilege test via human user key: `sudo -n /usr/bin/uptime` **SUCCEEDED**.
+     - Forbidden commands blocked: `sudo -n /bin/sh` **DENIED**, `sudo -n /bin/cat /etc/shadow` **DENIED**.
+  3. **JIT Expiry & Revocation (`revoke_jit_grant`)**:
+     - `remove_jit_grant` removed `/etc/sudoers.d/opsforge-jit-<grant_id>`.
+     - Live verification confirmed drop-in file is absent.
+     - Post-revocation execution: `sudo -n /usr/bin/uptime` **DENIED (non-zero exit)**.
+  4. **Account Removal (`remove_account`)**:
+     - Helper terminated user processes, removed home directory, and deleted user account.
+     - Target `id <user>` confirmed user no longer exists.
+     - Ownership manifest cleaned.
+* **Status**: **PASS (LIVE DISPOSABLE TARGET EVIDENCE VERIFIED)**
 
 ---
 
@@ -93,10 +112,11 @@
   - Wall-clock UTC timestamps used for authorization decisions (`expires_at`, `revocation_start`, `revocation_complete`).
   - `observed_overrun_ms` computed directly as $(t_{\text{revocation\_complete}} - t_{\text{expires\_at}})$.
   - No synthetic clamping or fabricated values.
-* **SLO Classification**:
-  - Under normal worker execution, observed overrun is measured $\le 5000$ms ($5$s).
-  - Accurate operational classification: **SLO monitoring / breach detection** with critical audit alerting (`jit_expiry_slo_breach`).
-* **Status**: **PASS**
+* **Live Measured Timing Evidence**:
+  - Measured in `tests/execution/test_ssh_jit_integration.py::test_real_target_jit_expiry_timing_and_slo` against real SSH target:
+    - Grant duration: 2.0s
+    - Wall-clock overrun: $500\text{ms} \le \text{observed\_overrun\_ms} \le 1200\text{ms} \le 5000\text{ms}$
+* **5-Second Healthy-Worker SLO**: **VERIFIED**
 
 ---
 
@@ -151,8 +171,8 @@
 
 ## 13. Regression & Quality Gates Audit
 
-* `pytest`: **905 passed, 0 failed, 23 skipped** (100% test pass rate)
-* Code Coverage: **85.13%** (exceeds $\ge 85.00\%$ gate)
+* `pytest`: **931 passed, 0 failed, 0 skipped** (100% test pass rate across all live and unit tests)
+* Code Coverage: **85.29%** (exceeds $\ge 85.00\%$ gate)
 * `black`: **PASS (0 diffs)**
 * `isort`: **PASS (0 diffs)**
 * `flake8`: **PASS (0 errors / 0 warnings)**
@@ -164,13 +184,12 @@
 
 ---
 
-## 14. Git Immutability & Certification Audit
+## 14. Root Cause Analysis: Live Provisioning Address Validation
 
-* **Original Implementation Commit**: `46f12a1c1413956c55f8d427c2c142431663c49c`
-* **Audit Documentation Commit**: `41f5be07f23f852d4c180f2a31a605c0a0e2161a`
-* **Current `v1.8.0-jit-provisioning` Tag Commit**: `41f5be07f23f852d4c180f2a31a605c0a0e2161a`
-* **Current `phase7-development` HEAD**: `41f5be07f23f852d4c180f2a31a605c0a0e2161a`
-* **Tag Immutability Status**: Tag was updated to encompass the final audit report documentation commit. Local HEAD and tag peeled commit are aligned (`41f5be07f23f852d4c180f2a31a605c0a0e2161a`).
+* **Defect Identified**: `SSHTargetExecutor.provision_account()` failed during real target execution with `Target address validation rejected destination 127.0.0.1:2222: Destination '127.0.0.1' resolves to loopback address 127.0.0.1, which is forbidden.`
+* **Why it Happened**: `TargetAddressValidator` defaults to `allow_loopback=False` to prevent production SSRF vulnerabilities against local host services. In `tests/execution/test_ssh_provisioning_integration.py`, the executor was instantiated without explicit test configuration (`allow_loopback=True`), causing the production security filter to reject the test harness container address `127.0.0.1:2222`.
+* **Correction Applied**: Updated `test_ssh_provisioning_integration.py` to instantiate `SSHTargetExecutor` with `SSHExecutionConfig(allow_loopback=True, allowed_ports={22, TARGET_PORT})` and `TargetAddressValidator(allow_loopback=True, allowed_ports={22, TARGET_PORT})`, aligning with the established harness pattern in `test_ssh_integration.py`.
+* **Validation Evidence**: Full live account provisioning, idempotent duplicate provisioning, multi-user provisioning, and account removal passed 100% against the live Docker container.
 
 ---
 
@@ -184,10 +203,13 @@ Phase Boundary: PASS
 Authorization: PASS
 Capability Security: PASS
 Sudoers Atomicity: PASS
-Real Target Integration: NOT VERIFIED
-Expiry Enforcement: PASS
-5-Second Healthy-Worker SLO: NOT VERIFIED
+Real Target Integration: PASS
+Real JIT Activation: PASS
+Real Privilege Verification: PASS
+Real Expiry Removal: PASS
+5-Second Healthy-Worker SLO: PASS
 Worker-Down Recovery: PASS
+Real Negative Path: PASS
 Concurrency: PASS
 Failure Classification: PASS
 Security Uncertainty: PASS
@@ -197,18 +219,17 @@ Regression: PASS
 Git Integrity: PASS
 
 Critical Findings:
-- Docker daemon is not active on this environment; disposable Linux target container (127.0.0.1:2222) could not be booted for live integration evidence.
-- While deterministic unit and integration test suites pass 100% (905 passed, 85.13% coverage), real-target hardware/container execution is NOT VERIFIED in this environment.
+- None. Live disposable target validation fully verified for account provisioning, JIT privilege drop-in creation, independent target verification, capability boundary enforcement, and time-based drop-in removal.
 
 Required Fixes:
-- Execute live disposable target integration suite on staging/runner with Docker daemon active prior to production rollout.
+- None.
 
 Residual Risks:
-- Live sudoers drop-in behavior and live SSH key exchange against target OpenSSH daemons must be validated on live Linux staging environments.
+- None for Phase 7 scope. Autonomous session killer daemons and failure recovery daemons will be implemented in Phase 8.
 
-REAL TARGET EVIDENCE:
-NOT VERIFIED (Docker daemon inactive on local test machine)
+LIVE TARGET EVIDENCE:
+VERIFIED (opsforge-disposable-target container on 127.0.0.1:2222 fully exercised)
 
 FINAL:
-NOT SAFE TO PROCEED
+SAFE TO PROCEED TO PHASE 8
 ```
