@@ -46,7 +46,7 @@ class CredentialExecutor(Protocol):
         """Return True if this executor knows how to rotate the given resource_id."""
         ...
 
-    def execute(self, resource_id: UUID, current_secret: bytes) -> ExecutionResult:
+    def execute(self, resource_id: UUID, current_secret: bytes) -> dict[str, Any]:
         """Perform the rotation for resource_id."""
         ...
 

@@ -10,11 +10,11 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.service import AuditService
 from app.resources.models import Resource
+from app.shared.database import DbSession
 from app.vault.domain import SecretStatus
 from app.vault.models import VaultSecret
 from app.vault.repository import SqlAlchemyVaultRepository
@@ -37,7 +37,7 @@ SCHEDULER_ACTOR_ID: UUID = UUID("00000000-0000-0000-0000-000000000002")
 class RotationScheduler:
     """Discovers credentials due for rotation and idempotently enqueues durable rotation jobs."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         self._session = session
         self._policy_repo = SecretRotationPolicyRepository(session)
         self._job_repo = RotationJobRepository(session)

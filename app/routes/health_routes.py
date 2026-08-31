@@ -39,7 +39,7 @@ class HealthLiveResource(Resource):
 class HealthReadyResource(Resource):
     @ns.doc("check_ready", description="Checks if database is connected and ready")
     @ns.marshal_with(health_ready_model)
-    def get(self) -> dict:
+    def get(self) -> tuple[dict[str, str], int]:
         database_status = "connected"
         try:
             db.session.execute(text("SELECT 1"))
@@ -57,6 +57,6 @@ class HealthReadyResource(Resource):
 @ns.route("")
 class HealthLegacyResource(Resource):
     @ns.doc("check_health_legacy")
-    def get(self) -> dict:
+    def get(self) -> tuple[dict[str, str], int]:
         # Keep old endpoint for backwards compatibility
         return HealthReadyResource().get()

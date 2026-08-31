@@ -8,13 +8,13 @@ from uuid import UUID
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.access_requests.exceptions import (
     AccessRequestNotFoundError,
     AccessRequestRepositoryError,
 )
 from app.access_requests.models import AccessRequest, AccessRequestStatus
+from app.shared.database import DbSession
 
 
 def _normalize_pagination(page: int | None, page_size: int | None) -> tuple[int, int]:
@@ -25,7 +25,7 @@ def _normalize_pagination(page: int | None, page_size: int | None) -> tuple[int,
 
 
 class AccessRequestRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         self._session = session
 
     def create_request(self, access_request: AccessRequest) -> AccessRequest:

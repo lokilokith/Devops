@@ -8,8 +8,8 @@ from typing import List, Optional
 from uuid import UUID
 
 from sqlalchemy import or_, select, update
-from sqlalchemy.orm import Session
 
+from app.shared.database import DbSession
 from app.vault_lifecycle.rotation_job import (
     ACTIVE_JOB_STATES,
     RotationJob,
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class RotationJobRepository:
     """SQLAlchemy repository for RotationJob persistence and atomic lease claiming."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         self._session = session
 
     def save(self, job: RotationJob) -> RotationJob:

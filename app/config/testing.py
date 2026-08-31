@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from typing import Any
 
 from app.config.base import BaseConfig
 
@@ -18,4 +19,4 @@ class TestingConfig(BaseConfig):
         SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(
             tempfile.gettempdir(), "opsforge_test.db"
         )
-    SQLALCHEMY_ENGINE_OPTIONS = {}
+    SQLALCHEMY_ENGINE_OPTIONS: dict[str, Any] = {}

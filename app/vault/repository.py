@@ -6,8 +6,8 @@ from typing import Optional, Protocol
 from uuid import UUID
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 
+from app.shared.database import DbSession
 from app.vault.domain import Secret, SecretMetadata, SecretVersion
 from app.vault.exceptions import ConcurrencyError
 from app.vault.models import VaultSecret, VaultSecretVersion
@@ -48,7 +48,7 @@ class SecretRepository(Protocol):
 class SqlAlchemyVaultRepository:
     """SQLAlchemy implementation of the SecretRepository."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: DbSession):
         self._session = session
 
     def _to_domain(self, model: VaultSecret) -> Secret:
@@ -121,7 +121,8 @@ class SqlAlchemyVaultRepository:
                 )
             )
             result = self._session.execute(stmt)
-            if result.rowcount == 0:
+            rowcount = getattr(result, "rowcount", -1)
+            if rowcount == 0:
                 # Fetch current DB row_version
                 current_version = self._session.execute(
                     select(VaultSecret.row_version).where(VaultSecret.id == secret.id)

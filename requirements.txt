@@ -14,3 +14,4 @@ cryptography>=41.0.0
 factory_boy>=3.3.0
 
 marshmallow
+paramiko>=3.4.0

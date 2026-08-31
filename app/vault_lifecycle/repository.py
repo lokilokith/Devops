@@ -5,15 +5,15 @@ from __future__ import annotations
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
+from app.shared.database import DbSession
 from app.vault_lifecycle.models import SecretRotationPolicy
 
 
 class SecretRotationPolicyRepository:
     """Repository for managing SecretRotationPolicy entities."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         self.session = session
 
     def get_by_vault_secret_id(

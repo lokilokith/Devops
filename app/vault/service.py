@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 from uuid import UUID
-
-from sqlalchemy.orm import Session
 
 from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.service import AuditService
@@ -14,6 +13,7 @@ from app.authorization.service import AuthorizationService
 from app.permissions.models import PermissionAction
 from app.policy_engine.decisions import PolicyDecision
 from app.policy_engine.engine import PolicyEngine
+from app.shared.database import DbSession
 from app.vault.crypto import EncryptionService
 from app.vault.domain import Secret, SecretDomainService, SecretFactory
 from app.vault.events import (
@@ -48,7 +48,7 @@ class VaultApplicationService:
         policy_engine: PolicyEngine,
         audit_service: AuditService,
         authz_service: AuthorizationService,
-        session: Session,
+        session: DbSession,
     ) -> None:
         self._domain_service = domain_service
         self._encryption_service = encryption_service
@@ -69,7 +69,7 @@ class VaultApplicationService:
 
         results = []
         for secret in secrets:
-            secret_dict = {
+            secret_dict: dict[str, Any] = {
                 "id": str(secret.id),
                 "resource_id": str(secret.resource_id),
                 "status": secret.status.value,

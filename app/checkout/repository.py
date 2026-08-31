@@ -7,16 +7,16 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.checkout.models import CredentialLease, LeaseStatus
+from app.shared.database import DbSession
 from app.shared.exceptions import DatabaseOperationException
 
 
 class CredentialLeaseRepository:
     """Repository for CredentialLease models."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         self._session = session
 
     def get_by_id(self, lease_id: UUID) -> Optional[CredentialLease]:

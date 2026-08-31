@@ -164,7 +164,7 @@ class JITAccessService:
         # Recalculate expires_at from activation time (assuming duration is from requested_start/end or just keeping original duration relative to activation)
         # For simplicity, we just use the original expires_at if it's still in the future, or shift it.
         # Actually, let's keep it simple: the expires_at was set during creation. If it's already expired, fail.
-        if grant.expires_at < datetime.now(timezone.utc):
+        if grant.expires_at and grant.expires_at < datetime.now(timezone.utc):
             raise InvalidGrantStateError("Grant has already expired before activation")
 
         updated_grant = self._repo.update(grant)

@@ -10,10 +10,12 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session
 from sqlalchemy.types import Uuid
 
 from app.platform.extensions import db
+
+DbSession = Session | scoped_session
 
 METADATA_NAMING_CONVENTION: dict[str, str] = {
     "pk": "pk_%(table_name)s",
@@ -108,6 +110,7 @@ class BaseModel(Base, UUIDMixin, TimestampMixin):
 __all__ = [
     "Base",
     "BaseModel",
+    "DbSession",
     "METADATA_NAMING_CONVENTION",
     "SoftDeleteMixin",
     "TimestampMixin",

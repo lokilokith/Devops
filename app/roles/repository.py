@@ -11,11 +11,10 @@ from uuid import UUID
 
 from sqlalchemy import Select, exists, func, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.roles.exceptions import RoleNotFoundError, RolesRepositoryError
 from app.roles.models import Role, RoleStatus, RoleType
-from app.shared.database import BaseModel
+from app.shared.database import BaseModel, DbSession
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -26,7 +25,7 @@ class RolesRepository:
     operations for Role entities.
     """
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         """Initialize repository with a SQLAlchemy session.
 
         Args:

@@ -11,10 +11,10 @@ from uuid import UUID
 
 from sqlalchemy import exists, func, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.identity.models import User
 from app.roles.models import Role, UserRole
+from app.shared.database import DbSession
 from app.user_roles.exceptions import (
     UserRoleAlreadyExistsError,
     UserRoleNotFoundError,
@@ -28,7 +28,7 @@ class UserRolesRepository:
     operations for UserRole association entities.
     """
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         """Initialize repository with a SQLAlchemy session.
 
         Args:

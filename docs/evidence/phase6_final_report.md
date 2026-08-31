@@ -114,17 +114,17 @@ Phase 6 maintains strict architectural boundaries:
 | Code Formatting | `black` | PASSED | 100% compliant across codebase |
 | Linting | `flake8` | PASSED | 0 lint or PEP8 violations |
 | Linting & Checking | `ruff` | PASSED | All checks passed |
-| Static Type Checking | `mypy` | PASSED | Success: 0 issues in `app/target_accounts` |
-| Security AST Scan | `bandit` | PASSED | 0 Medium/High security vulnerabilities |
-| Dependency Audit | `pip-audit` | PASSED | 0 known CVEs across all dependencies |
+| Static Type Checking | `mypy` | PASSED | Success: 0 issues across all 219 source files in `app/` |
+| Security AST Scan | `bandit` | PASSED | 0 Medium / 0 High security issues identified |
+| Dependency Audit | `pip-audit` | PASSED | 0 known vulnerabilities across environment dependencies |
 | Database Migrations | `alembic` | PASSED | Single migration head `['f2a3b4c5d6e7']` |
 
 ---
 
 ## 9. Comprehensive Test Suite & Coverage
 
-* **Total Test Count**: **879 passed**, 0 failed, 23 skipped
-* **Total Line Coverage**: **85.09%** (exceeds mandatory $\ge 85.0\%$ gate)
+* **Total Test Count**: **879 passed**, 0 failed, 23 skipped (879/879 active unit/integration tests passing)
+* **Total Coverage**: **85.08%** (9,746 statements, 1,722 branches; exceeds mandatory $\ge 85.0\%$ gate)
 * **Phase 6 Test Suites**:
   - `tests/target_accounts/test_binding_model.py`: 4 passed
   - `tests/target_accounts/test_username_derivation.py`: 6 passed
@@ -132,6 +132,7 @@ Phase 6 maintains strict architectural boundaries:
   - `tests/target_accounts/test_target_account_routes.py`: 6 passed
   - `tests/ownership/test_target_account_ownership.py`: 1 passed
   - `tests/execution/test_ssh_provisioning.py`: 4 passed
+  - `tests/execution/test_opsforge_helper_mocked.py`: 14 passed
   - `tests/test_phase6_boundaries.py`: 1 passed
 
 ---

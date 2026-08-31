@@ -136,6 +136,11 @@ class Secret:
                 return v
         return None
 
+    @property
+    def current_version(self) -> Optional[SecretVersion]:
+        """Convenience property for accessing the active SecretVersion."""
+        return self.get_current_version()
+
 
 class SecretFactory:
     """Constructs Secret aggregates without side effects."""

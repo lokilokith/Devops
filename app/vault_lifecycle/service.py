@@ -8,13 +8,13 @@ from typing import Any, Dict
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.service import AuditService
 from app.authorization.exceptions import AuthorizationDeniedError
 from app.authorization.service import AuthorizationService
 from app.permissions.models import PermissionAction
+from app.shared.database import DbSession
 from app.vault_lifecycle.engine import RotationEligibilityEngine
 from app.vault_lifecycle.exceptions import PolicyNotFoundError, PolicyValidationError
 from app.vault_lifecycle.models import RotationStatus, SecretRotationPolicy
@@ -31,7 +31,7 @@ class VaultLifecycleService:
         repository: SecretRotationPolicyRepository,
         audit_service: AuditService,
         authz_service: AuthorizationService,
-        session: Session,
+        session: DbSession,
     ) -> None:
         self._repository = repository
         self._audit = audit_service

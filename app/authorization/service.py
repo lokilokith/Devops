@@ -7,7 +7,6 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.authorization.exceptions import (
     AuthorizationDeniedError,
@@ -17,12 +16,13 @@ from app.permissions.models import Permission, PermissionAction, PermissionStatu
 from app.resources.models import Resource
 from app.role_permissions.models import RolePermission
 from app.roles.models import Role, UserRole
+from app.shared.database import DbSession
 
 
 class AuthorizationService:
     """Service for determining if a user is authorized to perform actions."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         self._session = session
 
     def has_permission(

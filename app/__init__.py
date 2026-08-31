@@ -91,7 +91,8 @@ def create_app(validate_kms: bool = True, testing_bootstrap: bool = False) -> Fl
     # Initialize CORS
     from flask_cors import CORS
 
-    CORS(app, resources=app.config.get("CORS_RESOURCES"))
+    cors_resources = app.config.get("CORS_RESOURCES") or {r"/*": {"origins": "*"}}
+    CORS(app, resources=cors_resources)
 
     # Register logging and Request ID middleware
     from app.platform.middleware import register_middleware

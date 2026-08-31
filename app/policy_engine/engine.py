@@ -6,18 +6,18 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from app.access_requests.models import AccessRequest, AccessRequestStatus
 from app.authorization.service import AuthorizationService
 from app.policy_engine.decisions import PolicyDecision
 from app.resources.models import ResourceAccessPolicy
+from app.shared.database import DbSession
 
 
 class PolicyEngine:
     """Platform Policy Engine to evaluate operation decisions."""
 
-    def __init__(self, session: Session, authz_service: AuthorizationService) -> None:
+    def __init__(self, session: DbSession, authz_service: AuthorizationService) -> None:
         self._session = session
         self._authz = authz_service
 

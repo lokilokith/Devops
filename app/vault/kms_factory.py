@@ -13,7 +13,7 @@ The factory enforces a strict fail‑closed contract:
 
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from app.vault.crypto import (
     KMSConfigurationError,
@@ -24,20 +24,10 @@ from app.vault.models import KMSConfiguration, KMSProviderType
 
 
 class KMSProviderFactory:
-    """Factory to resolve the active KMS provider.
-
-    The method is deliberately static to avoid any statefulness – it simply
-    queries the database for the active ``KMSConfiguration`` and returns an
-    instantiated provider that implements the :class:`app.vault.crypto.KMSProvider`
-    protocol.
-
-    The implementation purposefully contains **no fallback** to ``LocalKMSProvider``
-    if the configuration is missing or disabled; this satisfies the required
-    *fail‑closed* security contract.
-    """
+    """Factory to resolve the active KMS provider."""
 
     @staticmethod
-    def resolve_active_provider(session: Session):
+    def resolve_active_provider(session: Session | scoped_session):
         """Return an instantiated KMS provider according to the active config.
 
         Args:

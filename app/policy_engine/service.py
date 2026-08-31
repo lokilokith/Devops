@@ -5,7 +5,7 @@ from __future__ import annotations
 import ipaddress
 import logging
 from datetime import datetime, timezone
-from typing import Sequence
+from typing import Any, Sequence
 from uuid import UUID
 
 from app.audit.models import AuditSeverity, AuditStatus
@@ -128,15 +128,17 @@ class PolicyService:
         # Any intersection counts as match
         return any(role in user_role_codes for role in allowed_roles)
 
-    def _check_resource_attributes(self, resource_env: str, policy_env: str) -> bool:
-        return resource_env == policy_env
+    def _check_resource_attributes(
+        self, resource_env: str | None, policy_env: str
+    ) -> bool:
+        return bool(resource_env and resource_env == policy_env)
 
     def _evaluate_conditions(
         self,
-        conditions: dict,
-        user_roles: Sequence,
-        context: dict,
-        resource_attributes: dict = None,
+        conditions: dict[str, Any],
+        user_roles: Sequence[Any],
+        context: dict[str, Any],
+        resource_attributes: dict[str, Any] | None = None,
     ) -> bool:
         """
         Evaluate if a policy's conditions MATCH the given context.
@@ -171,68 +173,66 @@ class PolicyService:
         return True
 
     def evaluate_policy(
-        self, user_id: UUID, resource_id: str, action: str, context: dict = None
-    ) -> dict:
+        self,
+        user_id: UUID,
+        resource_id: str,
+        action: str,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Evaluate access combining RBAC and ABAC rules.
         """
         if context is None:
             context = {}
 
-        decision = {
+        trace: list[str] = []
+        decision: dict[str, Any] = {
             "decision": "DENY",
             "reason": "Unknown",
             "policy_id": None,
             "requires_approval": False,
             "max_duration_seconds": None,
-            "trace": [],
+            "trace": trace,
         }
 
-        def log_and_return():
+        def log_and_return() -> dict[str, Any]:
             status = (
                 AuditStatus.SUCCESS
                 if decision["decision"] == "ALLOW"
                 else AuditStatus.DENIED
             )
-            severity = (
-                AuditSeverity.INFO
-                if decision["decision"] == "ALLOW"
-                else AuditSeverity.HIGH
-            )
-
             self._audit_service.log_event(
                 actor_user_id=user_id,
-                action=f"POLICY_EVAL_{action.upper()}",
-                resource_type="RESOURCE",
+                action="policy.evaluated",
+                resource_type="resource",
                 resource_id=resource_id,
                 status=status,
-                severity=severity,
+                severity=AuditSeverity.INFO,
                 details={
-                    "policy_id": (
-                        str(decision["policy_id"]) if decision["policy_id"] else None
-                    ),
+                    "action": action,
+                    "policy_id": decision["policy_id"],
                     "reason": decision["reason"],
-                    "trace": decision["trace"],
+                    "trace": trace,
                     "decision": decision["decision"],
                 },
             )
             return decision
 
         # 1. Base RBAC Check
-        decision["trace"].append("Checking base RBAC permissions")
+        trace.append("Checking base RBAC permissions")
         try:
             perm_action = PermissionAction(action.lower())
         except ValueError:
             decision["reason"] = f"Invalid action: {action}"
-            decision["trace"].append(decision["reason"])
+            trace.append(decision["reason"])
             return log_and_return()
 
         if not self._auth_service.has_permission(user_id, resource_id, perm_action):
             decision["reason"] = "RBAC permission missing"
-            decision["trace"].append(decision["reason"])
+            trace.append(decision["reason"])
             return log_and_return()
 
-        decision["trace"].append("RBAC permission granted")
+        trace.append("RBAC permission granted")
 
         # 2. ABAC Evaluation
         active_policies = self._repo.get_active_policies()
@@ -240,7 +240,7 @@ class PolicyService:
         if not active_policies:
             decision["decision"] = "ALLOW"
             decision["reason"] = "RBAC granted and no active ABAC policies"
-            decision["trace"].append("No ABAC policies to evaluate")
+            trace.append("No ABAC policies to evaluate")
             return log_and_return()
 
         user_roles = self._auth_service.get_user_roles(user_id)
@@ -269,7 +269,7 @@ class PolicyService:
                 decision["decision"] = "DENY"
                 decision["reason"] = f"Explicit DENY by policy: {p.name}"
                 decision["policy_id"] = str(p.id)
-                decision["trace"].append(decision["reason"])
+                trace.append(decision["reason"])
                 return log_and_return()
 
         # Evaluate Explicit ALLOW
@@ -280,7 +280,7 @@ class PolicyService:
                 decision["policy_id"] = str(p.id)
                 decision["requires_approval"] = p.requires_approval
                 decision["max_duration_seconds"] = p.max_duration_seconds
-                decision["trace"].append(decision["reason"])
+                trace.append(decision["reason"])
                 return log_and_return()
 
         # No matching policies.
@@ -288,13 +288,13 @@ class PolicyService:
         if has_any_allow_policy:
             decision["decision"] = "DENY"
             decision["reason"] = "Implicit DENY: matched no ALLOW policies"
-            decision["trace"].append("No applicable ALLOW policies found for context")
+            trace.append("No applicable ALLOW policies found for context")
             return log_and_return()
 
         # No ALLOW policies exist, and no DENY policies matched. Base RBAC allows.
         decision["decision"] = "ALLOW"
         decision["reason"] = "RBAC granted and no matching DENY policies"
-        decision["trace"].append("ABAC evaluated (no ALLOW policies required)")
+        trace.append("ABAC evaluated (no ALLOW policies required)")
         return log_and_return()
 
 

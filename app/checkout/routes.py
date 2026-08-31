@@ -14,7 +14,6 @@ from app.authorization.service import AuthorizationService
 from app.checkout.exceptions import CheckoutError
 from app.checkout.repository import CredentialLeaseRepository
 from app.checkout.service import CheckoutService
-from app.identity.repository import IdentityRepository
 from app.platform.extensions import db
 from app.policy_engine.engine import PolicyEngine
 from app.vault.crypto import EncryptionService
@@ -35,8 +34,7 @@ def get_checkout_service() -> CheckoutService:
     audit_service = AuditService(audit_repo)
     kms_provider = KMSProviderFactory.resolve_active_provider(db.session)
     encryption_service = EncryptionService(kms_provider)
-    identity_repo = IdentityRepository(db.session)
-    auth_service = AuthorizationService(identity_repo)
+    auth_service = AuthorizationService(db.session)
     policy_engine = PolicyEngine(db.session, auth_service)
 
     return CheckoutService(

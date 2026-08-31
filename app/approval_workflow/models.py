@@ -7,7 +7,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
 from app.shared.database import BaseModel
@@ -76,8 +76,6 @@ class ApprovalWorkflow(BaseModel):
     approved_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-
-    from sqlalchemy.orm import relationship
 
     access_request = relationship("AccessRequest", lazy="joined")
 

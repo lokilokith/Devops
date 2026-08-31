@@ -6,8 +6,6 @@ from datetime import datetime, timezone
 from typing import Sequence
 from uuid import UUID
 
-from sqlalchemy.orm import Session
-
 from app.access_requests.repository import AccessRequestRepository
 from app.approval_workflow.exceptions import ApprovalWorkflowValidationError
 from app.approval_workflow.models import ApprovalLevel, ApprovalStatus, ApprovalWorkflow
@@ -16,6 +14,7 @@ from app.approval_workflow.validators import validate_state_transition
 from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.service import AuditService
 from app.notifications.events import approval_required, workflow_failed
+from app.shared.database import DbSession
 from app.user_roles.exceptions import UserRoleAlreadyExistsError
 from app.user_roles.repository import UserRolesRepository
 
@@ -27,7 +26,7 @@ class ApprovalWorkflowService:
         access_request_repo: AccessRequestRepository,
         user_roles_repo: UserRolesRepository,
         audit_service: AuditService,
-        session: Session,
+        session: DbSession,
     ) -> None:
         self._repo = approval_repo
         self._ar_repo = access_request_repo
@@ -337,11 +336,11 @@ class ApprovalWorkflowService:
         for wf in workflows:
             if wf.status == ApprovalStatus.PENDING:
                 try:
-                    wf = self._repo.get_by_id(wf.id, for_update=True)
-                    if wf and wf.status == ApprovalStatus.PENDING:
-                        wf.status = ApprovalStatus.CANCELLED
-                        wf.comments = comments
-                        self._repo.update_workflow(wf)
+                    locked_wf = self._repo.get_by_id(wf.id, for_update=True)
+                    if locked_wf and locked_wf.status == ApprovalStatus.PENDING:
+                        locked_wf.status = ApprovalStatus.CANCELLED
+                        locked_wf.comments = comments
+                        self._repo.update_workflow(locked_wf)
                         self._session.commit()
                 except Exception:
                     self._session.rollback()

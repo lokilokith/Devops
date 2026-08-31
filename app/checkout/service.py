@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
-
-from sqlalchemy.orm import Session
 
 from app.access_requests.models import AccessRequestStatus
 from app.access_requests.repository import AccessRequestRepository
@@ -24,6 +22,7 @@ from app.checkout.models import CredentialLease, LeaseStatus
 from app.checkout.repository import CredentialLeaseRepository
 from app.policy_engine.decisions import PolicyDecision
 from app.policy_engine.engine import PolicyEngine
+from app.shared.database import DbSession
 from app.vault.crypto import EncryptionService
 from app.vault.domain import SecretStatus
 from app.vault.exceptions import ConcurrencyError
@@ -36,7 +35,7 @@ logger = logging.getLogger(__name__)
 class CheckoutService:
     def __init__(
         self,
-        session: Session,
+        session: DbSession,
         lease_repo: CredentialLeaseRepository,
         vault_repo: SqlAlchemyVaultRepository,
         policy_repo: SecretRotationPolicyRepository,
@@ -112,6 +111,8 @@ class CheckoutService:
                     ) from err
 
                 # 6. Locate the VaultSecret
+                if not ar.requested_resource_id:
+                    raise CheckoutError("No resource specified on the access request.")
                 secret = self._vault_repo.find_by_resource(ar.requested_resource_id)
                 if not secret:
                     raise CheckoutError(
@@ -128,8 +129,7 @@ class CheckoutService:
                 try:
                     decision = self._policy_engine.evaluate_vault_retrieval(
                         user_id,
-                        secret.id,
-                        {"access_request_id": str(access_request_id)},
+                        secret.resource_id,
                     )
                 except Exception as e:
                     self._audit.log_event(
@@ -186,7 +186,7 @@ class CheckoutService:
                     access_request_id=ar.id,
                     status=LeaseStatus.ACTIVE,
                     started_at=now,
-                    expires_at=ar.requested_end or (now + datetime.timedelta(hours=1)),
+                    expires_at=ar.requested_end or (now + timedelta(hours=1)),
                 )
                 self._lease_repo.save(lease)
 
@@ -209,11 +209,14 @@ class CheckoutService:
 
         except ConcurrencyError:
             self._session.rollback()
+            resource_id_str = (
+                str(ar.requested_resource_id) if ar and ar.requested_resource_id else ""
+            )
             self._audit.log_event(
                 actor_user_id=user_id,
                 action="CHECKOUT_CONCURRENCY_CONFLICT",
                 resource_type="vault_secrets",
-                resource_id=str(ar.requested_resource_id),
+                resource_id=resource_id_str,
                 status=AuditStatus.FAILED,
                 severity=AuditSeverity.MEDIUM,
                 details={"access_request_id": str(access_request_id)},

@@ -20,7 +20,9 @@ from app.permissions.repository import PermissionsRepository
 
 class PermissionsService:
     def __init__(
-        self, repository: PermissionsRepository, audit_service: AuditService = None
+        self,
+        repository: PermissionsRepository,
+        audit_service: AuditService | None = None,
     ):
         self._repository = repository
         self._audit_service = audit_service

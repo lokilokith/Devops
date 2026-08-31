@@ -10,10 +10,10 @@ from uuid import UUID
 
 from sqlalchemy import exists, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.identity.exceptions import IdentityRepositoryError, UserNotFoundError
 from app.identity.models import User, UserStatus
+from app.shared.database import DbSession
 
 T = TypeVar("T")
 
@@ -21,7 +21,7 @@ T = TypeVar("T")
 class IdentityRepository:
     """Repository managing persistence and retrieval operations for User entities."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         """Initialize repository with a SQLAlchemy session.
 
         Args:

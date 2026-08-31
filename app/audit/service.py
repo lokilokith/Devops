@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Sequence
 from uuid import UUID
 
 from app.audit.models import AuditLog, AuditSeverity, AuditStatus
@@ -177,7 +178,7 @@ class AuditService:
 
     def search_logs(
         self, page: int = 1, page_size: int = 20, **filters
-    ) -> list[AuditLog]:
+    ) -> Sequence[AuditLog]:
         return self._repo.search(page=page, page_size=page_size, **filters)
 
     def count_logs(self, **filters) -> int:

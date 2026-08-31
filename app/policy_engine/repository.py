@@ -7,11 +7,10 @@ from uuid import UUID
 
 from sqlalchemy import exists, func, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.policy_engine.exceptions import PolicyNotFoundError, PolicyRepositoryError
 from app.policy_engine.models import AccessPolicy
-from app.shared.database import BaseModel
+from app.shared.database import BaseModel, DbSession
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -19,7 +18,7 @@ T = TypeVar("T", bound=BaseModel)
 class PolicyRepository:
     """Repository managing persistence and retrieval of AccessPolicy entities."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         self._session = session
 
     def _commit_and_refresh(self, entity: T) -> T:

@@ -8,20 +8,25 @@ support while preserving backwards compatibility for legacy execute() callers.
 from __future__ import annotations
 
 import uuid
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 from uuid import UUID
 
+from app.execution.domain import ExecutionOperation
 from app.execution.executor import StubTargetExecutor
-from app.vault.executor import ExecutionResult
 
 
 class StubCredentialExecutor(StubTargetExecutor):
     """Deterministic stub executor supporting both canonical TargetExecutor and legacy CredentialExecutor."""
 
-    def __init__(self, behaviour_map: Optional[Dict[UUID, str]] = None) -> None:
+    def __init__(
+        self,
+        behaviour_map: Optional[
+            Dict[Union[UUID, Tuple[UUID, ExecutionOperation]], str]
+        ] = None,
+    ) -> None:
         super().__init__(behaviour_map=behaviour_map)
 
-    def execute(self, resource_id: UUID, current_secret: bytes) -> ExecutionResult:
+    def execute(self, resource_id: UUID, current_secret: bytes) -> Dict[str, Any]:
         """Execute rotation for resource_id in legacy dictionary format."""
         mode = self._behaviour.get(resource_id, "success")
         if mode == "success":
