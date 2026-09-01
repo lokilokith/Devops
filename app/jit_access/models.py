@@ -16,6 +16,8 @@ class JITGrantStatus(str, enum.Enum):
 
     PENDING = "pending"
     ACTIVE = "active"
+    REVOCATION_PENDING = "revocation_pending"
+    REVOCATION_RUNNING = "revocation_running"
     EXPIRED = "expired"
     REVOKED = "revoked"
     DENIED = "denied"
@@ -99,10 +101,16 @@ class JITAccessGrant(BaseModel):
     row_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     failure_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    revocation_worker_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    revocation_lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revocation_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sessions_terminated: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class JITAccessSession(BaseModel):
-    """Tracks ephemeral credentials created for Just-In-Time access."""
+    """Tracks ephemeral credentials and active sessions created for Just-In-Time access."""
 
     __tablename__ = "jit_access_sessions"
 
@@ -124,6 +132,26 @@ class JITAccessSession(BaseModel):
     revoked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    jit_grant_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("jit_access_grants.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    resource_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("resources.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    target_os_username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target_session_pid: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    terminated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     def expire(self) -> bool:
         """Expire the session. Returns True if state changed, False if already expired."""
@@ -139,6 +167,7 @@ class JITAccessSession(BaseModel):
         if expires_at <= now:
             return False
         self.expires_at = now
+        self.status = "expired"
         return True
 
     def revoke(self) -> bool:
@@ -148,6 +177,7 @@ class JITAccessSession(BaseModel):
         if self.revoked_at is not None:
             return False
         self.revoked_at = datetime.now(timezone.utc)
+        self.status = "revoked"
         return True
 
 

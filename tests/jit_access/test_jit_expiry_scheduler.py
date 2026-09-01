@@ -113,12 +113,20 @@ def test_expiry_worker_discovers_and_expires_grant(jit_worker_setup, db_session)
     db_session.commit()
 
     mock_executor = MagicMock()
+    mock_executor.terminate_jit_sessions.return_value = ExecutionResult(
+        execution_id=uuid.uuid4(),
+        operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+        status=ExecutionStatus.SUCCESS,
+        verification_status=VerificationStatus.VERIFIED_SUCCESS,
+        details={"terminated_count": 0},
+        duration_ms=10.0,
+    )
     mock_executor.revoke_jit_grant.return_value = ExecutionResult(
         execution_id=uuid.uuid4(),
         operation=ExecutionOperation.REVOKE_JIT_GRANT,
         status=ExecutionStatus.SUCCESS,
         verification_status=VerificationStatus.VERIFIED_SUCCESS,
-        details={"revoked": True},
+        details={"removed": True},
         duration_ms=15.0,
     )
 
@@ -161,12 +169,20 @@ def test_expiry_worker_slo_breach_alerting(jit_worker_setup, db_session):
     db_session.commit()
 
     mock_executor = MagicMock()
+    mock_executor.terminate_jit_sessions.return_value = ExecutionResult(
+        execution_id=uuid.uuid4(),
+        operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+        status=ExecutionStatus.SUCCESS,
+        verification_status=VerificationStatus.VERIFIED_SUCCESS,
+        details={"terminated_count": 0},
+        duration_ms=10.0,
+    )
     mock_executor.revoke_jit_grant.return_value = ExecutionResult(
         execution_id=uuid.uuid4(),
         operation=ExecutionOperation.REVOKE_JIT_GRANT,
         status=ExecutionStatus.SUCCESS,
         verification_status=VerificationStatus.VERIFIED_SUCCESS,
-        details={"revoked": True},
+        details={"removed": True},
         duration_ms=10.0,
     )
 
@@ -207,13 +223,21 @@ def test_worker_down_scenario_and_startup_recovery(jit_worker_setup, db_session)
     db_session.commit()
 
     mock_executor = MagicMock()
+    mock_executor.terminate_jit_sessions.return_value = ExecutionResult(
+        execution_id=uuid.uuid4(),
+        operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+        status=ExecutionStatus.SUCCESS,
+        verification_status=VerificationStatus.VERIFIED_SUCCESS,
+        details={"terminated_count": 0},
+        duration_ms=10.0,
+    )
     mock_executor.revoke_jit_grant.return_value = ExecutionResult(
         execution_id=uuid.uuid4(),
         operation=ExecutionOperation.REVOKE_JIT_GRANT,
         status=ExecutionStatus.SUCCESS,
         verification_status=VerificationStatus.VERIFIED_SUCCESS,
-        details={"revoked": True},
-        duration_ms=12.0,
+        details={"removed": True},
+        duration_ms=10.0,
     )
 
     # Worker starts up

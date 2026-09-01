@@ -124,10 +124,18 @@ def test_update_resource(service, mock_repo):
     res = service.update_resource(
         uid,
         {
+            "resource_code": "new_c",
             "resource_name": "new_n",
             "description": "new_d",
             "resource_type": "database",
             "status": "inactive",
+            "hostname_ip": "1.2.3.4",
+            "protocol": "ssh",
+            "port": 22,
+            "environment": "prod",
+            "criticality": "high",
+            "connection_method": "direct",
+            "owner_id": uuid4(),
         },
     )
 
@@ -135,6 +143,13 @@ def test_update_resource(service, mock_repo):
     assert res.description == "new_d"
     assert res.status == "inactive"
     assert res.resource_type == "database"
+    assert res.hostname_ip == "1.2.3.4"
+    assert res.protocol == "ssh"
+    assert res.port == 22
+    assert res.environment == "prod"
+    assert res.criticality == "high"
+    assert res.connection_method == "direct"
+    assert res.owner_id is not None
 
 
 def test_update_resource_duplicate_name(service, mock_repo):

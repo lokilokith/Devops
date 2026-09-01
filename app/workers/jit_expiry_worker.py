@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class JITExpiryWorker:
-    """Worker responsible for discovering and revoking expired JIT access grants."""
+    """Worker responsible for discovering, revoking, and recovering JIT access grants."""
 
     def __init__(
         self,
@@ -31,12 +31,14 @@ class JITExpiryWorker:
         executor: Optional[TargetExecutor] = None,
         bootstrap_credential: Optional[bytes] = None,
         max_overrun_slo_ms: int = 5000,
+        worker_id: str = "jit_expiry_worker_1",
     ) -> None:
         self.service = service
         self.audit_service = audit_service or service._audit
         self.executor = executor
         self.bootstrap_credential = bootstrap_credential
         self.max_overrun_slo_ms = max_overrun_slo_ms
+        self.worker_id = worker_id
 
     def process_expired_grants(
         self, current_time: Optional[datetime] = None
@@ -58,6 +60,7 @@ class JITExpiryWorker:
                     grant.id,
                     executor=self.executor,
                     bootstrap_credential=self.bootstrap_credential,
+                    worker_id=self.worker_id,
                 )
                 overrun_ms = updated_grant.observed_overrun_ms or 0
                 is_slo_breach = overrun_ms > self.max_overrun_slo_ms
@@ -114,28 +117,42 @@ class JITExpiryWorker:
         )
         return results
 
-    def run_recovery_on_startup(self) -> List[Dict[str, Any]]:
-        """Worker-down scenario: drain and revoke any expired grants accumulated during downtime."""
-        logger.info(
-            "JITExpiryWorker: Running startup recovery sweep for backlogged expired grants..."
+    def process_interrupted_revocations(self) -> List[Dict[str, Any]]:
+        """Recover any orphaned or interrupted revocations with expired leases."""
+        return self.service._engine.recover_interrupted_revocations(
+            executor=self.executor,
+            bootstrap_credential=self.bootstrap_credential,
+            worker_id=self.worker_id,
         )
-        return self.process_expired_grants()
+
+    def run_recovery_on_startup(self) -> List[Dict[str, Any]]:
+        """Worker-down scenario: drain backlogged expired grants and recover interrupted revocations."""
+        logger.info(
+            "JITExpiryWorker: Running startup recovery sweep for backlogged expired grants and interrupted revocations..."
+        )
+        rec_results = self.process_interrupted_revocations()
+        exp_results = self.process_expired_grants()
+        return rec_results + exp_results
 
 
 def run_jit_expiry_job(
     service: JITAccessService,
     executor: Optional[TargetExecutor] = None,
     bootstrap_credential: Optional[bytes] = None,
+    worker_id: str = "jit_expiry_worker_1",
 ) -> Dict[str, Any]:
     """Execute a single JIT expiry sweep job."""
     worker = JITExpiryWorker(
         service=service,
         executor=executor,
         bootstrap_credential=bootstrap_credential,
+        worker_id=worker_id,
     )
+    recovered = worker.process_interrupted_revocations()
     processed = worker.process_expired_grants()
     return {
+        "recovered_count": len(recovered),
         "processed_count": len(processed),
-        "results": processed,
+        "results": recovered + processed,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

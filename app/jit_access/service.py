@@ -26,6 +26,7 @@ from app.jit_access.exceptions import (
 )
 from app.jit_access.models import JITAccessGrant, JITGrantStatus
 from app.jit_access.repository import JITAccessRepository
+from app.jit_access.revocation_engine import JITRevocationEngine
 from app.permissions.models import PermissionAction
 from app.platform.extensions import db
 from app.policy_engine.service import PolicyService
@@ -55,6 +56,11 @@ class JITAccessService:
             or TargetAccountBindingRepository(cast(Session, session or db.session))
         )
         self._session = session
+        self._engine = JITRevocationEngine(
+            repository=self._repo,
+            audit_service=self._audit,
+            target_account_repo=self._target_account_repo,
+        )
 
     def request_access(
         self,
@@ -385,113 +391,18 @@ class JITAccessService:
         grant_id: UUID,
         executor: Optional[TargetExecutor] = None,
         bootstrap_credential: Optional[bytes] = None,
+        worker_id: str = "expiry_worker",
     ) -> JITAccessGrant:
+        """Automated expiry revocation delegated to dedicated Revocation Engine."""
         grant = self._repo.get_by_id(grant_id)
-        if grant.status == JITGrantStatus.EXPIRED:
-            return grant
-        if grant.status != JITGrantStatus.ACTIVE:
-            raise InvalidGrantStateError(
-                f"Only active grants can be expired (status: {grant.status.value})"
-            )
-
-        grant.revocation_start = datetime.now(timezone.utc)
-
-        if executor:
-            now_dt = datetime.now(timezone.utc)
-            auth_ctx = ExecutionAuthorizationContext(
-                user_id=grant.user_id,
-                resource_id=grant.resource_id,
-                credential_id=grant.target_account_binding_id or grant.id,
-                target_account_binding_id=grant.target_account_binding_id,
-                grant_id=grant.id,
-                requested_at=now_dt,
-                expires_at=now_dt + timedelta(minutes=15),
-            )
-            req = ExecutionRequest(
-                operation=ExecutionOperation.REVOKE_JIT_GRANT,
-                resource_id=grant.resource_id,
-                parameters={
-                    "grant_id": str(grant.id),
-                    "bootstrap_credential": bootstrap_credential,
-                },
-                authorization_context=auth_ctx,
-            )
-            exec_result = executor.revoke_jit_grant(req)
-            if exec_result.status != ExecutionStatus.SUCCESS:
-                grant.failure_reason = exec_result.error_message
-                grant.status = JITGrantStatus.SECURITY_UNCERTAIN
-                self._repo.save(grant)
-                self._audit.log_event(
-                    actor_user_id=grant.user_id,
-                    action="jit.revocation_failed",
-                    resource_type="jit_access_grants",
-                    resource_id=str(grant.id),
-                    status=AuditStatus.FAILED,
-                    severity=AuditSeverity.CRITICAL,
-                    details={"error": exec_result.error_message},
-                )
-                raise JITAccessError(
-                    f"Failed to revoke JIT grant on target: {exec_result.error_message}"
-                )
-
-        grant.revocation_complete = datetime.now(timezone.utc)
-        if grant.expires_at:
-            grant.observed_overrun_ms = int(
-                max(
-                    0,
-                    (grant.revocation_complete - grant.expires_at).total_seconds()
-                    * 1000,
-                )
-            )
-
-        grant.status = JITGrantStatus.EXPIRED
-        updated_grant = self._repo.save(grant)
-
-        from sqlalchemy import select
-
-        from app.jit_access.events import jit_session_expired
-        from app.jit_access.models import JITAccessSession
-
-        stmt = select(JITAccessSession).where(
-            JITAccessSession.access_request_id == grant.approval_request_id
+        return self._engine.revoke_grant(
+            grant_id=grant_id,
+            actor_id=grant.user_id,
+            is_expiry=True,
+            executor=executor,
+            bootstrap_credential=bootstrap_credential,
+            worker_id=worker_id,
         )
-        session = db.session.execute(stmt).scalar_one_or_none()
-
-        if session:
-            if session.expire():
-                db.session.add(session)
-                self._audit.log_event(
-                    actor_user_id=grant.user_id,
-                    action="JIT_SESSION_EXPIRED",
-                    resource_type="jit_access_sessions",
-                    resource_id=str(session.access_request_id),
-                    status=AuditStatus.SUCCESS,
-                    severity=AuditSeverity.INFO,
-                )
-                jit_session_expired.send(
-                    self,
-                    payload={
-                        "event": "jit_session_expired",
-                        "session_id": str(session.access_request_id),
-                        "grant_id": str(grant.id),
-                        "actor_id": str(grant.user_id),
-                    },
-                )
-
-        self._audit.log_event(
-            actor_user_id=grant.user_id,
-            action="jit.expired",
-            resource_type="jit_access_grants",
-            resource_id=str(updated_grant.id),
-            status=AuditStatus.SUCCESS,
-            severity=AuditSeverity.INFO,
-            details={
-                "observed_overrun_ms": grant.observed_overrun_ms,
-                "revocation_start": str(grant.revocation_start),
-                "revocation_complete": str(grant.revocation_complete),
-            },
-        )
-        return updated_grant
 
     def revoke_access(
         self,
@@ -499,7 +410,9 @@ class JITAccessService:
         revoker_id: UUID,
         executor: Optional[TargetExecutor] = None,
         bootstrap_credential: Optional[bytes] = None,
+        worker_id: str = "manual_revocation",
     ) -> JITAccessGrant:
+        """Immediate manual revocation with RBAC and IDOR ownership enforcement."""
         grant = self._repo.get_by_id(grant_id)
 
         if grant.status == JITGrantStatus.REVOKED:
@@ -525,12 +438,145 @@ class JITAccessService:
                 f"Only pending or active grants can be revoked (status: {grant.status.value})"
             )
 
-        grant.revocation_start = datetime.now(timezone.utc)
+        return self._engine.revoke_grant(
+            grant_id=grant_id,
+            actor_id=revoker_id,
+            is_expiry=False,
+            executor=executor,
+            bootstrap_credential=bootstrap_credential,
+            worker_id=worker_id,
+        )
 
-        if executor and grant.status == JITGrantStatus.ACTIVE:
+    def register_active_session(
+        self,
+        grant_id: UUID,
+        user_id: UUID,
+        session_id: UUID,
+        target_session_pid: int,
+        executor: Optional[TargetExecutor] = None,
+        bootstrap_credential: Optional[bytes] = None,
+    ) -> Any:
+        """Register an active JIT session on the target and in database."""
+        grant = self._repo.get_by_id(grant_id)
+        if grant.status != JITGrantStatus.ACTIVE:
+            raise InvalidGrantStateError(
+                f"Cannot register session for non-active grant (status: {grant.status.value})"
+            )
+
+        if grant.user_id != user_id:
+            try:
+                is_admin = self._auth.has_permission(
+                    user_id, "jit_grants", PermissionAction("update")
+                )
+                if not is_admin:
+                    raise UnauthorizedActivationError(
+                        "User cannot register sessions for another user's grant"
+                    )
+            except ValueError:
+                raise UnauthorizedActivationError(
+                    "User cannot register sessions for another user's grant"
+                )
+
+        binding = None
+        if grant.target_account_binding_id:
+            binding = self._target_account_repo.get_by_id(
+                grant.target_account_binding_id
+            )
+        if not binding:
+            raise JITAccessError(
+                f"No target account binding found for grant {grant_id}"
+            )
+
+        # Target registration
+        if executor and grant.resource_id:
             now_dt = datetime.now(timezone.utc)
             auth_ctx = ExecutionAuthorizationContext(
-                user_id=revoker_id,
+                user_id=user_id,
+                resource_id=grant.resource_id,
+                credential_id=binding.ssh_credential_id or grant.id,
+                target_account_binding_id=binding.id,
+                grant_id=grant.id,
+                requested_at=now_dt,
+                expires_at=grant.expires_at or (now_dt + timedelta(hours=8)),
+            )
+            req = ExecutionRequest(
+                operation=ExecutionOperation.REGISTER_JIT_SESSION,
+                resource_id=grant.resource_id,
+                parameters={
+                    "grant_id": str(grant.id),
+                    "session_id": str(session_id),
+                    "target_os_username": binding.target_os_username,
+                    "pid": target_session_pid,
+                    "bootstrap_credential": bootstrap_credential,
+                },
+                authorization_context=auth_ctx,
+            )
+            res = executor.register_jit_session(req)
+            if res.status != ExecutionStatus.SUCCESS:
+                raise JITAccessError(
+                    f"Failed to register session on target: {res.error_message}"
+                )
+
+        from app.jit_access.models import JITAccessSession
+
+        now = datetime.now(timezone.utc)
+        session_rec = JITAccessSession(
+            id=session_id,
+            access_request_id=grant.approval_request_id,
+            ephemeral_secret_id=grant.id,
+            jit_grant_id=grant.id,
+            resource_id=grant.resource_id,
+            target_os_username=binding.target_os_username,
+            target_session_pid=target_session_pid,
+            status="active",
+            started_at=now,
+            expires_at=grant.expires_at or (now + timedelta(hours=8)),
+        )
+        self._repo.save_session(session_rec)
+
+        self._audit.log_event(
+            actor_user_id=user_id,
+            action="jit_session.registered",
+            resource_type="jit_access_sessions",
+            resource_id=str(session_id),
+            status=AuditStatus.SUCCESS,
+            severity=AuditSeverity.INFO,
+            details={
+                "grant_id": str(grant.id),
+                "pid": target_session_pid,
+                "target_os_username": binding.target_os_username,
+            },
+        )
+        return session_rec
+
+    def terminate_active_sessions(
+        self,
+        grant_id: UUID,
+        user_id: UUID,
+        executor: Optional[TargetExecutor] = None,
+        bootstrap_credential: Optional[bytes] = None,
+    ) -> int:
+        """Terminate active sessions for a grant on target and in database."""
+        grant = self._repo.get_by_id(grant_id)
+        if grant.user_id != user_id:
+            try:
+                is_admin = self._auth.has_permission(
+                    user_id, "jit_grants", PermissionAction("delete")
+                )
+                if not is_admin:
+                    raise UnauthorizedActivationError(
+                        "User cannot terminate sessions for another user's grant"
+                    )
+            except ValueError:
+                raise UnauthorizedActivationError(
+                    "User cannot terminate sessions for another user's grant"
+                )
+
+        terminated_count = 0
+        if executor and grant.resource_id:
+            now_dt = datetime.now(timezone.utc)
+            auth_ctx = ExecutionAuthorizationContext(
+                user_id=user_id,
                 resource_id=grant.resource_id,
                 credential_id=grant.target_account_binding_id or grant.id,
                 target_account_binding_id=grant.target_account_binding_id,
@@ -539,7 +585,7 @@ class JITAccessService:
                 expires_at=now_dt + timedelta(minutes=15),
             )
             req = ExecutionRequest(
-                operation=ExecutionOperation.REVOKE_JIT_GRANT,
+                operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
                 resource_id=grant.resource_id,
                 parameters={
                     "grant_id": str(grant.id),
@@ -547,82 +593,35 @@ class JITAccessService:
                 },
                 authorization_context=auth_ctx,
             )
-            exec_result = executor.revoke_jit_grant(req)
-            if exec_result.status != ExecutionStatus.SUCCESS:
-                grant.failure_reason = exec_result.error_message
-                grant.status = JITGrantStatus.SECURITY_UNCERTAIN
-                self._repo.save(grant)
-                self._audit.log_event(
-                    actor_user_id=revoker_id,
-                    action="jit.revocation_failed",
-                    resource_type="jit_access_grants",
-                    resource_id=str(grant.id),
-                    status=AuditStatus.FAILED,
-                    severity=AuditSeverity.CRITICAL,
-                    details={"error": exec_result.error_message},
-                )
+            res = executor.terminate_jit_sessions(req)
+            if res.status != ExecutionStatus.SUCCESS:
                 raise JITAccessError(
-                    f"Failed to revoke JIT grant on target: {exec_result.error_message}"
+                    f"Failed to terminate sessions on target: {res.error_message}"
                 )
-
-        grant.revocation_complete = datetime.now(timezone.utc)
-        if grant.expires_at:
-            grant.observed_overrun_ms = int(
-                max(
-                    0,
-                    (grant.revocation_complete - grant.expires_at).total_seconds()
-                    * 1000,
-                )
+            terminated_count = res.details.get(
+                "terminated_count", 1 if res.details.get("terminated") else 0
             )
 
-        grant.status = JITGrantStatus.REVOKED
-        grant.revoked_at = grant.revocation_complete
-        updated_grant = self._repo.save(grant)
-
-        from sqlalchemy import select
-
-        from app.jit_access.events import jit_session_revoked
-        from app.jit_access.models import JITAccessSession
-
-        stmt = select(JITAccessSession).where(
-            JITAccessSession.access_request_id == grant.approval_request_id
-        )
-        session = db.session.execute(stmt).scalar_one_or_none()
-
-        if session:
-            if session.revoke():
-                db.session.add(session)
-                self._audit.log_event(
-                    actor_user_id=revoker_id,
-                    action="JIT_SESSION_REVOKED",
-                    resource_type="jit_access_sessions",
-                    resource_id=str(session.access_request_id),
-                    status=AuditStatus.SUCCESS,
-                    severity=AuditSeverity.INFO,
-                )
-                jit_session_revoked.send(
-                    self,
-                    payload={
-                        "event": "jit_session_revoked",
-                        "session_id": str(session.access_request_id),
-                        "grant_id": str(grant.id),
-                        "actor_id": str(revoker_id),
-                    },
-                )
+        sessions = self._repo.find_sessions_by_grant(grant.id)
+        now = datetime.now(timezone.utc)
+        for s in sessions:
+            s.status = "terminated"
+            s.terminated_at = now
+            self._repo.save_session(s)
 
         self._audit.log_event(
-            actor_user_id=revoker_id,
-            action="jit.revoked",
+            actor_user_id=user_id,
+            action="jit_session.terminated",
             resource_type="jit_access_grants",
-            resource_id=str(updated_grant.id),
+            resource_id=str(grant.id),
             status=AuditStatus.SUCCESS,
             severity=AuditSeverity.INFO,
             details={
-                "revoked_at": str(grant.revoked_at),
-                "observed_overrun_ms": grant.observed_overrun_ms,
+                "grant_id": str(grant.id),
+                "terminated_count": max(terminated_count, len(sessions)),
             },
         )
-        return updated_grant
+        return max(terminated_count, len(sessions))
 
     def get_grant(self, grant_id: UUID) -> JITAccessGrant:
         """Fetch a JIT access grant by ID or raise GrantNotFoundError."""

@@ -239,17 +239,28 @@ def test_service_expire_access_edge_cases(jit_coverage_setup, db_session):
 
     # Expire with executor failure
     mock_executor = MagicMock()
+    mock_executor.terminate_jit_sessions.return_value = ExecutionResult(
+        execution_id=uuid.uuid4(),
+        operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+        status=ExecutionStatus.FAILED,
+        verification_status=VerificationStatus.UNVERIFIED,
+        failure_classification=FailureClassification.UNCERTAIN_STATE,
+        error_message="SSH target unreachable during revocation",
+        duration_ms=10.0,
+    )
     mock_executor.revoke_jit_grant.return_value = ExecutionResult(
         execution_id=uuid.uuid4(),
         operation=ExecutionOperation.REVOKE_JIT_GRANT,
         status=ExecutionStatus.FAILED,
         verification_status=VerificationStatus.UNVERIFIED,
-        failure_classification=FailureClassification.TARGET_FAILURE,
+        failure_classification=FailureClassification.UNCERTAIN_STATE,
         error_message="SSH target unreachable during revocation",
         duration_ms=10.0,
     )
 
-    with pytest.raises(JITAccessError, match="Failed to revoke JIT grant"):
+    with pytest.raises(
+        JITAccessError, match="Session termination failed in security uncertainty"
+    ):
         svc.expire_access(grant.id, executor=mock_executor)
 
     db_session.refresh(grant)
@@ -337,12 +348,20 @@ def test_run_jit_expiry_job_invocation(app, jit_coverage_setup, db_session):
     assert len(due) == 1
 
     mock_exec = MagicMock()
+    mock_exec.terminate_jit_sessions.return_value = ExecutionResult(
+        execution_id=uuid.uuid4(),
+        operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+        status=ExecutionStatus.SUCCESS,
+        verification_status=VerificationStatus.VERIFIED_SUCCESS,
+        details={"terminated_count": 0},
+        duration_ms=10.0,
+    )
     mock_exec.revoke_jit_grant.return_value = ExecutionResult(
         execution_id=uuid.uuid4(),
         operation=ExecutionOperation.REVOKE_JIT_GRANT,
         status=ExecutionStatus.SUCCESS,
         verification_status=VerificationStatus.VERIFIED_SUCCESS,
-        details={"revoked": True},
+        details={"removed": True},
         duration_ms=10.0,
     )
 
@@ -400,12 +419,20 @@ def test_service_validation_errors_and_check_expire(jit_coverage_setup, db_sessi
     db_session.commit()
 
     mock_exec = MagicMock()
+    mock_exec.terminate_jit_sessions.return_value = ExecutionResult(
+        execution_id=uuid.uuid4(),
+        operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+        status=ExecutionStatus.SUCCESS,
+        verification_status=VerificationStatus.VERIFIED_SUCCESS,
+        details={"terminated_count": 0},
+        duration_ms=10.0,
+    )
     mock_exec.revoke_jit_grant.return_value = ExecutionResult(
         execution_id=uuid.uuid4(),
         operation=ExecutionOperation.REVOKE_JIT_GRANT,
         status=ExecutionStatus.SUCCESS,
         verification_status=VerificationStatus.VERIFIED_SUCCESS,
-        details={"revoked": True},
+        details={"removed": True},
         duration_ms=10.0,
     )
 

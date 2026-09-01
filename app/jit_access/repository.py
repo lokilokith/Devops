@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Any, List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import and_, select
@@ -70,6 +70,127 @@ class JITAccessRepository:
         except SQLAlchemyError as e:
             raise DatabaseOperationException(
                 f"Failed to fetch active grants for binding: {e}"
+            ) from e
+
+    def claim_for_revocation(
+        self,
+        grant_id: UUID,
+        worker_id: str,
+        lease_duration_seconds: int = 60,
+        current_time: Optional[datetime] = None,
+    ) -> Optional[JITAccessGrant]:
+        """Atomically claim a grant for revocation using CAS and lease fencing.
+
+        Guarantees only one worker can process revocation at a time.
+        """
+        now = current_time or datetime.now(timezone.utc)
+        lease_expiry = now + timedelta(seconds=lease_duration_seconds)
+
+        try:
+            grant = self.get_by_id(grant_id)
+            if grant.status in (
+                JITGrantStatus.REVOKED,
+                JITGrantStatus.EXPIRED,
+                JITGrantStatus.DENIED,
+                JITGrantStatus.FAILED,
+            ):
+                return None
+
+            # If already running with an active unexpired lease by ANOTHER worker, reject claim
+            if (
+                grant.status == JITGrantStatus.REVOCATION_RUNNING
+                and grant.revocation_lease_expires_at is not None
+                and grant.revocation_lease_expires_at > now
+                and grant.revocation_worker_id != worker_id
+            ):
+                return None
+
+            # Atomically update state, worker lease, and increment row_version
+            grant.status = JITGrantStatus.REVOCATION_RUNNING
+            grant.revocation_worker_id = worker_id
+            grant.revocation_lease_expires_at = lease_expiry
+            grant.revocation_attempts = (grant.revocation_attempts or 0) + 1
+            if not grant.revocation_start:
+                grant.revocation_start = now
+            grant.row_version = (grant.row_version or 1) + 1
+            grant.updated_at = now
+
+            self.session.add(grant)
+            self.session.flush()
+            return grant
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            raise DatabaseOperationException(
+                f"Failed to claim JIT grant {grant_id} for revocation: {e}"
+            ) from e
+
+    def find_interrupted_revocations(
+        self, current_time: Optional[datetime] = None
+    ) -> List[JITAccessGrant]:
+        """Discover grants in REVOCATION_PENDING or REVOCATION_RUNNING with expired leases."""
+        now = current_time or datetime.now(timezone.utc)
+        try:
+            from sqlalchemy import or_
+
+            stmt = select(JITAccessGrant).where(
+                or_(
+                    JITAccessGrant.status == JITGrantStatus.REVOCATION_PENDING,
+                    and_(
+                        JITAccessGrant.status == JITGrantStatus.REVOCATION_RUNNING,
+                        or_(
+                            JITAccessGrant.revocation_lease_expires_at.is_(None),
+                            JITAccessGrant.revocation_lease_expires_at <= now,
+                        ),
+                    ),
+                )
+            )
+            return list(self.session.execute(stmt).scalars().all())
+        except SQLAlchemyError as e:
+            raise DatabaseOperationException(
+                f"Failed to fetch interrupted JIT revocations: {e}"
+            ) from e
+
+    def save_session(self, session: Any) -> Any:
+        """Persist JIT access session."""
+        try:
+            current_sess = self.session
+            current_sess.add(session)
+            current_sess.flush()
+            return session
+        except SQLAlchemyError as e:
+            raise DatabaseOperationException(
+                f"Failed to save JIT access session: {e}"
+            ) from e
+
+    def find_sessions_by_grant(self, grant_id: UUID) -> List[Any]:
+        """Fetch all sessions associated with a JIT grant."""
+        from app.jit_access.models import JITAccessSession
+
+        try:
+            stmt = select(JITAccessSession).where(
+                JITAccessSession.jit_grant_id == grant_id
+            )
+            return list(self.session.execute(stmt).scalars().all())
+        except SQLAlchemyError as e:
+            raise DatabaseOperationException(
+                f"Failed to fetch sessions for grant {grant_id}: {e}"
+            ) from e
+
+    def find_active_sessions_by_grant(self, grant_id: UUID) -> List[Any]:
+        """Fetch active sessions for a grant."""
+        from app.jit_access.models import JITAccessSession
+
+        try:
+            stmt = select(JITAccessSession).where(
+                and_(
+                    JITAccessSession.jit_grant_id == grant_id,
+                    JITAccessSession.status == "active",
+                )
+            )
+            return list(self.session.execute(stmt).scalars().all())
+        except SQLAlchemyError as e:
+            raise DatabaseOperationException(
+                f"Failed to fetch active sessions for grant {grant_id}: {e}"
             ) from e
 
     @staticmethod

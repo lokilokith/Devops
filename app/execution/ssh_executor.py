@@ -1532,3 +1532,240 @@ print("REMOVE_SUCCESS")
             except Exception:
                 pass
         return result
+
+    def register_jit_session(self, request: ExecutionRequest) -> ExecutionResult:
+        """Phase 8 operation: Register active JIT session with target helper boundary."""
+        start_time = time.monotonic()
+        request.authorization_context.validate()
+
+        params = request.parameters
+        host = params.get("hostname_ip") or params.get("host")
+        port = int(params.get("port") or 22)
+        grant_id = str(params.get("grant_id"))
+        session_id = str(params.get("session_id"))
+        target_os_username = params.get("target_os_username")
+        pid = params.get("pid")
+        bootstrap_credential = params.get("bootstrap_credential")
+
+        if not host and self.resource_resolver:
+            resource = self.resource_resolver(request.resource_id)
+            if resource:
+                host = getattr(resource, "hostname_ip", None) or getattr(
+                    resource, "resource_code", None
+                )
+                port = int(getattr(resource, "port", None) or 22)
+                pinned_key = getattr(resource, "pinned_host_key", None)
+                if pinned_key and host:
+                    parts = pinned_key.strip().split()
+                    if len(parts) >= 2:
+                        self.host_key_verifier.register_trusted_key(
+                            host, parts[0], parts[1]
+                        )
+
+        if (
+            not host
+            or not grant_id
+            or not session_id
+            or not target_os_username
+            or not pid
+        ):
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.REGISTER_JIT_SESSION,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.CONFIGURATION_FAILURE,
+                error_message="Missing required parameters for register_jit_session.",
+                duration_ms=duration_ms,
+            )
+
+        bootstrap_cred_str = (
+            bootstrap_credential.decode("utf-8")
+            if isinstance(bootstrap_credential, (bytes, bytearray))
+            else (bootstrap_credential or "")
+        )
+
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username="opsforge-svc",
+                private_key_pem=bootstrap_cred_str,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                cmd = f"sudo -n /usr/local/sbin/opsforge-helper register_session {grant_id} {session_id} {target_os_username} {pid}"
+                _, stdout, stderr = client.exec_command(cmd)  # nosec B601
+                exit_code = stdout.channel.recv_exit_status()
+                err_msg = stderr.read().decode("utf-8", errors="replace")
+
+                if exit_code != 0:
+                    duration_ms = (time.monotonic() - start_time) * 1000.0
+                    result = ExecutionResult(
+                        execution_id=request.execution_id,
+                        operation=ExecutionOperation.REGISTER_JIT_SESSION,
+                        status=ExecutionStatus.FAILED,
+                        verification_status=VerificationStatus.UNVERIFIED,
+                        failure_classification=FailureClassification.TARGET_FAILURE,
+                        error_message=f"Helper register_session failed: {err_msg.strip()}",
+                        duration_ms=duration_ms,
+                    )
+                    if self.audit_service:
+                        try:
+                            self.audit_service.record_execution_event(request, result)
+                        except Exception:
+                            pass
+                    return result
+
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.REGISTER_JIT_SESSION,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.TARGET_FAILURE,
+                error_message=f"register_jit_session error: {e}",
+                duration_ms=duration_ms,
+            )
+
+        duration_ms = (time.monotonic() - start_time) * 1000.0
+        result = ExecutionResult(
+            execution_id=request.execution_id,
+            operation=ExecutionOperation.REGISTER_JIT_SESSION,
+            status=ExecutionStatus.SUCCESS,
+            verification_status=VerificationStatus.VERIFIED_SUCCESS,
+            details={
+                "session_id": session_id,
+                "grant_id": grant_id,
+                "pid": pid,
+                "registered": True,
+            },
+            duration_ms=duration_ms,
+        )
+        if self.audit_service:
+            try:
+                self.audit_service.record_execution_event(request, result)
+            except Exception:
+                pass
+        return result
+
+    def terminate_jit_sessions(self, request: ExecutionRequest) -> ExecutionResult:
+        """Phase 8 operation: Terminate active sessions for JIT grant and verify."""
+        start_time = time.monotonic()
+        request.authorization_context.validate()
+
+        params = request.parameters
+        host = params.get("hostname_ip") or params.get("host")
+        port = int(params.get("port") or 22)
+        grant_id = str(params.get("grant_id"))
+        bootstrap_credential = params.get("bootstrap_credential")
+
+        if not host and self.resource_resolver:
+            resource = self.resource_resolver(request.resource_id)
+            if resource:
+                host = getattr(resource, "hostname_ip", None) or getattr(
+                    resource, "resource_code", None
+                )
+                port = int(getattr(resource, "port", None) or 22)
+                pinned_key = getattr(resource, "pinned_host_key", None)
+                if pinned_key and host:
+                    parts = pinned_key.strip().split()
+                    if len(parts) >= 2:
+                        self.host_key_verifier.register_trusted_key(
+                            host, parts[0], parts[1]
+                        )
+
+        if not host or not grant_id:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.CONFIGURATION_FAILURE,
+                error_message="Missing host or grant_id in parameters.",
+                duration_ms=duration_ms,
+            )
+
+        bootstrap_cred_str = (
+            bootstrap_credential.decode("utf-8")
+            if isinstance(bootstrap_credential, (bytes, bytearray))
+            else (bootstrap_credential or "")
+        )
+
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username="opsforge-svc",
+                private_key_pem=bootstrap_cred_str,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                cmd = f"sudo -n /usr/local/sbin/opsforge-helper terminate_jit_sessions {grant_id}"
+                _, stdout, stderr = client.exec_command(cmd)  # nosec B601
+                exit_code = stdout.channel.recv_exit_status()
+                out_msg = stdout.read().decode("utf-8", errors="replace").strip()
+                err_msg = stderr.read().decode("utf-8", errors="replace").strip()
+
+                if exit_code != 0:
+                    duration_ms = (time.monotonic() - start_time) * 1000.0
+                    result = ExecutionResult(
+                        execution_id=request.execution_id,
+                        operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+                        status=ExecutionStatus.FAILED,
+                        verification_status=VerificationStatus.UNVERIFIED,
+                        failure_classification=FailureClassification.TARGET_FAILURE,
+                        error_message=f"Helper terminate_jit_sessions failed: {err_msg or out_msg}",
+                        duration_ms=duration_ms,
+                    )
+                    if self.audit_service:
+                        try:
+                            self.audit_service.record_execution_event(request, result)
+                        except Exception:
+                            pass
+                    return result
+
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.TARGET_FAILURE,
+                error_message=f"terminate_jit_sessions error: {e}",
+                duration_ms=duration_ms,
+            )
+
+        duration_ms = (time.monotonic() - start_time) * 1000.0
+        result = ExecutionResult(
+            execution_id=request.execution_id,
+            operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
+            status=ExecutionStatus.SUCCESS,
+            verification_status=VerificationStatus.VERIFIED_SUCCESS,
+            details={
+                "grant_id": grant_id,
+                "terminated": True,
+                "output": out_msg,
+            },
+            duration_ms=duration_ms,
+        )
+        if self.audit_service:
+            try:
+                self.audit_service.record_execution_event(request, result)
+            except Exception:
+                pass
+        return result

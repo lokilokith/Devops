@@ -154,6 +154,51 @@ class JITRevokeResource(Resource):
         return JITAccessGrantResponseSchema().dump(grant), 200
 
 
+@jit_ns.route("/<uuid:grant_id>/sessions")
+class JITRegisterSessionResource(Resource):
+    @login_required
+    def post(self, grant_id: UUID):
+        """Register an active JIT session with PID identity."""
+        data = request.get_json() or {}
+        session_id_str = data.get("session_id")
+        pid = data.get("target_session_pid") or data.get("pid")
+
+        if not session_id_str or not pid:
+            raise ValidationException("Missing session_id or target_session_pid")
+
+        try:
+            session_id = UUID(str(session_id_str))
+            pid_int = int(pid)
+        except (ValueError, TypeError) as e:
+            raise ValidationException(f"Invalid session parameters: {e}")
+
+        svc = build_jit_service()
+        session_rec = svc.register_active_session(
+            grant_id=grant_id,
+            user_id=UUID(g.user_id),
+            session_id=session_id,
+            target_session_pid=pid_int,
+        )
+        return {
+            "session_id": str(session_rec.id),
+            "grant_id": str(grant_id),
+            "status": session_rec.status,
+        }, 201
+
+
+@jit_ns.route("/<uuid:grant_id>/terminate-sessions")
+class JITTerminateSessionsResource(Resource):
+    @login_required
+    def post(self, grant_id: UUID):
+        """Terminate active sessions associated with a JIT grant."""
+        svc = build_jit_service()
+        count = svc.terminate_active_sessions(grant_id, UUID(g.user_id))
+        return {
+            "grant_id": str(grant_id),
+            "terminated_count": count,
+        }, 200
+
+
 @jit_ns.route("/session/current")
 class JITCurrentSessionResource(Resource):
     @login_required

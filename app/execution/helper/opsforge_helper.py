@@ -25,9 +25,11 @@ import datetime
 import json
 import os
 import re
+import signal
 import stat
 import subprocess
 import sys
+import time
 from typing import Any, Dict, List, Optional, Set
 
 try:
@@ -40,6 +42,9 @@ MANIFEST_PATH = os.environ.get(
     "OPSFORGE_MANIFEST_PATH", "/var/lib/opsforge/ownership_manifest.json"
 )
 MANIFEST_DIR = os.path.dirname(MANIFEST_PATH)
+SESSIONS_PATH = os.environ.get(
+    "OPSFORGE_SESSIONS_PATH", "/var/lib/opsforge/sessions.json"
+)
 SUDOERS_DIR = os.environ.get("OPSFORGE_SUDOERS_DIR", "/etc/sudoers.d")
 AUDIT_LOG_PATH = os.environ.get(
     "OPSFORGE_AUDIT_LOG_PATH", "/var/log/opsforge-helper.log"
@@ -50,6 +55,8 @@ ACCOUNT_REGEX = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
 UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
 )
+SESSION_ID_REGEX = re.compile(r"^[0-9a-zA-Z_-]{1,64}$")
+PID_REGEX = re.compile(r"^[1-9][0-9]{0,9}$")
 
 # System and protected accounts that can NEVER be provisioned, registered, or removed by OpsForge
 PROTECTED_SYSTEM_ACCOUNTS: Set[str] = {
@@ -598,6 +605,305 @@ def add_jit_grant(grant_id: str, account: str, command_set_id: str) -> None:
         raise HelperExecutionError(f"add_jit_grant failed: {e}") from e
 
 
+def validate_session_id(session_id: str) -> None:
+    """Validate session ID format."""
+    if not session_id or not isinstance(session_id, str):
+        raise HelperSecurityError("Session ID must be a non-empty string.")
+
+    if not SESSION_ID_REGEX.match(session_id):
+        raise HelperSecurityError(
+            f"Invalid session ID '{session_id}'. Must match regex {SESSION_ID_REGEX.pattern}"
+        )
+
+
+def validate_pid(pid_str: str) -> int:
+    """Validate process ID format."""
+    if not pid_str or not isinstance(pid_str, str):
+        raise HelperSecurityError("PID must be a non-empty string.")
+
+    if not PID_REGEX.match(pid_str):
+        raise HelperSecurityError(
+            f"Invalid PID '{pid_str}'. Must be a positive integer."
+        )
+
+    pid = int(pid_str)
+    if pid <= 1:
+        raise HelperSecurityError(
+            f"Invalid PID {pid}. System init/kernel PIDs cannot be registered."
+        )
+    return pid
+
+
+def _get_process_identity(pid: int) -> Dict[str, Any]:
+    """Retrieve process UID and start-time identity from /proc/<pid>."""
+    proc_dir = f"/proc/{pid}"
+    if not os.path.exists(proc_dir):
+        raise HelperExecutionError(f"Process PID {pid} does not exist.")
+
+    uid: Optional[int] = None
+    try:
+        proc_stat = os.stat(proc_dir)
+        uid = proc_stat.st_uid
+    except Exception:
+        pass
+
+    status_path = f"/proc/{pid}/status"
+    if os.path.exists(status_path):
+        try:
+            with open(status_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("Uid:"):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            uid = int(parts[1])
+                            break
+        except Exception:
+            pass
+
+    starttime = ""
+    stat_path = f"/proc/{pid}/stat"
+    if os.path.exists(stat_path):
+        try:
+            with open(stat_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                last_paren = content.rfind(")")
+                if last_paren != -1:
+                    rest = content[last_paren + 1 :].strip().split()
+                    if len(rest) > 19:
+                        starttime = rest[19]
+        except Exception:
+            pass
+
+    return {"pid": pid, "uid": uid, "starttime": starttime}
+
+
+def load_sessions() -> Dict[str, Any]:
+    """Load and validate the target session registry."""
+    if not os.path.exists(SESSIONS_PATH):
+        return {"schema_version": 1, "sessions": []}
+
+    try:
+        with open(SESSIONS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        raise HelperExecutionError(
+            f"Failed to read sessions registry at {SESSIONS_PATH}: {e}"
+        ) from e
+
+    if not isinstance(data, dict) or "sessions" not in data:
+        raise HelperSecurityError("Corrupted sessions registry structure.")
+
+    return data
+
+
+def save_sessions(data: Dict[str, Any]) -> None:
+    """Atomically save session registry with 0600 root:root permissions."""
+    sessions_dir = os.path.dirname(SESSIONS_PATH)
+    if not os.path.exists(sessions_dir):
+        os.makedirs(sessions_dir, mode=0o700, exist_ok=True)
+
+    temp_path = f"{SESSIONS_PATH}.tmp.{os.getpid()}"
+    try:
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+
+        os.chmod(temp_path, 0o600)
+        os.replace(temp_path, SESSIONS_PATH)
+
+        if os.name != "nt":
+            dir_fd = os.open(sessions_dir, os.O_RDONLY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+    except Exception as e:
+        if os.path.exists(temp_path):
+            _safe_unlink(temp_path)
+        raise HelperExecutionError(f"Failed to persist sessions registry: {e}") from e
+
+
+def register_session(
+    grant_id: str, session_id: str, account: str, pid_str: str
+) -> Dict[str, Any]:
+    """Register an active JIT session with verified process identity."""
+    validate_grant_id(grant_id)
+    validate_session_id(session_id)
+    validate_account_name(account)
+    pid = validate_pid(pid_str)
+
+    if not is_account_managed(account):
+        raise HelperSecurityError(
+            f"Account '{account}' is not managed by OpsForge. Session registration denied."
+        )
+
+    # Validate target user exists in OS and retrieve UID
+    pw = _get_pwnam(account)
+    expected_uid = int(pw.pw_uid)
+
+    # Inspect process identity
+    proc_info = _get_process_identity(pid)
+    actual_uid = proc_info.get("uid")
+
+    if actual_uid is not None and actual_uid != expected_uid:
+        raise HelperSecurityError(
+            f"Security violation: Process PID {pid} is owned by UID {actual_uid}, "
+            f"expected UID {expected_uid} ({account}). Registration refused."
+        )
+
+    sessions_data = load_sessions()
+    sessions = sessions_data.setdefault("sessions", [])
+
+    for s in sessions:
+        if s.get("session_id") == session_id:
+            s.update(
+                {
+                    "grant_id": grant_id,
+                    "account": account,
+                    "uid": expected_uid,
+                    "pid": pid,
+                    "starttime": proc_info.get("starttime", ""),
+                    "registered_at": datetime.datetime.now(
+                        datetime.timezone.utc
+                    ).isoformat(),
+                    "status": "ACTIVE",
+                }
+            )
+            save_sessions(sessions_data)
+            return s
+
+    entry = {
+        "session_id": session_id,
+        "grant_id": grant_id,
+        "account": account,
+        "uid": expected_uid,
+        "pid": pid,
+        "starttime": proc_info.get("starttime", ""),
+        "registered_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "status": "ACTIVE",
+    }
+    sessions.append(entry)
+    save_sessions(sessions_data)
+    return entry
+
+
+def terminate_jit_sessions(grant_id: str) -> Dict[str, Any]:
+    """Terminate verified JIT sessions associated with the given grant."""
+    validate_grant_id(grant_id)
+    sessions_data = load_sessions()
+    sessions = sessions_data.get("sessions", [])
+
+    matching_sessions = [
+        s
+        for s in sessions
+        if s.get("grant_id") == grant_id and s.get("status") == "ACTIVE"
+    ]
+
+    terminated_pids: List[int] = []
+    already_dead_pids: List[int] = []
+    reused_pids: List[int] = []
+
+    for s in matching_sessions:
+        pid = int(s.get("pid", 0))
+        expected_uid = s.get("uid")
+        expected_starttime = s.get("starttime", "")
+
+        if pid <= 1:
+            s["status"] = "INVALID"
+            continue
+
+        proc_dir = f"/proc/{pid}"
+        if not os.path.exists(proc_dir):
+            s["status"] = "ALREADY_EXITED"
+            s["terminated_at"] = datetime.datetime.now(
+                datetime.timezone.utc
+            ).isoformat()
+            already_dead_pids.append(pid)
+            continue
+
+        # Identity verification before signaling: check UID and starttime
+        proc_info = _get_process_identity(pid)
+        current_uid = proc_info.get("uid")
+        current_starttime = proc_info.get("starttime", "")
+
+        if (expected_uid is not None and current_uid != expected_uid) or (
+            expected_starttime
+            and current_starttime
+            and current_starttime != expected_starttime
+        ):
+            # PID reuse detected: DO NOT KILL!
+            s["status"] = "PID_REUSED_UNKNOWN"
+            s["terminated_at"] = datetime.datetime.now(
+                datetime.timezone.utc
+            ).isoformat()
+            reused_pids.append(pid)
+            continue
+
+        # Verified process: Graceful SIGTERM
+        try:
+            os.kill(pid, getattr(signal, "SIGTERM", 15))
+        except ProcessLookupError:
+            s["status"] = "ALREADY_EXITED"
+            s["terminated_at"] = datetime.datetime.now(
+                datetime.timezone.utc
+            ).isoformat()
+            already_dead_pids.append(pid)
+            continue
+        except Exception as e:
+            raise HelperExecutionError(
+                f"Failed to send SIGTERM to PID {pid}: {e}"
+            ) from e
+
+        # Wait up to 500ms for graceful exit
+        killed = False
+        for _ in range(10):
+            time.sleep(0.05)
+            try:
+                os.kill(pid, 0)
+            except (ProcessLookupError, OSError):
+                killed = True
+                break
+
+        # Escalate to SIGKILL if still alive
+        if not killed:
+            try:
+                os.kill(pid, getattr(signal, "SIGKILL", 9))
+            except (ProcessLookupError, OSError):
+                pass
+
+            for _ in range(10):
+                time.sleep(0.05)
+                try:
+                    os.kill(pid, 0)
+                except (ProcessLookupError, OSError):
+                    killed = True
+                    break
+
+        # Verify termination
+        try:
+            os.kill(pid, 0)
+            raise HelperExecutionError(
+                f"Process PID {pid} refused SIGKILL and is still alive."
+            )
+        except (ProcessLookupError, OSError):
+            killed = True
+
+        s["status"] = "TERMINATED"
+        s["terminated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        terminated_pids.append(pid)
+
+    save_sessions(sessions_data)
+
+    return {
+        "grant_id": grant_id,
+        "terminated_pids": terminated_pids,
+        "already_dead_pids": already_dead_pids,
+        "reused_pids": reused_pids,
+        "total_active_matched": len(matching_sessions),
+    }
+
+
 def remove_jit_grant(grant_id: str) -> None:
     """Atomic removal of JIT grant drop-in."""
     validate_grant_id(grant_id)
@@ -673,6 +979,51 @@ def main() -> None:
             remove_jit_grant(grant_id)
             log_audit_event(operation, "SUCCESS", {"grant_id": grant_id})
             print(f"SUCCESS: remove_jit_grant {grant_id}")
+
+        elif operation == "register_session":
+            if len(args) != 5:
+                raise HelperSecurityError(
+                    "Usage: register_session <grant_id> <session_id> <account> <pid>"
+                )
+            grant_id, session_id, account, pid_str = (
+                args[1],
+                args[2],
+                args[3],
+                args[4],
+            )
+            res = register_session(grant_id, session_id, account, pid_str)
+            log_audit_event(
+                operation,
+                "SUCCESS",
+                {
+                    "grant_id": grant_id,
+                    "session_id": session_id,
+                    "account": account,
+                    "pid": res.get("pid"),
+                },
+            )
+            print(f"SUCCESS: register_session {session_id}")
+
+        elif operation == "terminate_jit_sessions":
+            if len(args) != 2:
+                raise HelperSecurityError("Usage: terminate_jit_sessions <grant_id>")
+            grant_id = args[1]
+            res = terminate_jit_sessions(grant_id)
+            log_audit_event(
+                operation,
+                "SUCCESS",
+                {
+                    "grant_id": grant_id,
+                    "terminated_count": len(res.get("terminated_pids", [])),
+                    "already_dead_count": len(res.get("already_dead_pids", [])),
+                    "reused_count": len(res.get("reused_pids", [])),
+                },
+            )
+            print(
+                f"SUCCESS: terminate_jit_sessions {grant_id} "
+                f"terminated={len(res.get('terminated_pids', []))} "
+                f"reused={len(res.get('reused_pids', []))}"
+            )
 
         else:
             raise HelperSecurityError(f"Disallowed operation '{operation}'.")

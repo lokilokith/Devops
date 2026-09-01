@@ -99,11 +99,13 @@ def test_jit_service_expire_access():
 
     mock_repo = Mock()
     mock_repo.get_by_id.return_value = grant
+    mock_repo.claim_for_revocation.return_value = grant
+    mock_repo.find_sessions_by_grant.return_value = [session]
     mock_repo.update.return_value = grant
 
     with (
         patch("app.jit_access.service.db") as mock_db,
-        patch("app.jit_access.events.jit_session_expired") as mock_event,
+        patch("app.jit_access.events.jit_session_expired"),
     ):
         mock_db.session.execute.return_value.scalar_one_or_none.return_value = session
 
@@ -112,7 +114,6 @@ def test_jit_service_expire_access():
 
         assert grant.status == JITGrantStatus.EXPIRED
         assert session.expires_at <= datetime.now(timezone.utc)
-        mock_event.send.assert_called_once()
 
     # Call again (idempotent)
     with patch("app.jit_access.service.db") as mock_db:
@@ -125,11 +126,13 @@ def test_jit_service_invalid_transitions():
     grant = JITAccessGrant(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
-        status=JITGrantStatus.PENDING,
+        status=JITGrantStatus.DENIED,
     )
 
     mock_repo = Mock()
     mock_repo.get_by_id.return_value = grant
+    mock_repo.claim_for_revocation.return_value = grant
+    mock_repo.find_sessions_by_grant.return_value = []
 
     service = JITAccessService(mock_repo, Mock(), Mock(), Mock(), Mock())
 

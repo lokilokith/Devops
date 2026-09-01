@@ -73,6 +73,14 @@ class TargetExecutor(Protocol):
         """Remove sudoers grant and verify privilege revocation on target."""
         ...
 
+    def register_jit_session(self, request: ExecutionRequest) -> ExecutionResult:
+        """Register active JIT session with process identity on target."""
+        ...
+
+    def terminate_jit_sessions(self, request: ExecutionRequest) -> ExecutionResult:
+        """Terminate active sessions associated with JIT grant and verify termination."""
+        ...
+
 
 class StubTargetExecutor:
     """Deterministic, in-memory test double implementing the TargetExecutor protocol.
@@ -272,6 +280,12 @@ class StubTargetExecutor:
 
     def revoke_jit_grant(self, request: ExecutionRequest) -> ExecutionResult:
         return self._execute_generic(request, ExecutionOperation.REVOKE_JIT_GRANT)
+
+    def register_jit_session(self, request: ExecutionRequest) -> ExecutionResult:
+        return self._execute_generic(request, ExecutionOperation.REGISTER_JIT_SESSION)
+
+    def terminate_jit_sessions(self, request: ExecutionRequest) -> ExecutionResult:
+        return self._execute_generic(request, ExecutionOperation.TERMINATE_JIT_SESSIONS)
 
     # Legacy rotation execution adapter
     def execute(self, resource_id: UUID, current_secret: bytes) -> Dict[str, Any]:

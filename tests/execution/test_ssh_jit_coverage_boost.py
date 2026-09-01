@@ -313,3 +313,152 @@ def test_ssh_jit_resource_resolver_branches():
         res_rev = executor.revoke_jit_grant(req_rev)
 
     assert res_rev.status == ExecutionStatus.SUCCESS
+
+
+def test_ssh_connection_context_acquire_timeout():
+    import threading
+    import uuid
+
+    import pytest
+
+    from app.execution.exceptions import ExecutionTimeoutError
+    from app.execution.ssh_executor import SSHConnectionContext, SSHExecutionConfig
+
+    config = SSHExecutionConfig(connection_pool_timeout=0.1)
+    sem = threading.Semaphore(0)
+    ctx = SSHConnectionContext(
+        target_host="localhost",
+        target_port=22,
+        username="user",
+        private_key_pem="dummy",
+        config=config,
+        resource_id=uuid.uuid4(),
+        execution_id=uuid.uuid4(),
+        semaphore=sem,
+    )
+    with pytest.raises(ExecutionTimeoutError):
+        with ctx:
+            pass
+
+
+def test_ssh_connection_context_address_validation_error():
+    import uuid
+    from unittest.mock import MagicMock
+
+    import pytest
+
+    from app.execution.exceptions import TransportError
+    from app.execution.ssh_executor import (
+        SSHConnectionContext,
+        SSHExecutionConfig,
+        TargetAddressValidationError,
+    )
+
+    mock_validator = MagicMock()
+    mock_validator.validate_destination.side_effect = TargetAddressValidationError(
+        "invalid"
+    )
+
+    ctx = SSHConnectionContext(
+        target_host="localhost",
+        target_port=22,
+        username="user",
+        private_key_pem="dummy",
+        config=SSHExecutionConfig(),
+        resource_id=uuid.uuid4(),
+        execution_id=uuid.uuid4(),
+        network_validator=mock_validator,
+    )
+    with pytest.raises(TransportError):
+        with ctx:
+            pass
+
+
+def test_ssh_connection_context_socket_error():
+    import socket
+    import uuid
+    from unittest.mock import MagicMock, patch
+
+    import pytest
+
+    from app.execution.exceptions import TransportError
+    from app.execution.ssh_executor import SSHConnectionContext, SSHExecutionConfig
+
+    mock_validator = MagicMock()
+
+    ctx = SSHConnectionContext(
+        target_host="localhost",
+        target_port=22,
+        username="user",
+        private_key_pem="dummy",
+        config=SSHExecutionConfig(),
+        resource_id=uuid.uuid4(),
+        execution_id=uuid.uuid4(),
+        network_validator=mock_validator,
+    )
+    with patch("socket.create_connection", side_effect=socket.error("socket error")):
+        with pytest.raises(TransportError):
+            with ctx:
+                pass
+
+
+def test_ssh_connection_context_socket_timeout():
+    import socket
+    import uuid
+    from unittest.mock import MagicMock, patch
+
+    import pytest
+
+    from app.execution.exceptions import ExecutionTimeoutError
+    from app.execution.ssh_executor import SSHConnectionContext, SSHExecutionConfig
+
+    mock_validator = MagicMock()
+
+    ctx = SSHConnectionContext(
+        target_host="localhost",
+        target_port=22,
+        username="user",
+        private_key_pem="dummy",
+        config=SSHExecutionConfig(),
+        resource_id=uuid.uuid4(),
+        execution_id=uuid.uuid4(),
+        network_validator=mock_validator,
+    )
+    with patch("socket.create_connection", side_effect=socket.timeout("timeout")):
+        with pytest.raises(ExecutionTimeoutError):
+            with ctx:
+                pass
+
+
+def test_ssh_connection_context_ssh_exception():
+    import uuid
+    from unittest.mock import MagicMock, patch
+
+    import paramiko
+    import pytest
+
+    from app.execution.exceptions import TransportError
+    from app.execution.ssh_executor import SSHConnectionContext, SSHExecutionConfig
+
+    mock_validator = MagicMock()
+
+    ctx = SSHConnectionContext(
+        target_host="localhost",
+        target_port=22,
+        username="user",
+        private_key_pem="dummy",
+        config=SSHExecutionConfig(),
+        resource_id=uuid.uuid4(),
+        execution_id=uuid.uuid4(),
+        network_validator=mock_validator,
+    )
+    with (
+        patch("socket.create_connection"),
+        patch(
+            "paramiko.SSHClient.connect", side_effect=paramiko.SSHException("ssh error")
+        ),
+        patch.object(SSHConnectionContext, "_load_private_key"),
+    ):
+        with pytest.raises(TransportError):
+            with ctx:
+                pass
