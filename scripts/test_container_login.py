@@ -1,6 +1,6 @@
-import urllib.request
 import json
 import urllib.error
+import urllib.request
 
 req = urllib.request.Request("http://localhost:8000/auth/login", method="POST")
 req.add_header('Content-Type', 'application/json')

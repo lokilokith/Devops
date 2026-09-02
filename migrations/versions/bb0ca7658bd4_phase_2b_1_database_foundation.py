@@ -5,9 +5,8 @@ Revises: b84b3943a879
 Create Date: 2026-08-13 09:38:12.529334
 
 """
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = 'bb0ca7658bd4'
@@ -19,7 +18,7 @@ depends_on = None
 def upgrade():
     # 1. Update secret_status_enum check constraint
     op.drop_constraint('secret_status_enum', 'vault_secrets', type_='check')
-    op.create_check_constraint('secret_status_enum', 'vault_secrets', 
+    op.create_check_constraint('secret_status_enum', 'vault_secrets',
         sa.text("status IN ('active', 'rotating', 'disabled', 'tombstoned', 'desynced', 'jit_ephemeral')")
     )
 
@@ -67,16 +66,16 @@ def upgrade():
 def downgrade():
     op.drop_column('resources', 'auth_mechanism')
     op.drop_table('jit_access_sessions')
-    
+
     op.drop_column('secret_rotation_policies', 'failure_reason')
     op.drop_column('secret_rotation_policies', 'last_rotation_status')
     op.drop_column('secret_rotation_policies', 'rotation_interval_days')
     op.drop_column('secret_rotation_policies', 'plugin_name')
-    
+
     op.drop_index('ix_active_kms', table_name='kms_configurations', postgresql_where=sa.text('is_active = true'))
     op.drop_table('kms_configurations')
-    
+
     op.drop_constraint('secret_status_enum', 'vault_secrets', type_='check')
-    op.create_check_constraint('secret_status_enum', 'vault_secrets', 
+    op.create_check_constraint('secret_status_enum', 'vault_secrets',
         sa.text("status IN ('active', 'rotating', 'disabled', 'tombstoned')")
     )

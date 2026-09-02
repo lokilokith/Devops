@@ -1,8 +1,9 @@
+
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.dialects import postgresql
-import sys
+
 
 def mock_exec(sql, *multiparams, **params):
     print("EXECUTING:", sql)

@@ -1,6 +1,6 @@
 import sqlalchemy as sa
-from sqlalchemy.schema import CreateTable
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.schema import CreateTable
 
 metadata = sa.MetaData()
 

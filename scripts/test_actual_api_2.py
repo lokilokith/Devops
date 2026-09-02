@@ -1,18 +1,22 @@
 import sys
+
 sys.path.insert(0, ".")
 
 import os
+
 os.environ["APP_ENV"] = "testing"
 os.environ["JWT_SECRET_KEY"] = "super-secret"
 
+import json
+import uuid
+
+from flask_jwt_extended import create_access_token
+
 from app import create_app
 from app.extensions import db
-from app.roles.models import Role
 from app.permissions.models import Permission
 from app.role_permissions.models import RolePermission
-import uuid
-import json
-from flask_jwt_extended import create_access_token
+from app.roles.models import Role
 
 app = create_app()
 with app.app_context():
@@ -22,7 +26,7 @@ with app.app_context():
     db.session.query(Role).delete()
     db.session.query(Permission).delete()
     db.session.commit()
-    
+
     r_id = uuid.uuid4()
     p_id = uuid.uuid4()
     r = Role(id=r_id, role_code="TEST_ROLE", role_name="Test Role", description="test", status="active")
@@ -32,7 +36,7 @@ with app.app_context():
     db.session.commit()
 
     token = create_access_token(identity="11111111-1111-1111-1111-111111111111")
-    
+
     from unittest.mock import patch
     with patch('app.api.decorators.AuthorizationService.has_permission', return_value=True):
         with app.test_client() as client:

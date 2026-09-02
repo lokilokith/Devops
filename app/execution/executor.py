@@ -81,6 +81,10 @@ class TargetExecutor(Protocol):
         """Terminate active sessions associated with JIT grant and verify termination."""
         ...
 
+    def inspect_target_state(self, request: ExecutionRequest) -> ExecutionResult:
+        """Inspect target for JIT reconciliation."""
+        ...
+
 
 class StubTargetExecutor:
     """Deterministic, in-memory test double implementing the TargetExecutor protocol.
@@ -286,6 +290,20 @@ class StubTargetExecutor:
 
     def terminate_jit_sessions(self, request: ExecutionRequest) -> ExecutionResult:
         return self._execute_generic(request, ExecutionOperation.TERMINATE_JIT_SESSIONS)
+
+    def inspect_target_state(self, request: ExecutionRequest) -> ExecutionResult:
+        # For stub, we can just return success with an empty dictionary, or allow stubbing details
+        res = self._execute_generic(request, ExecutionOperation.INSPECT_TARGET_STATE)
+        if res.status == ExecutionStatus.SUCCESS:
+            return ExecutionResult(
+                execution_id=res.execution_id,
+                operation=res.operation,
+                status=res.status,
+                verification_status=res.verification_status,
+                details={"sudoers_present": False, "active_sessions": []},
+                duration_ms=res.duration_ms
+            )
+        return res
 
     # Legacy rotation execution adapter
     def execute(self, resource_id: UUID, current_secret: bytes) -> Dict[str, Any]:

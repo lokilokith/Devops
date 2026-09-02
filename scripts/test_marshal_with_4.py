@@ -1,12 +1,15 @@
 import sys
+
 sys.path.insert(0, ".")
 
 import json
+import uuid
+
 from flask import Flask
-from flask_restx import Api, Resource, Namespace, fields
+from flask_restx import Api, Namespace, Resource, fields
+
 from app.roles.models import Role
 from app.roles.schemas import role_model, roles_ns
-import uuid
 
 app = Flask(__name__)
 api = Api(app)

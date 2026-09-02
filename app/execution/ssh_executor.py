@@ -1769,3 +1769,120 @@ print("REMOVE_SUCCESS")
             except Exception:
                 pass
         return result
+
+    def inspect_target_state(self, request: ExecutionRequest) -> ExecutionResult:
+        """Phase 9 operation: Inspect target state for JIT reconciliation."""
+        import json
+        start_time = time.monotonic()
+        request.authorization_context.validate()
+
+        params = request.parameters
+        host = params.get("hostname_ip") or params.get("host")
+        port = int(params.get("port") or 22)
+        grant_id = str(params.get("grant_id"))
+        target_os_username = params.get("target_os_username")
+        bootstrap_credential = params.get("bootstrap_credential")
+
+        if not host and self.resource_resolver:
+            resource = self.resource_resolver(request.resource_id)
+            if resource:
+                host = getattr(resource, "hostname_ip", None) or getattr(
+                    resource, "resource_code", None
+                )
+                port = int(getattr(resource, "port", None) or 22)
+                pinned_key = getattr(resource, "pinned_host_key", None)
+                if pinned_key and host:
+                    parts = pinned_key.strip().split()
+                    if len(parts) >= 2:
+                        self.host_key_verifier.register_trusted_key(
+                            host, parts[0], parts[1]
+                        )
+
+        if not host or not grant_id or not target_os_username:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.INSPECT_TARGET_STATE,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.CONFIGURATION_FAILURE,
+                error_message="Missing host, grant_id, or target_os_username in parameters.",
+                duration_ms=duration_ms,
+            )
+
+        bootstrap_cred_str = (
+            bootstrap_credential.decode("utf-8")
+            if isinstance(bootstrap_credential, (bytes, bytearray))
+            else (bootstrap_credential or "")
+        )
+
+        try:
+            with SSHConnectionContext(
+                target_host=host,
+                target_port=port,
+                username="opsforge-svc",
+                private_key_pem=bootstrap_cred_str,
+                network_validator=self.network_validator,
+                host_key_verifier=self.host_key_verifier,
+                config=self.config,
+                resource_id=request.resource_id,
+                execution_id=request.execution_id,
+                audit_service=self.audit_service,
+                semaphore=self._semaphore,
+            ) as client:
+                cmd = f"sudo -n /usr/local/sbin/opsforge-helper inspect_target_state {grant_id} {target_os_username}"
+                _, stdout, stderr = client.exec_command(cmd)  # nosec B601
+                exit_code = stdout.channel.recv_exit_status()
+                out_msg = stdout.read().decode("utf-8", errors="replace").strip()
+                err_msg = stderr.read().decode("utf-8", errors="replace").strip()
+
+                if exit_code != 0:
+                    duration_ms = (time.monotonic() - start_time) * 1000.0
+                    result = ExecutionResult(
+                        execution_id=request.execution_id,
+                        operation=ExecutionOperation.INSPECT_TARGET_STATE,
+                        status=ExecutionStatus.FAILED,
+                        verification_status=VerificationStatus.UNVERIFIED,
+                        failure_classification=FailureClassification.TARGET_FAILURE,
+                        error_message=f"Helper inspect_target_state failed: {err_msg or out_msg}",
+                        duration_ms=duration_ms,
+                    )
+                    if self.audit_service:
+                        try:
+                            self.audit_service.record_execution_event(request, result)
+                        except Exception:
+                            pass
+                    return result
+
+                try:
+                    target_state_data = json.loads(out_msg)
+                except json.JSONDecodeError:
+                    raise Exception(f"Failed to parse helper JSON output: {out_msg}")
+
+        except Exception as e:
+            duration_ms = (time.monotonic() - start_time) * 1000.0
+            return ExecutionResult(
+                execution_id=request.execution_id,
+                operation=ExecutionOperation.INSPECT_TARGET_STATE,
+                status=ExecutionStatus.FAILED,
+                verification_status=VerificationStatus.UNVERIFIED,
+                failure_classification=FailureClassification.TARGET_FAILURE,
+                error_message=f"inspect_target_state error: {e}",
+                duration_ms=duration_ms,
+            )
+
+        duration_ms = (time.monotonic() - start_time) * 1000.0
+        result = ExecutionResult(
+            execution_id=request.execution_id,
+            operation=ExecutionOperation.INSPECT_TARGET_STATE,
+            status=ExecutionStatus.SUCCESS,
+            verification_status=VerificationStatus.VERIFIED_SUCCESS,
+            details=target_state_data,
+            duration_ms=duration_ms,
+        )
+        if self.audit_service:
+            try:
+                self.audit_service.record_execution_event(request, result)
+            except Exception:
+                pass
+        return result

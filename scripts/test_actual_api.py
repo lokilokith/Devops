@@ -1,16 +1,19 @@
 import sys
+
 sys.path.insert(0, ".")
 
 import os
+
 os.environ["APP_ENV"] = "testing"
+
+import json
+import uuid
 
 from app import create_app
 from app.extensions import db
-from app.roles.models import Role
 from app.permissions.models import Permission
 from app.role_permissions.models import RolePermission
-import uuid
-import json
+from app.roles.models import Role
 
 app = create_app()
 with app.app_context():
@@ -20,7 +23,7 @@ with app.app_context():
     db.session.query(Role).delete()
     db.session.query(Permission).delete()
     db.session.commit()
-    
+
     r_id = uuid.uuid4()
     p_id = uuid.uuid4()
     r = Role(id=r_id, role_code="TEST_ROLE", role_name="Test Role", description="test", status="active")

@@ -25,6 +25,19 @@ class JITGrantStatus(str, enum.Enum):
     SECURITY_UNCERTAIN = "security_uncertain"
 
 
+class ReconciliationStatus(str, enum.Enum):
+    """Lifecycle states for target reconciliation."""
+
+    SYNCHRONIZED = "synchronized"
+    DRIFTED = "drifted"
+    RECONCILING = "reconciling"
+    FAILED = "failed"
+    UNREACHABLE = "unreachable"
+    SAFE_RETRY = "safe_retry"
+    MANUAL_INTERVENTION = "manual_intervention"
+
+
+
 class JITAccessGrant(BaseModel):
     """Tracks temporary privileged access grants."""
 
@@ -181,4 +194,48 @@ class JITAccessSession(BaseModel):
         return True
 
 
-__all__ = ["JITAccessGrant", "JITGrantStatus", "JITAccessSession"]
+class JITReconciliationState(BaseModel):
+    """Operational state tracking for target reconciliation and drift."""
+
+    __tablename__ = "jit_reconciliation_states"
+
+    grant_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("jit_access_grants.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    status: Mapped[ReconciliationStatus] = mapped_column(
+        Enum(
+            ReconciliationStatus,
+            name="reconciliation_status_enum",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+        default=ReconciliationStatus.SYNCHRONIZED,
+        index=True,
+    )
+    last_inspected_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_corrected_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    worker_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    failure_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+__all__ = [
+    "JITAccessGrant",
+    "JITGrantStatus",
+    "JITAccessSession",
+    "ReconciliationStatus",
+    "JITReconciliationState",
+]

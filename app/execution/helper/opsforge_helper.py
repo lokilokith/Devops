@@ -925,6 +925,43 @@ def remove_jit_grant(grant_id: str) -> None:
         raise HelperExecutionError(f"Failed to remove JIT grant file '{target_file}'")
 
 
+def inspect_target_state(grant_id: str, account: str) -> Dict[str, Any]:
+    """Inspect and return the target state for a specific grant."""
+    validate_grant_id(grant_id)
+    validate_account_name(account)
+
+    target_file = os.path.join(SUDOERS_DIR, f"opsforge-jit-{grant_id}")
+    sudoers_present = os.path.exists(target_file)
+
+    sessions_data = load_sessions()
+    sessions = sessions_data.get("sessions", [])
+
+    active_sessions = []
+    for s in sessions:
+        if s.get("grant_id") == grant_id and s.get("account") == account and s.get("status") == "ACTIVE":
+            pid = s.get("pid")
+            expected_uid = s.get("uid")
+            expected_starttime = s.get("starttime")
+
+            try:
+                proc_info = _get_process_identity(pid)
+                if proc_info.get("uid") == expected_uid and proc_info.get("starttime") == expected_starttime:
+                    active_sessions.append({
+                        "session_id": s.get("session_id"),
+                        "pid": pid,
+                        "uid": expected_uid,
+                        "starttime": expected_starttime
+                    })
+            except HelperExecutionError:
+                pass  # Process no longer exists
+
+    return {
+        "grant_id": grant_id,
+        "sudoers_present": sudoers_present,
+        "active_sessions": active_sessions
+    }
+
+
 def main() -> None:
     """Main CLI entrypoint enforcing strict positional argument parsing."""
     args = sys.argv[1:]
@@ -1024,6 +1061,14 @@ def main() -> None:
                 f"terminated={len(res.get('terminated_pids', []))} "
                 f"reused={len(res.get('reused_pids', []))}"
             )
+
+        elif operation == "inspect_target_state":
+            if len(args) != 3:
+                raise HelperSecurityError("Usage: inspect_target_state <grant_id> <account>")
+            grant_id, account = args[1], args[2]
+            res = inspect_target_state(grant_id, account)
+            print(json.dumps(res))
+            sys.exit(0)
 
         else:
             raise HelperSecurityError(f"Disallowed operation '{operation}'.")

@@ -1,28 +1,26 @@
-import os
-import sys
 import json
-import uuid
-import datetime
+import os
 
 os.environ["APP_ENV"] = "testing"
 os.environ["SECRET_KEY"] = "super-secret-default-key-at-least-32-bytes"
 
 from app import create_app
-from app.extensions import db
 from app.auth.service import AuthService
-from app.identity.repository import IdentityRepository
+from app.extensions import db
 from app.identity.models import User
+from app.identity.repository import IdentityRepository
 from app.roles.models import Role, UserRole
 from app.security.bootstrap import seed_rbac
+
 
 def run_audit():
     app = create_app()
     with app.app_context():
         db.create_all()
         seed_rbac()
-        
+
         auth_svc = AuthService(IdentityRepository(db.session))
-        
+
         admin = db.session.query(User).filter_by(username="admin").first()
         if not admin:
             admin = User(employee_id="ADMIN1", username="admin", email="a@a.com", full_name="Admin")
@@ -32,14 +30,14 @@ def run_audit():
             if admin_role:
                 db.session.add(UserRole(user_id=admin.id, role_id=admin_role.id))
             db.session.commit()
-            
+
         user_a = db.session.query(User).filter_by(username="user_a").first()
         if not user_a:
             user_a = User(employee_id="USRA", username="user_a", email="a@ops.local", full_name="User A")
             user_a.password_hash = auth_svc.hash_password("secret")
             db.session.add(user_a)
             db.session.commit()
-            
+
         user_b = db.session.query(User).filter_by(username="user_b").first()
         if not user_b:
             user_b = User(employee_id="USRB", username="user_b", email="b@ops.local", full_name="User B")
@@ -78,7 +76,7 @@ def run_audit():
         # C. Permission
         resp = client.get("/users", headers={"Authorization": f"Bearer {admin_token}"})
         log_test("Phase C", "Admin accessing protected route", "GET /users", 200, resp.status_code, resp.status_code == 200, "Success")
-        
+
         resp = client.get("/users", headers={"Authorization": f"Bearer {user_a_token}"})
         log_test("Phase C", "Normal user accessing protected route", "GET /users", 403, resp.status_code, resp.status_code == 403, "Expected 403")
 
@@ -87,17 +85,17 @@ def run_audit():
         notif = Notification(recipient_user_id=str(user_a.id), type=NotificationType.SYSTEM, title="Test", message="Test")
         db.session.add(notif)
         db.session.commit()
-        
+
         resp = client.get(f"/notifications/{notif.id}", headers={"Authorization": f"Bearer {user_a_token}"})
         log_test("Phase D", "Owner reads own resource", f"GET /notifications/{notif.id}", 200, resp.status_code, resp.status_code == 200, "Success")
-        
+
         resp = client.get(f"/notifications/{notif.id}", headers={"Authorization": f"Bearer {user_b_token}"})
         log_test("Phase E", "User reads another's resource (IDOR)", f"GET /notifications/{notif.id}", 403, resp.status_code, resp.status_code == 403, resp.json)
 
         # F. Vertical Esc
         resp = client.post("/roles", json={"role_code": "HACK", "role_name": "Hack"}, headers={"Authorization": f"Bearer {user_a_token}"})
         log_test("Phase F", "Normal user accessing Admin API", "POST /roles", 403, resp.status_code, resp.status_code == 403, resp.json)
-        
+
         resp = client.put(f"/users/{user_a.id}", json={"status": "active"}, headers={"Authorization": f"Bearer {user_a_token}"})
         log_test("Phase F", "Normal user updating self via Admin API", f"PUT /users/{user_a.id}", 403, resp.status_code, resp.status_code == 403, "Needs users.update")
 
@@ -107,9 +105,9 @@ def run_audit():
         # I. Fuzz Testing
         resp = client.get("/users/invalid-uuid", headers={"Authorization": f"Bearer {admin_token}"})
         log_test("Phase I", "Fuzz invalid UUID format", "GET /users/invalid-uuid", 404, resp.status_code, resp.status_code in [404, 400], "Should be handled")
-        
+
         # H. OWASP
-        r_h = client.get(f"/users?limit=1000000", headers={"Authorization": f"Bearer {admin_token}"})
+        r_h = client.get("/users?limit=1000000", headers={"Authorization": f"Bearer {admin_token}"})
         limit_used = r_h.json.get("meta", {}).get("limit") if r_h.json else None
         results.append({
             "phase": "Phase H",
@@ -125,7 +123,7 @@ def run_audit():
 
         with open("audit_results.json", "w") as f:
             json.dump(results, f, indent=2)
-            
+
         print(f"Audit completed. Wrote {len(results)} results to audit_results.json")
 
 if __name__ == "__main__":

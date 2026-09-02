@@ -14,6 +14,7 @@ Guarantees:
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -145,6 +146,8 @@ class JITRevocationEngine:
 
         # Target-side Execution
         terminated_count = 0
+        instrumentation_spans = {}
+        t_start_exec = time.monotonic()
         if executor and grant.resource_id:
             now_dt = datetime.now(timezone.utc)
             auth_ctx = ExecutionAuthorizationContext(
@@ -158,6 +161,7 @@ class JITRevocationEngine:
             )
 
             # Step A: Terminate Sessions
+            t_start_term = time.monotonic()
             term_req = ExecutionRequest(
                 operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
                 resource_id=grant.resource_id,
@@ -169,6 +173,7 @@ class JITRevocationEngine:
                 authorization_context=auth_ctx,
             )
             term_result = executor.terminate_jit_sessions(term_req)
+            instrumentation_spans["terminate_sessions_ms"] = (time.monotonic() - t_start_term) * 1000.0
 
             if term_result.status != ExecutionStatus.SUCCESS:
                 if (
@@ -237,6 +242,7 @@ class JITRevocationEngine:
             )
 
             # Step B: Remove sudoers drop-in & verify privilege revocation
+            t_start_revoke = time.monotonic()
             revoke_req = ExecutionRequest(
                 operation=ExecutionOperation.REVOKE_JIT_GRANT,
                 resource_id=grant.resource_id,
@@ -248,6 +254,8 @@ class JITRevocationEngine:
                 authorization_context=auth_ctx,
             )
             revoke_result = executor.revoke_jit_grant(revoke_req)
+            instrumentation_spans["revoke_sudoers_ms"] = (time.monotonic() - t_start_revoke) * 1000.0
+            instrumentation_spans["total_target_exec_ms"] = (time.monotonic() - t_start_exec) * 1000.0
 
             if revoke_result.status != ExecutionStatus.SUCCESS:
                 grant.status = JITGrantStatus.SECURITY_UNCERTAIN
@@ -317,8 +325,11 @@ class JITRevocationEngine:
                 "is_expiry": is_expiry,
                 "observed_overrun_ms": updated_grant.observed_overrun_ms,
                 "sessions_terminated": updated_grant.sessions_terminated,
+                "instrumentation": instrumentation_spans,
             },
         )
+
+        logger.info(f"Revocation completed for {grant_id}. Timing: {instrumentation_spans}")
 
         return updated_grant
 

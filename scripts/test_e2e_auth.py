@@ -1,6 +1,6 @@
-import urllib.request
 import json
 import urllib.error
+import urllib.request
 
 BASE_URL = "http://127.0.0.1:5001"
 
@@ -14,7 +14,7 @@ def do_req(method, path, data=None, token=None):
         req.data = json.dumps(data).encode('utf-8')
     if token:
         req.add_header('Authorization', f'Bearer {token}')
-        
+
     try:
         with urllib.request.urlopen(req) as response:
             res_body = response.read().decode('utf-8')
@@ -28,7 +28,7 @@ def do_req(method, path, data=None, token=None):
 
 def main():
     print("=== E2E Authorization Test ===\n")
-    
+
     # 1. Login as Admin
     status, data = do_req("POST", "/auth/login", {"username": "admin", "password": "secret123"})
     if status != 200:
@@ -36,7 +36,7 @@ def main():
         return
     admin_token = data["data"]["access_token"]
     print("1. Logged in as Admin")
-    
+
     # 2. Create Limited User
     user_data = {
         "employee_id": "LTD002",
@@ -46,7 +46,7 @@ def main():
         "password": "password123"
     }
     status, data = do_req("POST", "/users", user_data, admin_token)
-    
+
     if status == 201:
         user_id = data["data"]["id"]
     elif status == 409:
@@ -74,7 +74,7 @@ def main():
         print("Failed to create role:", status, data)
         return
     print("3. Ensured HELP_DESK_2 role exists")
-    
+
     # 4. Find users.read permission
     status, data = do_req("GET", "/permissions", token=admin_token)
     permissions = data["data"]
@@ -82,15 +82,15 @@ def main():
     if not perm_id:
         print("users.read permission not found. Are RBAC seeds run?")
         return
-    
+
     # 5. Assign permission to role
     do_req("POST", f"/roles/{role_id}/permissions", {"permission_id": perm_id}, admin_token)
     print("4. Assigned users.read to HELP_DESK_2 role")
-    
+
     # 6. Assign role to user
     status, data = do_req("POST", f"/users/{user_id}/roles", {"role_id": role_id}, admin_token)
     print("5. Assigned HELP_DESK_2 role to limited user. Status:", status, data)
-    
+
     # 7. Login as Limited User
     status, data = do_req("POST", "/auth/login", {"username": "lim_e2e_2", "password": "password123"})
     if status != 200:
@@ -98,20 +98,20 @@ def main():
         return
     lim_token = data["data"]["access_token"]
     print("6. Logged in as Limited User\n")
-    
+
     # Check 0: GET /auth/me to see roles and permissions
     status, data = do_req("GET", "/auth/me", token=lim_token)
     print("GET /auth/me:", data)
-    
+
     print("--- Executing Authorization Checks ---")
     # Check 1: GET /users (Allowed)
     status, _ = do_req("GET", "/users", token=lim_token)
     print_result("GET /users", 200, status, status == 200)
-    
+
     # Check 2: POST /users (Forbidden)
     status, _ = do_req("POST", "/users", {"employee_id": "t", "username": "t", "email": "t@t.com", "full_name": "T"}, token=lim_token)
     print_result("POST /users", 403, status, status == 403)
-    
+
     # Check 3: GET /roles (Forbidden)
     status, _ = do_req("GET", "/roles", token=lim_token)
     print_result("GET /roles", 403, status, status == 403)

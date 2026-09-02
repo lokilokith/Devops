@@ -6,8 +6,8 @@ Phase 2B.4 KMS factory to resolve a ``LOCAL`` configuration without raising an
 ``UnsupportedKMSProviderError``.
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '20260813ab12'

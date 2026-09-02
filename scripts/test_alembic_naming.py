@@ -1,8 +1,8 @@
+
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.dialects import postgresql
-import sys
 
 metadata = sa.MetaData(naming_convention={
     "ck": "ck_%(table_name)s_%(constraint_name)s"

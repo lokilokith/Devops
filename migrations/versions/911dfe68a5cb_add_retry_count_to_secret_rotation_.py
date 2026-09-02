@@ -5,9 +5,8 @@ Revises: 20260813ab12
 Create Date: 2026-08-13 17:13:51.294935
 
 """
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '911dfe68a5cb'
@@ -18,7 +17,7 @@ depends_on = None
 
 def upgrade():
     op.add_column(
-        'secret_rotation_policies', 
+        'secret_rotation_policies',
         sa.Column('retry_count', sa.Integer(), nullable=False, server_default='0')
     )
 

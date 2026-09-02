@@ -1,8 +1,9 @@
 """Generate deterministic test keys for disposable target container and test fixtures."""
 
+import os
+
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
-import os
 
 KEY_DIR = os.path.dirname(os.path.abspath(__file__))
 
