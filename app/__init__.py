@@ -107,6 +107,7 @@ def create_app(validate_kms: bool = True, testing_bootstrap: bool = False) -> Fl
     app.register_blueprint(checkout_bp)
 
     # Register CLI commands
+    from app.cli.broker_commands import register_commands as register_broker
     from app.cli.checkout_commands import register_commands as register_checkout
     from app.cli.rotation_commands import register_commands as register_rotation
     from app.cli.seed_commands import register_commands as register_seed
@@ -116,6 +117,7 @@ def create_app(validate_kms: bool = True, testing_bootstrap: bool = False) -> Fl
     register_tokens(app)
     register_rotation(app)
     register_checkout(app)
+    register_broker(app)
 
     # Register notification handlers
     from app.notifications.bootstrap import register_notification_handlers
