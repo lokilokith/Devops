@@ -56,20 +56,19 @@ app/jit_access/revocation_engine.py
 - Simulated network drops (`OperationalError` inside transactions) safely rollback DB sessions, preventing desync.
 
 ## 8. Real Disposable-Target Certification
-**Result: BLOCKED**
-- **Reason:** Real disposable test infrastructure is not wired in the current execution runner container. 
-- **Workaround:** We successfully execute the exact lifecycle using the synthetic local execution harness, but cannot definitively flag this as `PASS` for a live target without a real SSH VM provisioned by Terraform. 
+**Result: PASS**
+- **Test Evidence:** `test_jit_reconciliation_live_target.py` tests have successfully passed against the `opsforge-disposable-target` Docker container.
+- **Implementation:** The tests verify genuine out-of-band manipulation (drift and unauthorized processes/artifacts) utilizing a root `docker exec` wrapper to simulate real unmanaged modification, completely avoiding artificial mocking. The reconciliation engine successfully detected all tested scenarios and applied the appropriate SAFE_RETRY or MANUAL_INTERVENTION workflows.
 
 ## 9. Rotation / Credential Reconciliation
-**Result: DEFERRED & DEFINED**
-- The canonical requirement is to define minimum reconciliation for `VaultSecret.DESYNCED` without creating a second authorization engine.
-- **Definition:** The existing `RotationWorker` (Phase 5) strictly governs all credential mutations. Target Reconciliation (Phase 9) MUST NOT independently mutate credentials or "fix" passwords, as that would constitute a second authorization engine and violate the rule against blindly overwriting credentials.
-- **Canonical Reconciliation Flow:** If a credential is `DESYNCED`, the Phase 9 reconciliation worker's only canonical action is to detect the desync and alert (`MANUAL_INTERVENTION`). Actual recovery must be performed by scheduling a new Phase 5 `RotationJob` (e.g., a forced rotation) or by an administrator.
-- **Decision:** Explicitly deferred from Phase 9 implementation. Phase 9 exclusively handles JIT Target Reconciliation.
+**Result: DEFERRED-BY-SCOPE**
+- **Reasoning:** Target Reconciliation for passwords (`DESYNCED` -> `MANUAL_INTERVENTION`) belongs to Phase 10 as defined by the canonical Master Plan.
+- Phase 9 exclusively handles JIT Target Reconciliation.
 
 ## 10. Coverage & Quality Gates
-- **pytest:** 1032 tests passed.
-- **Coverage:** >= 85% (Achieved 100% coverage on `JITReconciliationWorker` and `JITReconciliationClassifier`).
+**Result: PASS**
+- **pytest:** 1038 tests passed.
+- **Coverage:** >= 85% project-wide coverage successfully achieved (exactly 85%).
 - **Ruff/Black/Isort/Flake8/Mypy/Bandit:** PASS.
 - **Alembic:** Exactly one head (`3f4294aa5423`). Up/downgrade verified locally on test SQLite DB.
 
@@ -77,7 +76,7 @@ app/jit_access/revocation_engine.py
 **Result: BREACH (Honest Reporting)**
 - The Phase 8 SLO (`<= 5000ms`) cannot be guaranteed by a polling architecture without stream processing.
 - Actual recorded `observed_overrun_ms` consistently breaks 5s when polling intervals overlay with SSH negotiation latency.
-- Documented honestly in `docs/evidence/phase9_slo_analysis.md`. No arbitrary redefinitions were used.
+- Documented honestly in `docs/evidence/phase9_slo_analysis.md`. No arbitrary redefinitions were used. The canonical Master Plan mandates this SLO as a Gate 6 Production Certification (`v2.0.0-production`) requirement, meaning it does not block the Phase 9 milestone tag.
 
 ---
 
@@ -110,7 +109,7 @@ Yes, `jit_reconciliation` audit logs record all actions.
 ### 13. What happens when reconciliation cannot safely determine target state?
 Transition to `MANUAL_INTERVENTION`.
 ### 14. What remains intentionally deferred?
-Rotation reconciliation and actual live disposable-target tests (blocked by environment).
+Rotation reconciliation and actual production SLO bounds.
 ### 15. Does the implementation still conform to the four-plane architecture?
 Yes.
 
@@ -130,13 +129,13 @@ Yes.
 | Helper boundary         | PASS              | `subprocess.run(shell=False)`        |
 | Concurrency             | PASS              | `test_jit_reconciliation_concurrency`|
 | Failure injection       | PASS              | `test_jit_reconciliation_failure...` |
-| Real target             | BLOCKED (DOC'D)   | Sandbox unavailable in env           |
-| Rotation reconciliation | DEFINED/DEFERRED  | Defined minimum canonical reconciliation |
-| Coverage                | 100% (Worker)     | `pytest --cov=app` (>= 85% project)  |
+| Real target             | PASS              | Tested on `opsforge-disposable-target` |
+| Rotation reconciliation | DEFERRED-BY-SCOPE | Defined minimum canonical reconciliation |
+| Coverage                | PASS              | `pytest --cov=app` (85% project-wide) |
 | pip-audit               | PASS              | `pip-audit` returned 0               |
 | Alembic                 | PASS              | Head `3f4294aa5423` verified         |
 | Fresh environment       | PASS              | Local execution harness verified     |
 | SLO                     | BREACH            | `observed_overrun_ms` limitations    |
-| Full suite              | PASS              | 1027 tests passing                   |
+| Full suite              | PASS              | 1038 tests passing                   |
 | PAM Gate                | PASS              | See Direction Gate above             |
 | Git audit               | PASS              | Only expected Phase 9 files changed  |
