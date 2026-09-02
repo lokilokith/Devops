@@ -18,7 +18,7 @@ The repository currently implements:
 
 - **Process Boundary**: Web/API process must never initiate outbound connections to targets. Only the Worker process can communicate with privileged targets.
 - **Credential Protection**: Plaintext credentials must never cross the Web/API ↔ Worker boundary. They must remain solely within the Worker process during the connection phase and never be persisted, logged, or sent to the user.
-- **Session ↔ Grant Binding**: A session must have a strict 1:1 binding with its underlying JIT grant and target account binding.
+- **Session ↔ Grant Binding**: A session must have a strict binding with its underlying JIT grant (via the access request) and target account binding.
 - **No Generic Proxy**: The broker must only allow authorized SSH connections; no arbitrary port forwarding, reverse tunneling, or generic proxying is permitted.
 - **Termination Layers**: Session termination must occur at both the broker socket level (Layer 1) and the target JIT revocation level (Layer 2), operating independently.
 
@@ -45,30 +45,35 @@ We select **Option B**. The Session Broker will be a minimal, custom SSH server 
 
 ## 7. Session Lifecycle
 
-1. **REQUESTED**: User requests a session via Web API for an active JIT grant. Web API validates RBAC, creates a `PrivilegedAccessSession`, generates a secure random token, hashes it, stores the hash, and returns the token to the user.
+1. **REQUESTED**: User requests a session via Web API for an approved Access Request. Web API validates RBAC, verifies a JIT grant exists for the request, creates a `PrivilegedAccessSession` linked to the `access_request_id`, generates a secure random token, hashes it, stores the hash, and returns the token to the user.
 2. **AUTHORIZED**: The token is active. The user has a short window to connect to the Broker.
-3. **STARTING**: User connects via `ssh <token>@broker`. Broker validates the token, locks it (single-use), builds the `CredentialUseContext`, requests the ephemeral credential from Vault, and initiates the target connection.
+3. **STARTING**: User connects via `ssh <token>@broker`. Broker hashes the token and performs an authoritative lookup of the `PrivilegedAccessSession`. It does **not** trust client-supplied IDs. It derives the `access_request_id`, queries the corresponding `JITAccessGrant`, and constructs the `CredentialUseContext` entirely from server-side verified state. It requests the ephemeral credential from Vault, and initiates the target connection.
 4. **ACTIVE**: Target connection established. I/O is bridged.
 5. **TERMINATING**: Reached `expires_at`, or manual revocation triggered. Broker severs the bridged connection (Layer 1).
 6. **TERMINATED**: Socket closed. Database updated.
 7. **FAILED**: Any failure during STARTING (e.g., target unreachable, auth failure) marks the session as failed and audits the reason.
 
-## 8. Credential-Use Authorization Flow
+## 8. Credential-Use Authorization Flow & The Session Token
+
+**The Session Token is strictly an authentication identifier, not an authorization capability.** The token cannot be used to bypass authorization because the broker uses it solely to perform an authoritative server-side session lookup. 
 
 ```text
 User 
   ↓ (1. Request Session via Web API)
 OpsForge Control Plane (Validates JWT, RBAC, Grant State)
-  ↓ (2. Generates Session Token, stores in DB)
+  ↓ (2. Generates Session Token, stores hash in PrivilegedAccessSession)
 User 
   ↓ (3. Connects via SSH client with Token)
 Session Broker (Inside Worker Process)
-  ↓ (4. Validates Token, builds CredentialUseContext)
+  ↓ (4. Authoritative Lookup: Token Hash → PrivilegedAccessSession)
+  ↓ (5. Derivation: Session.access_request_id → JITAccessGrant)
+  ↓ (6. Derivation: JITAccessGrant → user_id, resource_id, target_account_binding_id)
+  ↓ (7. Builds CredentialUseContext purely from server state)
 Vault Plane (Inside Worker Process)
-  ↓ (5. Verifies: session_id, grant_id, user_id, resource_id, target_account_binding_id, expires_at)
-  ↓ (6. Releases ephemeral credential material to Broker in-memory)
+  ↓ (8. Verifies: session_id, grant_id, user_id, resource_id, target_account_binding_id, expires_at)
+  ↓ (9. Releases ephemeral credential material to Broker in-memory)
 Session Broker
-  ↓ (7. Initiates SSH connection to Target)
+  ↓ (10. Initiates SSH connection to Target)
 Target Account
 ```
 
@@ -105,7 +110,7 @@ These events trace back to the `session_id`, `grant_id`, `user_id`, and `resourc
 |--------|---------|
 | Unauthorized session creation | Sessions can only be created against an ACTIVE JIT grant by the grant owner, verified by Control Plane. |
 | Credential Leakage | Broker retrieves credential in-memory, uses it for paramiko/asyncssh auth, and discards it. It is never written to a pipe, log, or user stdout. |
-| Token Replay / Session Hijacking | Session tokens are strictly single-use (consumed on connection) and have a short validity window for connection establishment. |
+| Token Replay / Session Hijacking | Session tokens are strictly single-use (consumed on connection) and have a short validity window. Token is an identifier, not a capability, and all IDs are derived server-side. |
 | Generic Proxy Abuse | The SSH server explicitly rejects `tcpip-forward`, `x11-forwarding`, and `agent-forwarding` requests. |
 | JIT Bypass | The target OS account has no standing privilege; privilege only exists while the JIT grant is active. |
 
