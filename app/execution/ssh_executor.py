@@ -1773,6 +1773,7 @@ print("REMOVE_SUCCESS")
     def inspect_target_state(self, request: ExecutionRequest) -> ExecutionResult:
         """Phase 9 operation: Inspect target state for JIT reconciliation."""
         import json
+
         start_time = time.monotonic()
         request.authorization_context.validate()
 

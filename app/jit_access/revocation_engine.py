@@ -173,7 +173,9 @@ class JITRevocationEngine:
                 authorization_context=auth_ctx,
             )
             term_result = executor.terminate_jit_sessions(term_req)
-            instrumentation_spans["terminate_sessions_ms"] = (time.monotonic() - t_start_term) * 1000.0
+            instrumentation_spans["terminate_sessions_ms"] = (
+                time.monotonic() - t_start_term
+            ) * 1000.0
 
             if term_result.status != ExecutionStatus.SUCCESS:
                 if (
@@ -254,8 +256,12 @@ class JITRevocationEngine:
                 authorization_context=auth_ctx,
             )
             revoke_result = executor.revoke_jit_grant(revoke_req)
-            instrumentation_spans["revoke_sudoers_ms"] = (time.monotonic() - t_start_revoke) * 1000.0
-            instrumentation_spans["total_target_exec_ms"] = (time.monotonic() - t_start_exec) * 1000.0
+            instrumentation_spans["revoke_sudoers_ms"] = (
+                time.monotonic() - t_start_revoke
+            ) * 1000.0
+            instrumentation_spans["total_target_exec_ms"] = (
+                time.monotonic() - t_start_exec
+            ) * 1000.0
 
             if revoke_result.status != ExecutionStatus.SUCCESS:
                 grant.status = JITGrantStatus.SECURITY_UNCERTAIN
@@ -329,7 +335,9 @@ class JITRevocationEngine:
             },
         )
 
-        logger.info(f"Revocation completed for {grant_id}. Timing: {instrumentation_spans}")
+        logger.info(
+            f"Revocation completed for {grant_id}. Timing: {instrumentation_spans}"
+        )
 
         return updated_grant
 

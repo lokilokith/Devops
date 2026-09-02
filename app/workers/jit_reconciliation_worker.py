@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Mapping
+from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import and_, or_, select
@@ -56,18 +56,24 @@ class JITReconciliationWorker:
 
         try:
             # First, prioritize SECURITY_UNCERTAIN grants
-            stmt_uncertain = select(JITAccessGrant.id).outerjoin(
-                JITReconciliationState, JITAccessGrant.id == JITReconciliationState.grant_id
-            ).where(
-                and_(
-                    JITAccessGrant.status == JITGrantStatus.SECURITY_UNCERTAIN,
-                    or_(
-                        JITReconciliationState.grant_id.is_(None),
-                        JITReconciliationState.lease_expires_at.is_(None),
-                        JITReconciliationState.lease_expires_at <= now,
+            stmt_uncertain = (
+                select(JITAccessGrant.id)
+                .outerjoin(
+                    JITReconciliationState,
+                    JITAccessGrant.id == JITReconciliationState.grant_id,
+                )
+                .where(
+                    and_(
+                        JITAccessGrant.status == JITGrantStatus.SECURITY_UNCERTAIN,
+                        or_(
+                            JITReconciliationState.grant_id.is_(None),
+                            JITReconciliationState.lease_expires_at.is_(None),
+                            JITReconciliationState.lease_expires_at <= now,
+                        ),
                     )
                 )
-            ).limit(limit)
+                .limit(limit)
+            )
 
             uncertain_ids = list(self.session.execute(stmt_uncertain).scalars().all())
 
@@ -76,26 +82,43 @@ class JITReconciliationWorker:
             other_ids = []
             if remaining_limit > 0:
                 inspect_threshold = now - timedelta(hours=1)
-                stmt_other = select(JITAccessGrant.id).outerjoin(
-                    JITReconciliationState, JITAccessGrant.id == JITReconciliationState.grant_id
-                ).where(
-                    and_(
-                        JITAccessGrant.status.in_([JITGrantStatus.ACTIVE, JITGrantStatus.EXPIRED, JITGrantStatus.REVOKED]),
-                        or_(
-                            JITReconciliationState.grant_id.is_(None),
-                            and_(
-                                or_(
-                                    JITReconciliationState.lease_expires_at.is_(None),
-                                    JITReconciliationState.lease_expires_at <= now,
+                stmt_other = (
+                    select(JITAccessGrant.id)
+                    .outerjoin(
+                        JITReconciliationState,
+                        JITAccessGrant.id == JITReconciliationState.grant_id,
+                    )
+                    .where(
+                        and_(
+                            JITAccessGrant.status.in_(
+                                [
+                                    JITGrantStatus.ACTIVE,
+                                    JITGrantStatus.EXPIRED,
+                                    JITGrantStatus.REVOKED,
+                                ]
+                            ),
+                            or_(
+                                JITReconciliationState.grant_id.is_(None),
+                                and_(
+                                    or_(
+                                        JITReconciliationState.lease_expires_at.is_(
+                                            None
+                                        ),
+                                        JITReconciliationState.lease_expires_at <= now,
+                                    ),
+                                    or_(
+                                        JITReconciliationState.last_inspected_at.is_(
+                                            None
+                                        ),
+                                        JITReconciliationState.last_inspected_at
+                                        <= inspect_threshold,
+                                    ),
                                 ),
-                                or_(
-                                    JITReconciliationState.last_inspected_at.is_(None),
-                                    JITReconciliationState.last_inspected_at <= inspect_threshold,
-                                )
-                            )
+                            ),
                         )
                     )
-                ).limit(remaining_limit)
+                    .limit(remaining_limit)
+                )
                 other_ids = list(self.session.execute(stmt_other).scalars().all())
 
             to_claim = uncertain_ids + other_ids
@@ -117,7 +140,7 @@ class JITReconciliationWorker:
                         status=ReconciliationStatus.RECONCILING,
                         worker_id=self.worker_id,
                         lease_expires_at=lease_expiry,
-                        row_version=1
+                        row_version=1,
                     )
                     self.session.add(state)
 
@@ -143,7 +166,9 @@ class JITReconciliationWorker:
             except Exception as e:
                 logger.error(f"Error reconciling grant {grant_id}: {e}", exc_info=True)
                 self._fail_reconciliation(grant_id, str(e))
-                results.append({"grant_id": str(grant_id), "status": "error", "error": str(e)})
+                results.append(
+                    {"grant_id": str(grant_id), "status": "error", "error": str(e)}
+                )
 
         return results
 
@@ -157,7 +182,9 @@ class JITReconciliationWorker:
         # 1. Gather Target OS Username
         target_os_username = None
         if grant.target_account_binding_id:
-            binding = self.target_account_repo.get_by_id(grant.target_account_binding_id)
+            binding = self.target_account_repo.get_by_id(
+                grant.target_account_binding_id
+            )
             if binding:
                 target_os_username = binding.target_os_username
 
@@ -173,7 +200,7 @@ class JITReconciliationWorker:
             target_account_binding_id=grant.target_account_binding_id,
             grant_id=grant.id,
             requested_at=now,
-            expires_at=now + timedelta(minutes=15)
+            expires_at=now + timedelta(minutes=15),
         )
 
         req = ExecutionRequest(
@@ -182,13 +209,15 @@ class JITReconciliationWorker:
             parameters={
                 "grant_id": str(grant_id),
                 "target_os_username": target_os_username,
-                "bootstrap_credential": self.bootstrap_credential
+                "bootstrap_credential": self.bootstrap_credential,
             },
-            authorization_context=auth_ctx
+            authorization_context=auth_ctx,
         )
 
         exec_res = self.executor.inspect_target_state(req)
-        target_data = exec_res.details if exec_res.status == ExecutionStatus.SUCCESS else None
+        target_data = (
+            exec_res.details if exec_res.status == ExecutionStatus.SUCCESS else None
+        )
 
         # 3. Classify
         status, reason = classify_target_state(grant.status, target_data)
@@ -198,13 +227,18 @@ class JITReconciliationWorker:
         remediation_details = None
 
         if status == ReconciliationStatus.SAFE_RETRY:
-            remediation_details = self._execute_safe_remediation(grant, auth_ctx, target_os_username)
+            remediation_details = self._execute_safe_remediation(
+                grant, auth_ctx, target_os_username
+            )
             # Re-verify after remediation (simulate inspect, but for simplicity we assume success if no exception)
             status = ReconciliationStatus.SYNCHRONIZED
             reason = "Remediated residual artifacts successfully"
             remediation_performed = True
 
-        if status == ReconciliationStatus.SYNCHRONIZED and grant.status == JITGrantStatus.SECURITY_UNCERTAIN:
+        if (
+            status == ReconciliationStatus.SYNCHRONIZED
+            and grant.status == JITGrantStatus.SECURITY_UNCERTAIN
+        ):
             # DB Recovery: Transition back to terminal
             self._recover_db_terminal_state(grant)
             reason += " (Recovered from SECURITY_UNCERTAIN to REVOKED)"
@@ -214,29 +248,42 @@ class JITReconciliationWorker:
 
         # 6. Audit Logging
         self.audit.log_event(
-            actor_user_id=UUID(int=0), # System
+            actor_user_id=UUID(int=0),  # System
             action="jit_reconciliation",
             resource_type="jit_reconciliation_states",
             resource_id=str(grant_id),
-            status=AuditStatus.SUCCESS if status != ReconciliationStatus.FAILED else AuditStatus.FAILED,
-            severity=AuditSeverity.INFO if status == ReconciliationStatus.SYNCHRONIZED else AuditSeverity.HIGH,
+            status=(
+                AuditStatus.SUCCESS
+                if status != ReconciliationStatus.FAILED
+                else AuditStatus.FAILED
+            ),
+            severity=(
+                AuditSeverity.INFO
+                if status == ReconciliationStatus.SYNCHRONIZED
+                else AuditSeverity.HIGH
+            ),
             details={
                 "db_status": grant.status.value,
                 "reconciliation_status": status.value,
                 "reason": reason,
                 "remediation_performed": remediation_performed,
-                "remediation_details": remediation_details
-            }
+                "remediation_details": remediation_details,
+            },
         )
 
         return {
             "grant_id": str(grant_id),
             "status": status.value,
             "reason": reason,
-            "remediation_performed": remediation_performed
+            "remediation_performed": remediation_performed,
         }
 
-    def _execute_safe_remediation(self, grant: JITAccessGrant, auth_ctx: ExecutionAuthorizationContext, target_os_username: str) -> Dict[str, Any]:
+    def _execute_safe_remediation(
+        self,
+        grant: JITAccessGrant,
+        auth_ctx: ExecutionAuthorizationContext,
+        target_os_username: str,
+    ) -> Dict[str, Any]:
         """Perform strictly destructive remediation of orphaned artifacts."""
         term_req = ExecutionRequest(
             operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
@@ -244,9 +291,9 @@ class JITReconciliationWorker:
             parameters={
                 "grant_id": str(grant.id),
                 "target_os_username": target_os_username,
-                "bootstrap_credential": self.bootstrap_credential
+                "bootstrap_credential": self.bootstrap_credential,
             },
-            authorization_context=auth_ctx
+            authorization_context=auth_ctx,
         )
         term_res = self.executor.terminate_jit_sessions(term_req)
 
@@ -256,9 +303,9 @@ class JITReconciliationWorker:
             parameters={
                 "grant_id": str(grant.id),
                 "target_os_username": target_os_username,
-                "bootstrap_credential": self.bootstrap_credential
+                "bootstrap_credential": self.bootstrap_credential,
             },
-            authorization_context=auth_ctx
+            authorization_context=auth_ctx,
         )
         revoke_res = self.executor.revoke_jit_grant(revoke_req)
 
@@ -267,7 +314,7 @@ class JITReconciliationWorker:
 
         return {
             "sessions_terminated": term_res.status == ExecutionStatus.SUCCESS,
-            "sudoers_removed": revoke_res.status == ExecutionStatus.SUCCESS
+            "sudoers_removed": revoke_res.status == ExecutionStatus.SUCCESS,
         }
 
     def _recover_db_terminal_state(self, grant: JITAccessGrant) -> None:
@@ -278,9 +325,13 @@ class JITReconciliationWorker:
         grant.row_version = (grant.row_version or 1) + 1
         self.session.add(grant)
 
-    def _commit_reconciliation_state(self, grant_id: UUID, status: ReconciliationStatus, reason: str) -> None:
+    def _commit_reconciliation_state(
+        self, grant_id: UUID, status: ReconciliationStatus, reason: str
+    ) -> None:
         now = datetime.now(timezone.utc)
-        state = self.session.execute(select(JITReconciliationState).filter_by(grant_id=grant_id)).scalar_one_or_none()
+        state = self.session.execute(
+            select(JITReconciliationState).filter_by(grant_id=grant_id)
+        ).scalar_one_or_none()
         if state and state.worker_id == self.worker_id:
             state.status = status
             state.last_inspected_at = now
@@ -294,6 +345,8 @@ class JITReconciliationWorker:
 
     def _fail_reconciliation(self, grant_id: UUID, reason: str) -> None:
         try:
-            self._commit_reconciliation_state(grant_id, ReconciliationStatus.FAILED, reason)
+            self._commit_reconciliation_state(
+                grant_id, ReconciliationStatus.FAILED, reason
+            )
         except Exception:
             self.session.rollback()

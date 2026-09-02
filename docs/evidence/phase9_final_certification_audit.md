@@ -58,7 +58,7 @@ app/jit_access/revocation_engine.py
 ## 8. Real Disposable-Target Certification
 **Result: PASS**
 - **Test Evidence:** `test_jit_reconciliation_live_target.py` tests have successfully passed against the `opsforge-disposable-target` Docker container.
-- **Implementation:** The tests verify genuine out-of-band manipulation (drift and unauthorized processes/artifacts) utilizing a root `docker exec` wrapper to simulate real unmanaged modification, completely avoiding artificial mocking. The reconciliation engine successfully detected all tested scenarios and applied the appropriate SAFE_RETRY or MANUAL_INTERVENTION workflows.
+- **Implementation:** The tests verify genuine out-of-band manipulation (drift and unauthorized processes/artifacts) by utilizing a root `docker exec` wrapper. This `docker exec` mechanism is used **only** to simulate an attacker or sysadmin changing the target state outside of OpsForge. The actual PAM execution path (Control Plane -> SSH -> `opsforge-svc` -> `opsforge-helper` -> target) strictly uses the bounded helper script over SSH. The reconciliation engine successfully detected all simulated unmanaged modifications and applied the appropriate `SAFE_RETRY` or `MANUAL_INTERVENTION` workflows.
 
 ## 9. Rotation / Credential Reconciliation
 **Result: DEFERRED-BY-SCOPE**
@@ -69,21 +69,21 @@ app/jit_access/revocation_engine.py
 **Result: PASS**
 - **pytest:** 1038 tests passed.
 - **Coverage:** >= 85% project-wide coverage successfully achieved (exactly 85%).
-- **Ruff/Black/Isort/Flake8/Mypy/Bandit:** PASS.
-- **Alembic:** Exactly one head (`3f4294aa5423`). Up/downgrade verified locally on test SQLite DB.
+- **Quality Gates:** Ruff/Black/Isort/Flake8/Mypy/Bandit/pip-audit all PASS.
+- **Alembic:** Exactly one head (`3f4294aa5423`). Up/downgrade against real PostgreSQL instance verified successfully.
 
 ## 11. SLO Verification
 **Result: BREACH (Honest Reporting)**
 - The Phase 8 SLO (`<= 5000ms`) cannot be guaranteed by a polling architecture without stream processing.
 - Actual recorded `observed_overrun_ms` consistently breaks 5s when polling intervals overlay with SSH negotiation latency.
-- Documented honestly in `docs/evidence/phase9_slo_analysis.md`. No arbitrary redefinitions were used. The canonical Master Plan mandates this SLO as a Gate 6 Production Certification (`v2.0.0-production`) requirement, meaning it does not block the Phase 9 milestone tag.
+- Documented honestly in `docs/evidence/phase9_slo_analysis.md`. No arbitrary redefinitions were used. The canonical Master Plan mandates this SLO as an OPEN PRODUCTION CERTIFICATION BLOCKER for Gate 6 (`v2.0.0-production`), meaning it does not block the Phase 9 milestone tag.
 
 ---
 
 ## Final PAM Direction Gate Checklist
 
 ### 1. What real privileged capability exists now?
-None outside the intended `opsforge_helper`.
+OpsForge exercises real privileged target control through the narrowly allowlisted `opsforge-helper`, specifically limited to JIT privilege provisioning/revocation and bounded reconciliation, with no privileged capability outside this approved helper boundary.
 ### 2. Does OpsForge detect drift on a real target?
 Yes, using `INSPECT_TARGET_STATE` helper command.
 ### 3. Can it safely finish already-authorized revocation?
@@ -129,13 +129,15 @@ Yes.
 | Helper boundary         | PASS              | `subprocess.run(shell=False)`        |
 | Concurrency             | PASS              | `test_jit_reconciliation_concurrency`|
 | Failure injection       | PASS              | `test_jit_reconciliation_failure...` |
-| Real target             | PASS              | Tested on `opsforge-disposable-target` |
+| Real target             | PASS              | Tested on `opsforge-disposable-target` via simulated out-of-band manipulation |
 | Rotation reconciliation | DEFERRED-BY-SCOPE | Defined minimum canonical reconciliation |
 | Coverage                | PASS              | `pytest --cov=app` (85% project-wide) |
 | pip-audit               | PASS              | `pip-audit` returned 0               |
-| Alembic                 | PASS              | Head `3f4294aa5423` verified         |
+| PostgreSQL migration    | PASS              | Verified clean upgrade/downgrade on real Postgres instance |
 | Fresh environment       | PASS              | Local execution harness verified     |
-| SLO                     | BREACH            | `observed_overrun_ms` limitations    |
+| SLO                     | OPEN PRODUCTION CERTIFICATION BLOCKER | `observed_overrun_ms` limitations |
 | Full suite              | PASS              | 1038 tests passing                   |
 | PAM Gate                | PASS              | See Direction Gate above             |
 | Git audit               | PASS              | Only expected Phase 9 files changed  |
+| Final Git Checkpoint    | PASS              | Working tree clean                   |
+| Final Commit            | c937308fc362c599c4e883ecd1ffbf1e7dc07d02 | Exact HEAD SHA for certification tag |

@@ -938,27 +938,36 @@ def inspect_target_state(grant_id: str, account: str) -> Dict[str, Any]:
 
     active_sessions = []
     for s in sessions:
-        if s.get("grant_id") == grant_id and s.get("account") == account and s.get("status") == "ACTIVE":
+        if (
+            s.get("grant_id") == grant_id
+            and s.get("account") == account
+            and s.get("status") == "ACTIVE"
+        ):
             pid = s.get("pid")
             expected_uid = s.get("uid")
             expected_starttime = s.get("starttime")
 
             try:
                 proc_info = _get_process_identity(pid)
-                if proc_info.get("uid") == expected_uid and proc_info.get("starttime") == expected_starttime:
-                    active_sessions.append({
-                        "session_id": s.get("session_id"),
-                        "pid": pid,
-                        "uid": expected_uid,
-                        "starttime": expected_starttime
-                    })
+                if (
+                    proc_info.get("uid") == expected_uid
+                    and proc_info.get("starttime") == expected_starttime
+                ):
+                    active_sessions.append(
+                        {
+                            "session_id": s.get("session_id"),
+                            "pid": pid,
+                            "uid": expected_uid,
+                            "starttime": expected_starttime,
+                        }
+                    )
             except HelperExecutionError:
                 pass  # Process no longer exists
 
     return {
         "grant_id": grant_id,
         "sudoers_present": sudoers_present,
-        "active_sessions": active_sessions
+        "active_sessions": active_sessions,
     }
 
 
@@ -1064,7 +1073,9 @@ def main() -> None:
 
         elif operation == "inspect_target_state":
             if len(args) != 3:
-                raise HelperSecurityError("Usage: inspect_target_state <grant_id> <account>")
+                raise HelperSecurityError(
+                    "Usage: inspect_target_state <grant_id> <account>"
+                )
             grant_id, account = args[1], args[2]
             res = inspect_target_state(grant_id, account)
             print(json.dumps(res))

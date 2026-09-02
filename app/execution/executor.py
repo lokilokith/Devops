@@ -301,7 +301,7 @@ class StubTargetExecutor:
                 status=res.status,
                 verification_status=res.verification_status,
                 details={"sudoers_present": False, "active_sessions": []},
-                duration_ms=res.duration_ms
+                duration_ms=res.duration_ms,
             )
         return res
 

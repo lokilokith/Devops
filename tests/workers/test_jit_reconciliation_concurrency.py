@@ -33,6 +33,7 @@ class FakeExecutor:
             verification_status=VerificationStatus.VERIFIED_SUCCESS,
             details={"sudoers_present": False, "active_sessions": []},
         )
+
     def terminate_jit_sessions(self, request):
         return ExecutionResult(
             execution_id=request.execution_id,
@@ -41,6 +42,7 @@ class FakeExecutor:
             verification_status=VerificationStatus.VERIFIED_SUCCESS,
             details={},
         )
+
     def revoke_jit_grant(self, request):
         return ExecutionResult(
             execution_id=request.execution_id,
@@ -122,11 +124,17 @@ def test_grant(db_session):
     return grant
 
 
-def test_concurrency_two_workers_claim(db_session: Session, test_grant, mock_audit, target_repo):
+def test_concurrency_two_workers_claim(
+    db_session: Session, test_grant, mock_audit, target_repo
+):
     """Test A: two reconciliation workers attempt to claim the same reconciliation row."""
     jit_access_repo = JITAccessRepository(db_session)
-    w1 = JITReconciliationWorker(jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker1")
-    w2 = JITReconciliationWorker(jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker2")
+    w1 = JITReconciliationWorker(
+        jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker1"
+    )
+    w2 = JITReconciliationWorker(
+        jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker2"
+    )
 
     claimed1 = w1.claim_next_batch(1)
     assert test_grant.id in claimed1
@@ -135,18 +143,29 @@ def test_concurrency_two_workers_claim(db_session: Session, test_grant, mock_aud
     claimed2 = w2.claim_next_batch(1)
     assert test_grant.id not in claimed2
 
-    state = db_session.execute(select(JITReconciliationState).filter_by(grant_id=test_grant.id)).scalar_one_or_none()
+    state = db_session.execute(
+        select(JITReconciliationState).filter_by(grant_id=test_grant.id)
+    ).scalar_one_or_none()
     assert state is not None
     assert state.worker_id == "worker1"
 
-def test_concurrency_stale_worker(db_session: Session, test_grant, mock_audit, target_repo):
+
+def test_concurrency_stale_worker(
+    db_session: Session, test_grant, mock_audit, target_repo
+):
     """Test B: Worker A claims, lease expires, Worker B claims, Worker A attempts completion."""
     jit_access_repo = JITAccessRepository(db_session)
-    w1 = JITReconciliationWorker(jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker1")
-    w2 = JITReconciliationWorker(jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker2")
+    w1 = JITReconciliationWorker(
+        jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker1"
+    )
+    w2 = JITReconciliationWorker(
+        jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker2"
+    )
 
     w1.claim_next_batch(1)
-    state = db_session.execute(select(JITReconciliationState).filter_by(grant_id=test_grant.id)).scalar_one_or_none()
+    state = db_session.execute(
+        select(JITReconciliationState).filter_by(grant_id=test_grant.id)
+    ).scalar_one_or_none()
 
     # Expire lease
     state.lease_expires_at = datetime.now(timezone.utc) - timedelta(minutes=5)
@@ -157,22 +176,35 @@ def test_concurrency_stale_worker(db_session: Session, test_grant, mock_audit, t
     assert test_grant.id in claimed2
 
     # Worker A attempts to commit
-    w1._commit_reconciliation_state(test_grant.id, ReconciliationStatus.SYNCHRONIZED, "done")
+    w1._commit_reconciliation_state(
+        test_grant.id, ReconciliationStatus.SYNCHRONIZED, "done"
+    )
 
-    state = db_session.execute(select(JITReconciliationState).filter_by(grant_id=test_grant.id)).scalar_one_or_none()
+    state = db_session.execute(
+        select(JITReconciliationState).filter_by(grant_id=test_grant.id)
+    ).scalar_one_or_none()
     # Since w1._commit_reconciliation_state verifies worker_id before committing,
     # it remains worker2.
     assert state.worker_id == "worker2"
 
-def test_crash_before_mutation(db_session: Session, test_grant, mock_audit, target_repo):
+
+def test_crash_before_mutation(
+    db_session: Session, test_grant, mock_audit, target_repo
+):
     """Test C: Worker claims and crashes, lease expires, another worker recovers."""
     jit_access_repo = JITAccessRepository(db_session)
-    w1 = JITReconciliationWorker(jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker1")
-    w2 = JITReconciliationWorker(jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker2")
+    w1 = JITReconciliationWorker(
+        jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker1"
+    )
+    w2 = JITReconciliationWorker(
+        jit_access_repo, mock_audit, FakeExecutor(), target_repo, b"", "worker2"
+    )
 
     w1.claim_next_batch(1)
     # Simulate crash by expiring lease
-    state = db_session.execute(select(JITReconciliationState).filter_by(grant_id=test_grant.id)).scalar_one_or_none()
+    state = db_session.execute(
+        select(JITReconciliationState).filter_by(grant_id=test_grant.id)
+    ).scalar_one_or_none()
     state.lease_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
     db_session.commit()
 

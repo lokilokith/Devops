@@ -33,20 +33,24 @@ class FailInspectExecutor:
             status=ExecutionStatus.FAILED,
             verification_status=VerificationStatus.UNVERIFIED,
             error_message="SSH Connection timeout",
-            details=None
+            details=None,
         )
+
 
 class CrashCommitWorker(JITReconciliationWorker):
     def _commit_reconciliation_state(self, grant_id, status, reason):
         raise OperationalError("database is locked", None, None)
 
+
 @pytest.fixture
 def mock_audit():
     return MagicMock(spec=AuditService)
 
+
 @pytest.fixture
 def target_repo(db_session):
     return TargetAccountBindingRepository(db_session)
+
 
 @pytest.fixture
 def test_grant(db_session: Session):
@@ -56,9 +60,16 @@ def test_grant(db_session: Session):
     from app.target_accounts.models import TargetAccountBinding
 
     now = datetime.now(timezone.utc)
-    user = User(employee_id="E123", username="test_user1", email="test1@example.com", full_name="Test User")
+    user = User(
+        employee_id="E123",
+        username="test_user1",
+        email="test1@example.com",
+        full_name="Test User",
+    )
     role = Role(role_code="test1", role_name="test_role1", description="Test Role")
-    resource = Resource(resource_code="res1", resource_name="test_resource1", resource_type="server")
+    resource = Resource(
+        resource_code="res1", resource_name="test_resource1", resource_type="server"
+    )
     db_session.add_all([user, role, resource])
     db_session.commit()
     db_session.refresh(user)
@@ -93,9 +104,14 @@ def test_grant(db_session: Session):
     db_session.refresh(grant)
     return grant
 
-def test_ssh_failure_during_inspection(db_session: Session, test_grant, mock_audit, target_repo):
+
+def test_ssh_failure_during_inspection(
+    db_session: Session, test_grant, mock_audit, target_repo
+):
     jit_access_repo = JITAccessRepository(db_session)
-    w = JITReconciliationWorker(jit_access_repo, mock_audit, FailInspectExecutor(), target_repo, b"")
+    w = JITReconciliationWorker(
+        jit_access_repo, mock_audit, FailInspectExecutor(), target_repo, b""
+    )
 
     # Run process_reconciliation
     results = w.process_reconciliation()
@@ -104,13 +120,20 @@ def test_ssh_failure_during_inspection(db_session: Session, test_grant, mock_aud
     print("RESULTS:", results)
     # Because classify_target_state handles None target_data, it returns FAILED if there's no data for an expected state.
     # Actually wait, classification of UNCERTAIN with None data -> SECURITY_UNCERTAIN (FAILED)
-    state = db_session.execute(select(JITReconciliationState).filter_by(grant_id=test_grant.id)).scalar_one_or_none()
+    state = db_session.execute(
+        select(JITReconciliationState).filter_by(grant_id=test_grant.id)
+    ).scalar_one_or_none()
     assert state.status == ReconciliationStatus.UNREACHABLE
     assert "unreachable" in state.failure_reason.lower()
 
-def test_db_disconnect_mid_reconciliation(db_session: Session, test_grant, mock_audit, target_repo):
+
+def test_db_disconnect_mid_reconciliation(
+    db_session: Session, test_grant, mock_audit, target_repo
+):
     jit_access_repo = JITAccessRepository(db_session)
-    w = CrashCommitWorker(jit_access_repo, mock_audit, FailInspectExecutor(), target_repo, b"")
+    w = CrashCommitWorker(
+        jit_access_repo, mock_audit, FailInspectExecutor(), target_repo, b""
+    )
 
     results = w.process_reconciliation()
 

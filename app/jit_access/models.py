@@ -37,7 +37,6 @@ class ReconciliationStatus(str, enum.Enum):
     MANUAL_INTERVENTION = "manual_intervention"
 
 
-
 class JITAccessGrant(BaseModel):
     """Tracks temporary privileged access grants."""
 
