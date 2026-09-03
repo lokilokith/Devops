@@ -1,3 +1,4 @@
+
 # Phase 2B.2 — State Management & Domain Lifecycle
 
 ## Scope
@@ -16,7 +17,9 @@ This phase implemented strict domain-safe state transitions for Vault secrets (r
 - **ACTIVE -> EXPIRED**: Supported and linked dynamically to `JITAccessSession.expire()`.
 - **ACTIVE -> REVOKED**: Supported and linked dynamically to `JITAccessSession.revoke()`.
 - Invalid transitions are securely rejected.
+docker compose ps
 
+docker compose exec -T backend python -c "from app.vault.kms_factory import KMSProviderFactory; print(KMSProviderFactory)"
 ## Domain Events
 Blinker signals were introduced across both modules to enable loosely coupled reaction to domain operations:
 - **Vault Lifecycle Events**: `secret_rotation_requested`, `secret_rotation_started`, `secret_rotation_completed`, `secret_rotation_failed`.

@@ -74,12 +74,23 @@ Real SSH Target
 ## Test Results
 
 ```
-tests/workers/test_ssh_broker.py::test_authentication_success         PASSED
-tests/workers/test_ssh_broker.py::test_authentication_invalid_token   PASSED
-tests/workers/test_ssh_broker.py::test_authorization_expired_session  PASSED
-tests/workers/test_ssh_broker.py::test_proxy_prevention               PASSED
+tests/workers/test_ssh_broker.py::test_authentication_success PASSED
+tests/workers/test_ssh_broker.py::test_authentication_invalid_token PASSED
+tests/workers/test_ssh_broker.py::test_authentication_malformed_token PASSED
+tests/workers/test_ssh_broker.py::test_username_independence PASSED
+tests/workers/test_ssh_broker.py::test_authorization_expired_session PASSED
+tests/workers/test_ssh_broker.py::test_authorization_expired_grant PASSED
+tests/workers/test_ssh_broker.py::test_authorization_revoked_grant PASSED
+tests/workers/test_ssh_broker.py::test_authorization_no_credential PASSED
+tests/workers/test_ssh_broker.py::test_proxy_prevention_tcpip PASSED
+tests/workers/test_ssh_broker.py::test_proxy_prevention_x11 PASSED
+tests/workers/test_ssh_broker.py::test_proxy_prevention_exec PASSED
+tests/workers/test_ssh_broker.py::test_active_session_expiry_termination PASSED
+tests/workers/test_ssh_broker.py::test_active_session_revocation_termination PASSED
+tests/workers/test_ssh_broker.py::test_audit_no_secrets PASSED
+tests/workers/test_ssh_broker.py::test_e2e_disposable_target PASSED
 
-4 passed in 1.83s
+15 passed in 3.65s
 ```
 
 ---
@@ -91,8 +102,8 @@ tests/workers/test_ssh_broker.py::test_proxy_prevention               PASSED
 | Black | PASS — reformatted clean |
 | Ruff | PASS — no issues |
 | Mypy | PASS — no issues (2 source files checked) |
-| Bandit | PASS — Low severity only (expected: try/except in async bridges, test literals) |
-| Pytest | PASS — 4/4 passing |
+| Bandit | PASS — no issues (B110 suppressed with nosec) |
+| Pytest | PASS — 15/15 passing |
 
 ---
 
@@ -116,6 +127,5 @@ is required in the broker.
 
 ## Known Limitations (Prototype Scope)
 
-- `known_hosts=None` on outbound SSH connection: strict host verification deferred to Phase 12/production hardening.
 - `exec_requested()` returns `False`: single-command execution not bridged in Phase 11.
-- Bandit B110 (`try/except/pass`) in async I/O bridge loops: intentional; bridge teardown must not raise on connection closure.
+

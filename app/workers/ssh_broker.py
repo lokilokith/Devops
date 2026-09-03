@@ -9,11 +9,10 @@ bridged I/O streams to real target resources using authorized ephemeral credenti
 from __future__ import annotations
 
 import asyncio
-import enum
 import hashlib
 import logging
 from datetime import datetime, timezone
-from typing import Any, Mapping, Optional, Tuple
+from typing import Any, Mapping, Optional
 from uuid import UUID
 
 import asyncssh
@@ -21,6 +20,10 @@ from sqlalchemy import select
 
 from app.audit.models import AuditSeverity, AuditStatus
 from app.audit.service import AuditService
+from app.execution.host_identity import (
+    HostKeyVerifier,
+    UntrustedHostError,
+)
 from app.jit_access.models import JITAccessGrant, JITGrantStatus
 from app.platform.extensions import db
 from app.resources.models import Resource
@@ -60,6 +63,7 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
         self._credential_context: Optional[CredentialUseContext] = None
         self._client_connection: Optional[asyncssh.SSHServerConnection] = None
         self._outbound_connection: Optional[asyncssh.SSHClientConnection] = None
+        self._host_key_verifier = HostKeyVerifier()
 
     def connection_made(self, conn: asyncssh.SSHServerConnection) -> None:
         self._client_connection = conn
@@ -89,7 +93,7 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
                         )
                         db.session.commit()
                     except Exception:
-                        pass
+                        pass  # nosec B110
 
             # Avoid blocking the event loop
             asyncio.create_task(asyncio.to_thread(_log_disconnect))
@@ -193,6 +197,18 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
             self._target_port = resource.port or 22
             self._target_username = binding.target_os_username
 
+            if resource.pinned_host_key:
+                try:
+                    parts = resource.pinned_host_key.split()
+                    if len(parts) >= 2:
+                        self._host_key_verifier.register_trusted_key(
+                            host=self._target_host,
+                            key_type=parts[0],
+                            key_base64=parts[1],
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to register pinned host key: {e}")
+
             if binding.ssh_credential_id is None:
                 logger.warning(
                     f"Authorization denied: No credential bound for session {session_model.id}."
@@ -282,7 +298,8 @@ class OpsForgeSessionAdapter(asyncssh.SSHServerSession):
 
     async def _establish_outbound_connection(self) -> None:
         """Phase 12 Prerequisite: Fetch credential and establish outbound connection."""
-        plaintext_credential = None
+        pkey = None
+        password = None
         try:
             # Run the credential acquisition in a sync thread
             plaintext_credential = await asyncio.to_thread(
@@ -290,24 +307,44 @@ class OpsForgeSessionAdapter(asyncssh.SSHServerSession):
             )
 
             # Establish the outbound connection to the target
-            # Use password if the credential represents one, or load it as a private key
-            # For simplicity, if it starts with '-----BEGIN', it's a key, else password.
-            pkey = None
-            password = None
-            cred_str = plaintext_credential.decode("utf-8")
-            if "-----BEGIN" in cred_str:
-                pkey = asyncssh.import_private_key(cred_str)
+            # asyncssh expects raw key data as bytes, otherwise it treats strings as file paths.
+            client_keys: Optional[list[bytes]] = None
+            if plaintext_credential and b"-----BEGIN" not in plaintext_credential:
+                password = plaintext_credential.decode("utf-8")
+            elif plaintext_credential:
+                client_keys = [plaintext_credential]
+
+            if not self.broker._target_host:
+                raise RuntimeError("Target host is not configured.")
+
+            trusted = self.broker._host_key_verifier.get_trusted_key(
+                self.broker._target_host
+            )
+            if not trusted:
+                logger.error(
+                    f"Host key verification failed: Untrusted target host '{self.broker._target_host}'"
+                )
+                raise UntrustedHostError("Target host is not trusted")
+
+            if self.broker._target_port != 22:
+                host_str = f"[{self.broker._target_host}]:{self.broker._target_port}"
             else:
-                password = cred_str
+                host_str = self.broker._target_host
+            known_hosts_line = f"{host_str} {trusted.key_type} {trusted.key_base64}"
+            known_hosts = asyncssh.import_known_hosts(known_hosts_line)
 
             self._outbound_conn = await asyncssh.connect(
                 self.broker._target_host,
                 port=self.broker._target_port,
                 username=self.broker._target_username,
                 password=password,
-                client_keys=[pkey] if pkey else None,
-                known_hosts=None,  # Or use a strict host verifier in production
+                client_keys=client_keys,
+                known_hosts=known_hosts,
             )
+
+            # Delete reference to sensitive material
+            if plaintext_credential is not None:
+                del plaintext_credential
             self.broker._outbound_connection = self._outbound_conn
 
             if self._inbound_channel is None:
@@ -331,7 +368,7 @@ class OpsForgeSessionAdapter(asyncssh.SSHServerSession):
             self._bridge_tasks.append(
                 asyncio.create_task(
                     self._bridge_error(
-                        self._outbound_process.stderr, self._inbound_channel.stderr  # type: ignore[attr-defined]
+                        self._outbound_process.stderr, self._inbound_channel
                     )
                 )
             )
@@ -343,12 +380,11 @@ class OpsForgeSessionAdapter(asyncssh.SSHServerSession):
                 self._inbound_channel.write(f"Target connection failed: {e}\n")
                 self._inbound_channel.close()
         finally:
-            # SECURITY: Wipe plaintext credential from memory
-            if plaintext_credential:
-                del plaintext_credential
-            if pkey:
+            # We delete references to credential material.
+            # Note: Python's memory management does not guarantee secure zeroization.
+            if pkey is not None:
                 del pkey
-            if password:
+            if password is not None:
                 del password
 
     def _sync_acquire_credential(self) -> bytes:
@@ -366,22 +402,39 @@ class OpsForgeSessionAdapter(asyncssh.SSHServerSession):
                 data = await stdout.read(4096)
                 if data:
                     channel.write(data)
-        except Exception:
+        except (
+            asyncssh.Error,
+            asyncio.IncompleteReadError,
+            ConnectionResetError,
+            OSError,
+        ):
             pass
+        except Exception as e:
+            logger.warning(f"Unexpected error in stdout bridge: {e}")
         finally:
             channel.close()
 
-    async def _bridge_error(self, stderr, channel_stderr) -> None:
+    async def _bridge_error(self, stderr, channel: asyncssh.SSHServerChannel) -> None:
         try:
             while not stderr.at_eof():
                 data = await stderr.read(4096)
                 if data:
-                    channel_stderr.write(data)
-        except Exception:
+                    channel.write_stderr(data)
+        except (
+            asyncssh.Error,
+            asyncio.IncompleteReadError,
+            ConnectionResetError,
+            OSError,
+        ):
             pass
+        except Exception as e:
+            logger.warning(f"Unexpected error in stderr bridge: {e}")
 
     def pty_requested(
-        self, term_type: str, term_size: tuple[int, int, int, int], term_modes: Mapping[int, int]
+        self,
+        term_type: str,
+        term_size: tuple[int, int, int, int],
+        term_modes: Mapping[int, int],
     ) -> bool:
         return True
 
@@ -403,6 +456,18 @@ class OpsForgeSessionAdapter(asyncssh.SSHServerSession):
     def exec_requested(self, command: str) -> bool:
         # For prototype, only interactive shell is fully supported,
         # but single commands can be bridged if implemented. We'll reject exec for simplicity.
+        return False
+
+    def x11_requested(
+        self,
+        single_connection: bool,
+        auth_protocol: str,
+        auth_cookie: str,
+        screen_number: int,
+    ) -> bool:
+        return False
+
+    def agent_requested(self) -> bool:
         return False
 
     def data_received(self, data: str, datatype: asyncssh.DataType) -> None:
@@ -438,8 +503,37 @@ async def start_expiry_monitor(app_context: Any) -> None:
                     expired = []
                     for sid in s_ids:
                         session = db.session.get(PrivilegedAccessSession, sid)
-                        if session and session.expires_at < now:
+                        if not session:
+                            continue
+
+                        sess_expires_at = session.expires_at
+                        if sess_expires_at.tzinfo is None:
+                            sess_expires_at = sess_expires_at.replace(
+                                tzinfo=timezone.utc
+                            )
+
+                        if sess_expires_at < now:
                             expired.append(sid)
+                            continue
+
+                        # Check authoritative grant status for revocation
+                        grant = db.session.execute(
+                            select(JITAccessGrant).where(
+                                JITAccessGrant.approval_request_id
+                                == session.access_request_id
+                            )
+                        ).scalar_one_or_none()
+
+                        if grant and grant.status in (
+                            JITGrantStatus.REVOKED,
+                            JITGrantStatus.REVOCATION_PENDING,
+                            JITGrantStatus.EXPIRED,
+                            JITGrantStatus.DENIED,
+                            JITGrantStatus.FAILED,
+                            JITGrantStatus.SECURITY_UNCERTAIN,
+                        ):
+                            expired.append(sid)
+
                     return expired
 
             expired_ids = await asyncio.to_thread(_get_expired, session_ids)
