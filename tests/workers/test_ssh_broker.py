@@ -14,7 +14,11 @@ from app.resources.models import Resource
 from app.sessions.models import PrivilegedAccessSession, SessionStatus
 from app.target_accounts.models import TargetAccountBinding
 from app.vault.credential_use import CredentialUseService
-from app.workers.ssh_broker import OpsForgeSSHBroker, start_expiry_monitor
+from app.workers.ssh_broker import (
+    OpsForgeSessionAdapter,
+    OpsForgeSSHBroker,
+    start_expiry_monitor,
+)
 
 
 @pytest.fixture
@@ -73,7 +77,15 @@ async def broker_server(
         port = server.sockets[0].getsockname()[1]
         yield server, port, mock_audit_service, mock_credential_use_service, mock_app_context
         server.close()
-        await server.wait_closed()
+        for conn in list(OpsForgeSSHBroker._active_connections.values()):
+            if conn:
+                conn.close()
+        OpsForgeSSHBroker._active_connections.clear()
+
+        try:
+            await asyncio.wait_for(server.wait_closed(), timeout=2.0)
+        except asyncio.TimeoutError:
+            pass
 
 
 @pytest.fixture
@@ -316,6 +328,39 @@ async def test_proxy_prevention_x11(broker_server, test_session_data):
 
 
 @pytest.mark.asyncio
+async def test_proxy_prevention_agent():
+    """Verify that agent-forwarding is explicitly rejected by the broker adapter."""
+    adapter = OpsForgeSessionAdapter(MagicMock())
+    # Should return False (rejected) instead of True (accepted)
+    assert adapter.agent_requested() is False
+
+
+@pytest.mark.asyncio
+async def test_proxy_prevention_direct_tcpip():
+    """Verify direct-tcpip requests are rejected."""
+    broker = OpsForgeSSHBroker(MagicMock(), MagicMock(), MagicMock())
+    assert broker.connection_requested("1.1.1.1", 80, "2.2.2.2", 1234) is False
+
+
+@pytest.mark.asyncio
+async def test_proxy_prevention_forward_tcpip(broker_server, test_session_data):
+    server, port, audit, creds, _ = broker_server
+    with patch(
+        "app.workers.ssh_broker.OpsForgeSessionAdapter._establish_outbound_connection",
+        new_callable=AsyncMock,
+    ):
+        async with asyncssh.connect(
+            "127.0.0.1",
+            port=port,
+            username="ignored",
+            password=test_session_data["token"],
+            known_hosts=None,
+        ) as conn:
+            with pytest.raises(Exception):
+                await conn.forward_remote_port("127.0.0.1", 8080, "127.0.0.1", 80)
+
+
+@pytest.mark.asyncio
 async def test_proxy_prevention_exec(broker_server, test_session_data):
     server, port, audit, creds, _ = broker_server
     with patch(
@@ -442,8 +487,13 @@ async def test_audit_no_secrets(broker_server, test_session_data):
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_e2e_disposable_target(broker_server, test_session_data, db_session):
-    """Proves full Phase 11 Layer-1 interactivity against the real disposable target."""
+async def test_e2e_disposable_target(
+    broker_server, test_session_data, target_container, db_session
+):
+    """Real Phase 11 broker -> real disposable target E2E with CredentialUseService/Vault boundary mocked.
+    This connects via the SSH broker to the actual running `opsforge-disposable-target`
+    container, providing end-to-end proof of Phase 11 functionality.
+    """
     server, port, audit, creds, _ = broker_server
 
     # Configure real resource settings
@@ -474,13 +524,256 @@ async def test_e2e_disposable_target(broker_server, test_session_data, db_sessio
     ) as conn:
         async with conn.create_process(term_type="xterm") as process:
             # We are connected to the disposable target
-            # Wait for the broker to establish the outbound connection asynchronously
-            await asyncio.sleep(2.0)
-            process.stdin.write("whoami\n")
+            # Read until we see the prompt to ensure the shell is ready
+            out_buffer = ""
+            try:
+                while "opsforge-svc@" not in out_buffer:
+                    chunk = await asyncio.wait_for(
+                        process.stdout.read(1024), timeout=5.0
+                    )
+                    if not chunk:
+                        break
+                    out_buffer += chunk
+            except asyncio.TimeoutError:
+                pass
+
+            # Send 'whoami' using carriage return for PTY
+            process.stdin.write("whoami\r")
+
+            # Read until we get the response
+            try:
+                while True:
+                    chunk = await asyncio.wait_for(
+                        process.stdout.read(1024), timeout=5.0
+                    )
+                    if not chunk:
+                        break
+                    out_buffer += chunk
+                    if "whoami" in out_buffer and "opsforge-svc\r" in out_buffer:
+                        break
+            except asyncio.TimeoutError:
+                pass
+
+            process.stdin.write("exit\r")
             process.stdin.write_eof()
             process.stdin.close()
-            # Wait for some output
-            out = await asyncio.wait_for(process.stdout.read(), timeout=5.0)
-            # Wait for process to finish closing
             await process.wait_closed()
-            assert "opsforge" in out or len(out) > 0
+
+            # Normalize PTY output (remove ANSI escapes, return carriage returns)
+            import re
+
+            clean_out = re.sub(r"\x1b\[[0-9;?]*[a-zA-Z]", "", out_buffer)
+            clean_out = clean_out.replace("\r", "")
+
+            # Parse the PTY output to definitively prove the whoami response
+            lines = [line.strip() for line in clean_out.splitlines() if line.strip()]
+
+            # Find the line that actually executed 'whoami'
+            whoami_response_index = -1
+            for i, line in enumerate(lines):
+                if line == "whoami":
+                    whoami_response_index = i + 1
+                    break
+
+            assert (
+                whoami_response_index > 0
+            ), f"Could not find 'whoami' execution in output: {clean_out}"
+            assert whoami_response_index < len(
+                lines
+            ), f"Truncated output after 'whoami': {clean_out}"
+
+            parsed_whoami = lines[whoami_response_index]
+            assert (
+                parsed_whoami == "opsforge-svc"
+            ), f"whoami output missing or incorrect: expected 'opsforge-svc', got {parsed_whoami}. Full output: {clean_out}"
+
+
+@pytest.mark.asyncio
+async def test_session_isolation(broker_server, test_session_data, db_session):
+    server, port, audit, creds, app_ctx = broker_server
+
+    import hashlib
+    import uuid
+
+    second_token = "opsf_sess_second_token"
+
+    s_a = db_session.get(PrivilegedAccessSession, test_session_data["session_id"])
+    req_id = s_a.access_request_id
+    usr_id = s_a.user_id
+
+    # Create an entirely distinct context for B to ensure no overlap!
+    from app.jit_access.models import JITAccessGrant, JITGrantStatus
+    from app.resources.models import Resource
+    from app.target_accounts.models import TargetAccountBinding
+
+    # Session B Resource
+    res_b = Resource(
+        id=uuid.uuid4(),
+        resource_code="target-b",
+        resource_name="Target B",
+        description="B target",
+        hostname_ip="127.0.0.1",
+        port=22,
+        pinned_host_key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHrnP/LjJYs6IyvEvO/IOnf2iK7mobCHGKeIx5kWURgO test",
+    )
+    db_session.add(res_b)
+
+    # Session B Binding
+    bind_b = TargetAccountBinding(
+        id=uuid.uuid4(),
+        control_plane_user_id=usr_id,
+        resource_id=res_b.id,
+        target_os_username="b-svc",
+        ssh_credential_id=usr_id,
+    )
+    db_session.add(bind_b)
+
+    # Session B Grant
+    grant_b = JITAccessGrant(
+        id=uuid.uuid4(),
+        approval_request_id=uuid.uuid4(),
+        user_id=usr_id,
+        role_id=(
+            s_a.role_id
+            if hasattr(s_a, "role_id")
+            else (
+                db_session.get(JITAccessGrant, s_a.access_request_id).role_id
+                if db_session.get(JITAccessGrant, s_a.access_request_id)
+                else req_id
+            )
+        ),
+        resource_id=res_b.id,
+        target_account_binding_id=bind_b.id,
+        status=JITGrantStatus.ACTIVE,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    # Actually wait, test_session_data["grant_id"] gives us the exact grant to pull from
+    grant_a = db_session.get(JITAccessGrant, test_session_data["grant_id"])
+    grant_b.role_id = grant_a.role_id
+    db_session.add(grant_b)
+
+    # Session B
+    b_id = uuid.uuid4()
+    second_session = PrivilegedAccessSession(
+        id=b_id,
+        access_request_id=grant_b.approval_request_id,
+        user_id=usr_id,
+        resource_id=res_b.id,
+        session_token_hash=hashlib.sha256(second_token.encode()).hexdigest(),
+        status=SessionStatus.ACTIVE,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    db_session.add(second_session)
+    db_session.commit()
+
+    # Mock the establish_outbound_connection so it doesn't try to connect
+    with patch(
+        "app.workers.ssh_broker.OpsForgeSessionAdapter._establish_outbound_connection",
+        new_callable=AsyncMock,
+    ):
+        # A connects
+        conn_a = await asyncssh.connect(
+            "127.0.0.1",
+            port=port,
+            username="ignored_a",
+            password=test_session_data["token"],
+            known_hosts=None,
+        )
+        # B connects
+        conn_b = await asyncssh.connect(
+            "127.0.0.1",
+            port=port,
+            username="ignored_b",
+            password=second_token,
+            known_hosts=None,
+        )
+
+        assert not conn_a.is_closed()
+        assert not conn_b.is_closed()
+
+        # Verify completely independent associations
+        assert len(OpsForgeSSHBroker._active_connections) == 2
+        assert test_session_data["session_id"] in OpsForgeSSHBroker._active_connections
+        assert b_id in OpsForgeSSHBroker._active_connections
+
+        # Expire A
+        sess_a = db_session.get(
+            PrivilegedAccessSession, test_session_data["session_id"]
+        )
+        sess_a.expires_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+        db_session.commit()
+
+        # Explicitly run the monitor's exact logic inside this thread to avoid test mocking/scheduling noise
+        now = datetime.now(timezone.utc)
+        expired = []
+        for sid in list(OpsForgeSSHBroker._active_connections.keys()):
+            session = db_session.get(PrivilegedAccessSession, sid)
+            sess_expires_at = session.expires_at
+            if sess_expires_at.tzinfo is None:
+                sess_expires_at = sess_expires_at.replace(tzinfo=timezone.utc)
+            if sess_expires_at < now:
+                expired.append(sid)
+
+        assert test_session_data["session_id"] in expired
+        assert b_id not in expired
+
+        for sid in expired:
+            c = OpsForgeSSHBroker._active_connections.get(sid)
+            if c:
+                c.close()
+
+        # Give asyncssh a chance to close
+        await asyncio.sleep(0.1)
+
+        # A should be closed, B should remain active!
+        assert conn_a.is_closed()
+        assert not conn_b.is_closed()
+
+        # Cleanup
+        conn_b.close()
+        await conn_b.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_host_key_verification_missing(
+    broker_server, test_session_data, db_session
+):
+    server, port, audit, creds, _ = broker_server
+
+    # Remove pinned host key
+    res = db_session.get(Resource, test_session_data["resource_id"])
+    res.pinned_host_key = None
+    db_session.commit()
+
+    async with asyncssh.connect(
+        "127.0.0.1",
+        port=port,
+        username="ignored",
+        password=test_session_data["token"],
+        known_hosts=None,
+    ) as conn:
+        with pytest.raises(asyncssh.Error):
+            await conn.create_process("ls")
+
+
+@pytest.mark.asyncio
+async def test_host_key_verification_incorrect(
+    broker_server, test_session_data, db_session
+):
+    server, port, audit, creds, _ = broker_server
+
+    # Set incorrect pinned host key (valid base64, wrong key)
+    res = db_session.get(Resource, test_session_data["resource_id"])
+    res.pinned_host_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    db_session.commit()
+
+    # Start E2E with incorrect key, it should fail
+    async with asyncssh.connect(
+        "127.0.0.1",
+        port=port,
+        username="ignored",
+        password=test_session_data["token"],
+        known_hosts=None,
+    ) as conn:
+        with pytest.raises(asyncssh.Error):
+            await conn.create_process("ls")

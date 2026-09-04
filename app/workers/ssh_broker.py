@@ -92,8 +92,10 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
                             },
                         )
                         db.session.commit()
-                    except Exception:
-                        pass  # nosec B110
+                    except Exception as logging_exc:
+                        logger.error(
+                            f"Failed to log disconnect audit event: {logging_exc}"
+                        )
 
             # Avoid blocking the event loop
             asyncio.create_task(asyncio.to_thread(_log_disconnect))
@@ -273,6 +275,12 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
 
     def server_requested(self, listen_host: str, listen_port: int) -> bool:
         """Reject TCP/IP forwarding requests."""
+        return False
+
+    def connection_requested(
+        self, dest_host: str, dest_port: int, orig_host: str, orig_port: int
+    ) -> bool:
+        """Reject direct-tcpip requests."""
         return False
 
     def session_requested(self) -> asyncssh.SSHServerSession:

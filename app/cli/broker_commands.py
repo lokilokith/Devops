@@ -27,6 +27,7 @@ async def run_broker_async(
     port: int, app_context, audit_service, credential_use_service
 ):
     """Run the AsyncSSH server and background tasks."""
+
     def server_factory():
         return OpsForgeSSHBroker(
             app_context=app_context,
@@ -44,7 +45,10 @@ async def run_broker_async(
     try:
         logger.info(f"Starting OpsForge SSH Broker on port {port}")
         await asyncssh.listen(
-            host="", port=port, server_host_keys=[server_keys], server_factory=server_factory
+            host="",
+            port=port,
+            server_host_keys=[server_keys],
+            server_factory=server_factory,
         )
         # Keep the event loop running
         while True:
@@ -80,7 +84,7 @@ def start_broker_command(port: int):
     credential_use_service = CredentialUseService(vault_repo, encryption_service)
 
     # We need to capture the flask app to spawn app_contexts in async code
-    app = current_app._get_current_object()
+    app = current_app._get_current_object()  # type: ignore[attr-defined]
 
     def app_context_factory():
         return app.app_context()
