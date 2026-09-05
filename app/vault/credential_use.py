@@ -22,6 +22,10 @@ from uuid import UUID
 from app.vault.crypto import EncryptionService
 from app.vault.exceptions import VaultException
 from app.vault.repository import SqlAlchemyVaultRepository
+from app.platform.extensions import db
+from app.sessions.models import PrivilegedAccessSession, SessionStatus
+from app.jit_access.models import JITAccessGrant, JITGrantStatus
+from app.target_accounts.models import TargetAccountBinding
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +116,51 @@ class CredentialUseService:
         """
         # 1. Validate complete authorization chain context
         context.validate(current_time)
+
+        if not context.session_id:
+            raise UnauthorizedCredentialUseError("Credential use rejected: session_id is required for deep validation")
+        if not context.grant_id:
+            raise UnauthorizedCredentialUseError("Credential use rejected: grant_id is required for deep validation")
+        if not context.target_account_binding_id:
+            raise UnauthorizedCredentialUseError("Credential use rejected: target_account_binding_id is required for deep validation")
+
+        now = current_time or datetime.now(timezone.utc)
+
+        # 1.a Validate Session
+        session_obj = db.session.get(PrivilegedAccessSession, context.session_id)
+        if not session_obj:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: session {context.session_id} not found")
+        if session_obj.status != SessionStatus.ACTIVE:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: session {context.session_id} is not ACTIVE")
+        if session_obj.user_id != context.user_id:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: session user does not match context")
+        sess_exp = session_obj.expires_at if session_obj.expires_at.tzinfo else session_obj.expires_at.replace(tzinfo=timezone.utc)
+        if now > sess_exp:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: session {context.session_id} is expired")
+
+        # 1.b Validate Grant
+        grant_obj = db.session.get(JITAccessGrant, context.grant_id)
+        if not grant_obj:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: grant {context.grant_id} not found")
+        if grant_obj.status != JITGrantStatus.ACTIVE:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: grant {context.grant_id} is not ACTIVE")
+        if grant_obj.user_id != context.user_id:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: grant user does not match context")
+        if grant_obj.approval_request_id != session_obj.access_request_id:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: grant does not belong to session")
+        if grant_obj.expires_at:
+            grant_exp = grant_obj.expires_at if grant_obj.expires_at.tzinfo else grant_obj.expires_at.replace(tzinfo=timezone.utc)
+            if now > grant_exp:
+                raise UnauthorizedCredentialUseError(f"Credential use rejected: grant {context.grant_id} is expired")
+
+        # 1.c Validate Target Binding
+        binding_obj = db.session.get(TargetAccountBinding, context.target_account_binding_id)
+        if not binding_obj:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: target binding {context.target_account_binding_id} not found")
+        if binding_obj.resource_id != context.resource_id:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: target binding resource does not match context")
+        if binding_obj.ssh_credential_id != context.credential_id:
+            raise UnauthorizedCredentialUseError(f"Credential use rejected: target binding credential does not match context")
 
         # 2. Retrieve secret and verify resource binding
         secret = self._vault_repo.find_by_id(context.credential_id)

@@ -556,8 +556,10 @@ class JITAccessService:
         executor: Optional[TargetExecutor] = None,
         bootstrap_credential: Optional[bytes] = None,
     ) -> int:
-        """Terminate active sessions for a grant on target and in database."""
+        """Terminate active sessions for a grant by invoking the standard revocation machinery."""
         grant = self._repo.get_by_id(grant_id)
+
+        # IDOR ownership check: non-admin cannot terminate another user's sessions
         if grant.user_id != user_id:
             try:
                 is_admin = self._auth.has_permission(
@@ -565,63 +567,35 @@ class JITAccessService:
                 )
                 if not is_admin:
                     raise UnauthorizedActivationError(
-                        "User cannot terminate sessions for another user's grant"
+                        f"User {user_id} cannot terminate sessions for grant owned by {grant.user_id}"
                     )
             except ValueError:
                 raise UnauthorizedActivationError(
-                    "User cannot terminate sessions for another user's grant"
+                    f"User {user_id} cannot terminate sessions for grant owned by {grant.user_id}"
                 )
 
-        terminated_count = 0
-        if executor and grant.resource_id:
-            now_dt = datetime.now(timezone.utc)
-            auth_ctx = ExecutionAuthorizationContext(
-                user_id=user_id,
-                resource_id=grant.resource_id,
-                credential_id=grant.target_account_binding_id or grant.id,
-                target_account_binding_id=grant.target_account_binding_id,
-                grant_id=grant.id,
-                requested_at=now_dt,
-                expires_at=now_dt + timedelta(minutes=15),
-            )
-            req = ExecutionRequest(
-                operation=ExecutionOperation.TERMINATE_JIT_SESSIONS,
-                resource_id=grant.resource_id,
-                parameters={
-                    "grant_id": str(grant.id),
-                    "bootstrap_credential": bootstrap_credential,
-                },
-                authorization_context=auth_ctx,
-            )
-            res = executor.terminate_jit_sessions(req)
-            if res.status != ExecutionStatus.SUCCESS:
-                raise JITAccessError(
-                    f"Failed to terminate sessions on target: {res.error_message}"
-                )
-            terminated_count = res.details.get(
-                "terminated_count", 1 if res.details.get("terminated") else 0
-            )
-
-        sessions = self._repo.find_sessions_by_grant(grant.id)
+        # Use existing revoke_access to trigger standard revocation engine
+        self.revoke_access(
+            grant_id=grant_id,
+            revoker_id=user_id,
+            executor=executor,
+            bootstrap_credential=bootstrap_credential,
+            worker_id="manual_termination_api",
+        )
+        
+        # Count affected sessions
+        sessions = self._repo.find_sessions_by_grant(grant_id)
+        active_count = sum(1 for s in sessions if s.status in ("pending", "active"))
+        
+        # Mark sessions as terminated immediately in DB for API responsiveness
         now = datetime.now(timezone.utc)
         for s in sessions:
-            s.status = "terminated"
-            s.terminated_at = now
-            self._repo.save_session(s)
-
-        self._audit.log_event(
-            actor_user_id=user_id,
-            action="jit_session.terminated",
-            resource_type="jit_access_grants",
-            resource_id=str(grant.id),
-            status=AuditStatus.SUCCESS,
-            severity=AuditSeverity.INFO,
-            details={
-                "grant_id": str(grant.id),
-                "terminated_count": max(terminated_count, len(sessions)),
-            },
-        )
-        return max(terminated_count, len(sessions))
+            if s.status in ("pending", "active"):
+                s.status = "terminated"
+                s.terminated_at = now
+                self._repo.save_session(s)
+                
+        return active_count
 
     def get_grant(self, grant_id: UUID) -> JITAccessGrant:
         """Fetch a JIT access grant by ID or raise GrantNotFoundError."""

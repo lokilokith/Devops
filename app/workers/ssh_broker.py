@@ -439,6 +439,13 @@ class OpsForgeSessionAdapter(asyncssh.SSHServerSession):
                     )
                 )
             )
+            
+            async def wait_process():
+                await self._outbound_process.wait_closed()
+                if self._inbound_channel:
+                    self._inbound_channel.close()
+            
+            self._bridge_tasks.append(asyncio.create_task(wait_process()))
             # Bridge stdin is handled via data_received callback
 
         except Exception as e:
@@ -590,6 +597,7 @@ def sweep_expired_sessions(app_context: Any, session_ids: list[UUID]) -> list[UU
             if grant and grant.status in (
                 JITGrantStatus.REVOKED,
                 JITGrantStatus.REVOCATION_PENDING,
+                JITGrantStatus.REVOCATION_RUNNING,
                 JITGrantStatus.EXPIRED,
                 JITGrantStatus.DENIED,
                 JITGrantStatus.FAILED,
