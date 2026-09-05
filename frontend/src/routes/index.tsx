@@ -20,6 +20,7 @@ import { Unauthorized } from "@/features/errors/Unauthorized"
 import { VaultDashboard } from "@/features/vault/pages/VaultDashboard"
 import { SecretList } from "@/features/vault/pages/SecretList"
 import { VaultAuditList } from "@/features/vault/pages/VaultAuditList"
+import { SessionControl } from "@/features/vault/pages/SessionControl"
 import { VAULT_PERMISSIONS } from "@/features/vault/constants"
 
 export const router = createBrowserRouter([
@@ -98,6 +99,10 @@ export const router = createBrowserRouter([
                 <VaultAuditList />
               </AuthGuard>
             ),
+          },
+          {
+            path: "sessions",
+            element: <SessionControl />, // Can be read by anyone (their own sessions)
           },
           {
             path: "access-requests",

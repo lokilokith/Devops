@@ -438,14 +438,32 @@ class JITAccessService:
                 f"Only pending or active grants can be revoked (status: {grant.status.value})"
             )
 
-        return self._engine.revoke_grant(
-            grant_id=grant_id,
-            actor_id=revoker_id,
-            is_expiry=False,
-            executor=executor,
-            bootstrap_credential=bootstrap_credential,
-            worker_id=worker_id,
-        )
+        if executor:
+            return self._engine.revoke_grant(
+                grant_id=grant_id,
+                actor_id=revoker_id,
+                is_expiry=False,
+                executor=executor,
+                bootstrap_credential=bootstrap_credential,
+                worker_id=worker_id,
+            )
+        else:
+            now = datetime.now(timezone.utc)
+            grant.status = JITGrantStatus.REVOCATION_PENDING
+            grant.revocation_start = now
+            self._repo.save(grant)
+            self._audit.log_event(
+                actor_user_id=revoker_id,
+                action="jit_grant.revocation_requested",
+                resource_type="jit_access_grants",
+                resource_id=str(grant.id),
+                status=AuditStatus.SUCCESS,
+                severity=AuditSeverity.INFO,
+                details={
+                    "worker_id": worker_id,
+                },
+            )
+            return grant
 
     def register_active_session(
         self,
@@ -587,13 +605,9 @@ class JITAccessService:
         sessions = self._repo.find_sessions_by_grant(grant_id)
         active_count = sum(1 for s in sessions if s.status in ("pending", "active"))
         
-        # Mark sessions as terminated immediately in DB for API responsiveness
-        now = datetime.now(timezone.utc)
-        for s in sessions:
-            if s.status in ("pending", "active"):
-                s.status = "terminated"
-                s.terminated_at = now
-                self._repo.save_session(s)
+        # Do NOT falsely mark sessions as terminated immediately.
+        # They will be updated by the JITRevocationEngine/Worker when actual 
+        # target-side revocation completes.
                 
         return active_count
 

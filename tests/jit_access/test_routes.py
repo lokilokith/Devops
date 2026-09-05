@@ -260,7 +260,7 @@ def test_revoke_grant(client, admin_token, db_session, admin_user):
         f"/jit/{created.id}/revoke", headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 200
-    assert response.json["status"] == "revoked"
+    assert response.json["status"] == "revocation_pending"
 
 
 def test_current_session(client, admin_token, db_session, admin_user):

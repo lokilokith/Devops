@@ -314,9 +314,10 @@ def test_revoke_grant(jit_service, db_session, admin_user):
     created = JITAccessRepository.create(grant)
 
     revoked = jit_service.revoke_access(created.id, admin_user.id)
-    assert revoked.status == JITGrantStatus.REVOKED
+    assert revoked.status == JITGrantStatus.REVOCATION_PENDING
 
-    # Test Revoked grant cannot access resource
+    # Test Revoked grant cannot access resource (it is pending revocation, so active check should fail)
+    # Actually wait, `check_active_grant` checks if status is ACTIVE. So it will fail.
     assert not JITAccessRepository.check_active_grant(user.id, role.id, resource.id)
 
 

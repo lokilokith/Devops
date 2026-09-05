@@ -324,7 +324,7 @@ def test_routes_coverage(client, admin_token, admin_user, db_session):
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert resp_rev.status_code == 200
-    assert resp_rev.json["status"] == "revoked"
+    assert resp_rev.json["status"] == "revocation_pending"
 
 
 def test_run_jit_expiry_job_invocation(app, jit_coverage_setup, db_session):
