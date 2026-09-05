@@ -17,7 +17,6 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.jit_access.models import JITAccessGrant, JITGrantStatus

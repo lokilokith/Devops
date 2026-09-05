@@ -15,9 +15,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Optional
 from uuid import UUID
 
-HARD_MAX_SESSION_TTL = 8 * 3600  # 8 hours
-
-
 import asyncssh
 from sqlalchemy import select
 
@@ -33,6 +30,8 @@ from app.resources.models import Resource
 from app.sessions.models import PrivilegedAccessSession, SessionStatus
 from app.target_accounts.models import TargetAccountBinding
 from app.vault.credential_use import CredentialUseContext, CredentialUseService
+
+HARD_MAX_SESSION_TTL = 8 * 3600  # 8 hours
 
 logger = logging.getLogger(__name__)
 

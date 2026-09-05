@@ -15,29 +15,28 @@ fixtures — everything committed by pg_setup persists until the session-scoped
 pg_app tears down the schema via db.drop_all().
 """
 
+import hashlib
 import os
 import subprocess
-import time
 import threading
-import hashlib
+import time
 from datetime import datetime, timedelta, timezone
-from uuid import uuid4
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 
 from app import create_app
-from app.platform.extensions import db
+from app.audit.service import AuditService
+from app.execution.domain import ExecutionStatus
 from app.jit_access.models import JITAccessGrant, JITGrantStatus
+from app.jit_access.repository import JITAccessRepository
+from app.jit_access.revocation_engine import JITRevocationEngine
+from app.platform.extensions import db
 from app.resources.models import Resource
 from app.sessions.models import PrivilegedAccessSession, SessionStatus
 from app.target_accounts.models import TargetAccountBinding, TargetAccountBindingStatus
 from app.workers.ssh_broker import OpsForgeSSHBroker
-from app.audit.service import AuditService
-from app.jit_access.repository import JITAccessRepository
-from app.jit_access.revocation_engine import JITRevocationEngine
-from app.execution.domain import ExecutionStatus
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -96,11 +95,11 @@ def pg_setup(pg_app):
     Uses a *unique* random token per call so that two test invocations that both
     commit PrivilegedAccessSession rows with session_token_hash never collide.
     """
+    from app.access_requests.models import AccessRequest, AccessRequestStatus
     from app.identity.models import User
     from app.roles.models import Role
-    from app.vault.models import VaultSecret
     from app.vault.domain import SecretStatus
-    from app.access_requests.models import AccessRequest, AccessRequestStatus
+    from app.vault.models import VaultSecret
 
     with pg_app.app_context():
         user_id = uuid4()
