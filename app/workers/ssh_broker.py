@@ -11,9 +11,12 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Optional
 from uuid import UUID
+
+HARD_MAX_SESSION_TTL = 8 * 3600  # 8 hours
+
 
 import asyncssh
 from sqlalchemy import select
@@ -46,6 +49,8 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
     """AsyncSSH server handling inbound brokered sessions."""
 
     _active_connections: dict[UUID, asyncssh.SSHServerConnection] = {}
+    _session_locks: dict[UUID, asyncio.Lock] = {}
+    _lock_refcounts: dict[UUID, int] = {}
 
     def __init__(
         self,
@@ -71,10 +76,40 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
             f"Broker connection received from {conn.get_extra_info('peername')}"
         )
 
+    @classmethod
+    def _get_or_create_lock(cls, session_id: UUID) -> asyncio.Lock:
+        if session_id not in cls._session_locks:
+            cls._session_locks[session_id] = asyncio.Lock()
+            cls._lock_refcounts[session_id] = 0
+        cls._lock_refcounts[session_id] += 1
+        return cls._session_locks[session_id]
+
+    @classmethod
+    def _release_lock_ref(cls, session_id: UUID) -> None:
+        if session_id in cls._lock_refcounts:
+            cls._lock_refcounts[session_id] -= 1
+            if cls._lock_refcounts[session_id] <= 0:
+                cls._lock_refcounts.pop(session_id, None)
+                cls._session_locks.pop(session_id, None)
+
     def connection_lost(self, exc: Optional[Exception]) -> None:
         logger.info(f"Broker connection lost: {exc}")
         if self._session_id:
-            OpsForgeSSHBroker._active_connections.pop(self._session_id, None)
+            sid = self._session_id
+
+            async def _safe_cleanup():
+                lock = self._get_or_create_lock(sid)
+                try:
+                    async with lock:
+                        if (
+                            OpsForgeSSHBroker._active_connections.get(sid)
+                            == self._client_connection
+                        ):
+                            OpsForgeSSHBroker._active_connections.pop(sid, None)
+                finally:
+                    self._release_lock_ref(sid)
+
+            asyncio.create_task(_safe_cleanup())
 
             def _log_disconnect():
                 with self._app_context():
@@ -83,7 +118,7 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
                             actor_user_id=WORKER_ACTOR_ID,
                             action="BROKER_SESSION_TERMINATED",
                             resource_type="privileged_access_sessions",
-                            resource_id=str(self._session_id),
+                            resource_id=str(sid),
                             status=AuditStatus.SUCCESS,
                             severity=AuditSeverity.INFO,
                             details={
@@ -106,9 +141,31 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
 
     async def validate_password(self, username: str, password: str) -> bool:
         """Authenticate user by hashing the token and looking up active session."""
-        return await asyncio.to_thread(self._sync_validate_and_authorize, password)
+        session_id = await asyncio.to_thread(
+            self._sync_validate_and_authorize, password
+        )
+        if not session_id:
+            return False
 
-    def _sync_validate_and_authorize(self, token: str) -> bool:
+        # Phase 12: Process-local critical section for connection registration
+        lock = self._get_or_create_lock(session_id)
+        try:
+            async with lock:
+                if session_id in OpsForgeSSHBroker._active_connections:
+                    logger.warning(
+                        f"Authorization denied: Duplicate connection rejected for session {session_id}"
+                    )
+                    return False
+
+                if self._client_connection:
+                    OpsForgeSSHBroker._active_connections[session_id] = (
+                        self._client_connection
+                    )
+                return True
+        finally:
+            self._release_lock_ref(session_id)
+
+    def _sync_validate_and_authorize(self, token: str) -> Optional[UUID]:
         """Synchronous block to perform full authorization chain validation."""
         with self._app_context():
             token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -116,14 +173,14 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
 
             # 1. Authoritative session lookup
             session_model = db.session.execute(
-                select(PrivilegedAccessSession).where(
-                    PrivilegedAccessSession.session_token_hash == token_hash
-                )
+                select(PrivilegedAccessSession)
+                .where(PrivilegedAccessSession.session_token_hash == token_hash)
+                .with_for_update()
             ).scalar_one_or_none()
 
             if not session_model:
                 logger.warning("Authentication denied: Unknown token hash.")
-                return False
+                return None
 
             self._session_id = session_model.id
 
@@ -135,25 +192,20 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
                     f"Authorization denied: Session {session_model.id} is {session_model.status}."
                 )
                 self._audit_denied("Session status invalid")
-                return False
+                return None
 
             sess_expires_at = session_model.expires_at
             if sess_expires_at.tzinfo is None:
                 sess_expires_at = sess_expires_at.replace(tzinfo=timezone.utc)
 
-            if now > sess_expires_at:
-                logger.warning(
-                    f"Authorization denied: Session {session_model.id} is expired."
-                )
-                self._audit_denied("Session expired")
-                return False
-
             # 2. Grant lookup
             grant = db.session.execute(
-                select(JITAccessGrant).where(
+                select(JITAccessGrant)
+                .where(
                     JITAccessGrant.approval_request_id
                     == session_model.access_request_id
                 )
+                .with_for_update()
             ).scalar_one_or_none()
 
             if not grant or grant.status != JITGrantStatus.ACTIVE:
@@ -161,18 +213,31 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
                     f"Authorization denied: Grant invalid or inactive for session {session_model.id}."
                 )
                 self._audit_denied("Grant invalid or inactive")
-                return False
+                return None
 
             grant_expires_at = grant.expires_at
             if grant_expires_at:
                 if grant_expires_at.tzinfo is None:
                     grant_expires_at = grant_expires_at.replace(tzinfo=timezone.utc)
-                if now > grant_expires_at:
-                    logger.warning(
-                        f"Authorization denied: Grant expired for session {session_model.id}."
-                    )
-                    self._audit_denied("Grant expired")
-                    return False
+            else:
+                grant_expires_at = now + timedelta(seconds=HARD_MAX_SESSION_TTL)
+
+            session_creation = session_model.started_at or now
+            if session_creation.tzinfo is None:
+                session_creation = session_creation.replace(tzinfo=timezone.utc)
+
+            hard_limit = session_creation + timedelta(seconds=HARD_MAX_SESSION_TTL)
+
+            # Enforce Hard TTL: session cannot outlive grant, and cannot outlive hard limit
+            effective_expires_at = min(sess_expires_at, grant_expires_at, hard_limit)
+            session_model.expires_at = effective_expires_at
+
+            if now > effective_expires_at:
+                logger.warning(
+                    f"Authorization denied: Session {session_model.id} is expired (Hard TTL enforced)."
+                )
+                self._audit_denied("Session expired")
+                return None
 
             # 3. Target binding lookup
             binding = db.session.get(
@@ -183,7 +248,7 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
                     f"Authorization denied: Target binding not found for session {session_model.id}."
                 )
                 self._audit_denied("Target binding not found")
-                return False
+                return None
 
             # 4. Resource lookup
             resource = db.session.get(Resource, binding.resource_id)
@@ -192,7 +257,7 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
                     f"Authorization denied: Resource not found for session {session_model.id}."
                 )
                 self._audit_denied("Resource not found")
-                return False
+                return None
 
             # Success! Extract authoritative target details and construct credential context
             self._target_host = resource.hostname_ip or resource.resource_code
@@ -216,7 +281,7 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
                     f"Authorization denied: No credential bound for session {session_model.id}."
                 )
                 self._audit_denied("No credential bound")
-                return False
+                return None
 
             self._credential_context = CredentialUseContext(
                 user_id=session_model.user_id,
@@ -237,11 +302,6 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
             session_model.last_activity_at = now
             db.session.commit()
 
-            if self._client_connection:
-                OpsForgeSSHBroker._active_connections[session_model.id] = (
-                    self._client_connection
-                )
-
             self._audit_service.log_event(
                 actor_user_id=WORKER_ACTOR_ID,
                 action="BROKER_SESSION_CONNECTED",
@@ -253,7 +313,7 @@ class OpsForgeSSHBroker(asyncssh.SSHServer):
             )
             db.session.commit()
 
-            return True
+            return session_model.id
 
     def _audit_denied(self, reason: str) -> None:
         """Helper to audit denied attempts."""
@@ -494,6 +554,53 @@ class OpsForgeSessionAdapter(asyncssh.SSHServerSession):
             self._outbound_conn.close()
 
 
+def sweep_expired_sessions(app_context: Any, session_ids: list[UUID]) -> list[UUID]:
+    """Helper to evaluate authoritative expiration of active sessions."""
+    with app_context():
+        now = datetime.now(timezone.utc)
+        expired = []
+        for sid in session_ids:
+            session = db.session.get(PrivilegedAccessSession, sid)
+            if not session:
+                continue
+
+            sess_expires_at = session.expires_at
+            if sess_expires_at.tzinfo is None:
+                sess_expires_at = sess_expires_at.replace(tzinfo=timezone.utc)
+
+            creation_time = session.started_at or (
+                sess_expires_at - timedelta(seconds=HARD_MAX_SESSION_TTL)
+            )
+            if creation_time.tzinfo is None:
+                creation_time = creation_time.replace(tzinfo=timezone.utc)
+
+            hard_limit = creation_time + timedelta(seconds=HARD_MAX_SESSION_TTL)
+            effective_expires_at = min(sess_expires_at, hard_limit)
+
+            if effective_expires_at < now:
+                expired.append(sid)
+                continue
+
+            # Check authoritative grant status for revocation
+            grant = db.session.execute(
+                select(JITAccessGrant).where(
+                    JITAccessGrant.approval_request_id == session.access_request_id
+                )
+            ).scalar_one_or_none()
+
+            if grant and grant.status in (
+                JITGrantStatus.REVOKED,
+                JITGrantStatus.REVOCATION_PENDING,
+                JITGrantStatus.EXPIRED,
+                JITGrantStatus.DENIED,
+                JITGrantStatus.FAILED,
+                JITGrantStatus.SECURITY_UNCERTAIN,
+            ):
+                expired.append(sid)
+
+        return expired
+
+
 async def start_expiry_monitor(app_context: Any) -> None:
     """Background task to enforce Layer 1 termination on expired sessions."""
     logger.info("Starting broker expiry monitor loop...")
@@ -505,46 +612,9 @@ async def start_expiry_monitor(app_context: Any) -> None:
 
             session_ids = list(OpsForgeSSHBroker._active_connections.keys())
 
-            def _get_expired(s_ids):
-                with app_context():
-                    now = datetime.now(timezone.utc)
-                    expired = []
-                    for sid in s_ids:
-                        session = db.session.get(PrivilegedAccessSession, sid)
-                        if not session:
-                            continue
-
-                        sess_expires_at = session.expires_at
-                        if sess_expires_at.tzinfo is None:
-                            sess_expires_at = sess_expires_at.replace(
-                                tzinfo=timezone.utc
-                            )
-
-                        if sess_expires_at < now:
-                            expired.append(sid)
-                            continue
-
-                        # Check authoritative grant status for revocation
-                        grant = db.session.execute(
-                            select(JITAccessGrant).where(
-                                JITAccessGrant.approval_request_id
-                                == session.access_request_id
-                            )
-                        ).scalar_one_or_none()
-
-                        if grant and grant.status in (
-                            JITGrantStatus.REVOKED,
-                            JITGrantStatus.REVOCATION_PENDING,
-                            JITGrantStatus.EXPIRED,
-                            JITGrantStatus.DENIED,
-                            JITGrantStatus.FAILED,
-                            JITGrantStatus.SECURITY_UNCERTAIN,
-                        ):
-                            expired.append(sid)
-
-                    return expired
-
-            expired_ids = await asyncio.to_thread(_get_expired, session_ids)
+            expired_ids = await asyncio.to_thread(
+                sweep_expired_sessions, app_context, session_ids
+            )
             for sid in expired_ids:
                 conn = OpsForgeSSHBroker._active_connections.get(sid)
                 if conn:

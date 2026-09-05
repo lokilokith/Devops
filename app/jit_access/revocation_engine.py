@@ -301,10 +301,13 @@ class JITRevocationEngine:
         grant.revocation_complete = comp_now
         grant.sessions_terminated = max(terminated_count, len(sessions))
         if grant.expires_at:
+            exp = grant.expires_at
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
             grant.observed_overrun_ms = int(
                 max(
                     0,
-                    (comp_now - grant.expires_at).total_seconds() * 1000,
+                    (comp_now - exp).total_seconds() * 1000,
                 )
             )
 
@@ -368,7 +371,12 @@ class JITRevocationEngine:
                     },
                 )
 
-                is_expiry = grant.expires_at is not None and grant.expires_at <= now
+                is_expiry = False
+                if grant.expires_at:
+                    exp = grant.expires_at
+                    if exp.tzinfo is None:
+                        exp = exp.replace(tzinfo=timezone.utc)
+                    is_expiry = exp <= now
                 updated = self.revoke_grant(
                     grant_id=grant.id,
                     actor_id=grant.user_id,
