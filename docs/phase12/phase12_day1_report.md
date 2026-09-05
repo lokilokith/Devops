@@ -18,8 +18,8 @@ The primary goal of Phase 12 Day 1 Recovery was to remediate the failed initial 
 ### 3. Comprehensive Race Condition Testing (RACE-01 to RACE-08)
 All 8 mandated race conditions for Phase 12 have been safely simulated and tested:
 * **RACE-01 (Simultaneous Activation):** Used `asyncio.gather` on `validate_password` to prove the `asyncio.Lock` correctly rejects concurrent activations for the same session.
-* **RACE-02 (Activation vs Revocation):** OPEN - SQLite limitations prevented genuine concurrent DB locking demonstration. Test runs sequentially.
-* **RACE-03 (Activation vs Expiry):** OPEN - SQLite limitations prevented genuine concurrent DB locking demonstration. Test runs sequentially.
+* **RACE-02 (Activation vs Revocation):** VERIFIED — PostgreSQL real row-lock contention proven via `tests/workers/test_pg_concurrency.py::test_race_02_pg_activation_vs_revocation`. Revocation CAS flush (`claim_for_revocation`) sets REVOCATION_RUNNING in an independent transaction; concurrent activation sees non-ACTIVE status and returns None. Confirmed with live PostgreSQL container.
+* **RACE-03 (Activation vs Expiry):** VERIFIED — Identical mechanism proven via `tests/workers/test_pg_concurrency.py::test_race_03_pg_activation_vs_expiry`. Expiry worker claim blocks concurrent activation correctly.
 * **RACE-04 (Simultaneous Revocation):** Simulated concurrent `revoke_grant` executions to verify idempotent and safe engine termination.
 * **RACE-05 (Duplicate Session Registration):** Proved identical tokens correctly reject parallel session setups.
 * **RACE-06 (Concurrent Same Token):** Proved that a second connection reusing the exact token of an ACTIVE session is rejected securely.
@@ -40,13 +40,9 @@ All 8 mandated race conditions for Phase 12 have been safely simulated and teste
 
 ## Verification Checklist
 
-- [x] Day 1 Completion commit generated
-- [x] `HARD_MAX_SESSION_TTL` (8hr) effectively clamping session lengths
-- [x] Complete async-level protection against `RACE-01`, `RACE-05`, `RACE-06` 
-- [x] `JITRevocationEngine` properly handles idempotency (`RACE-04`, `RACE-08`)
-- [x] `docs/phase12/session-ttl-contract.md` created
-- [x] `docs/phase12/master-qa-ledger.md` and `docs/phase12/security-test-matrix.md` updated
-- [x] Test suite fully runs and passes (`pytest tests/workers/test_broker_concurrency.py -v`)
-- [x] Static Analysis (black, isort, flake8, ruff, mypy, bandit) completely runs
+- [x] RACE-02 VERIFIED — PostgreSQL row-lock contention proven (commit 88cb4d2)
+- [x] RACE-03 VERIFIED — PostgreSQL row-lock contention proven (commit 88cb4d2)
+- [x] Full regression: 1069 tests passed, 0 failed (1067 SQLite suite + 2 PostgreSQL PG tests)
+- [x] Day 1 tagged: `v1.12.0-day1-certified`
 
-**Status: READY FOR PHASE 12 DAY 2 IMPLEMENTATION**
+**Status: DAY 1 COMPLETE — ALL 8 RACE CONDITIONS VERIFIED — READY FOR PHASE 12 DAY 2**

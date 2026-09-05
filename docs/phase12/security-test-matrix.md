@@ -31,8 +31,8 @@
 
 ### Concurrency attacks
 * **simultaneous activation (RACE-01)**: Two threads attempt to activate the same pending session simultaneously.
-* **activation/revocation race (RACE-02)**: Thread A activates while Thread B revokes the grant. (OPEN - Genuine DB overlapping concurrency not proven)
-* **activation/expiry race (RACE-03)**: Thread A activates at the exact millisecond the grant expires. (OPEN - Genuine DB overlapping concurrency not proven)
+* **activation/revocation race (RACE-02)**: VERIFIED — PostgreSQL row-lock contention proven. Revocation CAS flush (REVOCATION_RUNNING) blocks concurrent activation. See `tests/workers/test_pg_concurrency.py::test_race_02_pg_activation_vs_revocation`.
+* **activation/expiry race (RACE-03)**: VERIFIED — PostgreSQL row-lock contention proven. Expiry worker CAS flush (REVOCATION_RUNNING) blocks concurrent activation. See `tests/workers/test_pg_concurrency.py::test_race_03_pg_activation_vs_expiry`.
 * **simultaneous revocation (RACE-04)**: Thread A and Thread B send terminate requests simultaneously.
 * **duplicate session registration (RACE-05)**: Duplicate session registration should be rejected.
 * **concurrent same token (RACE-06)**: Concurrent use of the same valid token after activation.
