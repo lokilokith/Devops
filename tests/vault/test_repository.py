@@ -11,6 +11,7 @@ from app.resources.models import (
     ResourceType,
 )
 from app.vault.domain import SecretFactory, SecretMetadata, SecretVersion
+from app.vault.exceptions import ConcurrencyError
 from app.vault.repository import SqlAlchemyVaultRepository
 
 
@@ -18,7 +19,17 @@ def test_repository_mapping_cycle(db_session, test_user):
     """Verifies Domain -> DB -> Domain mapping preserves all attributes."""
     repo = SqlAlchemyVaultRepository(db_session)
 
-    resource = Resource(resource_code="TST01", resource_name="Test Resource", resource_type=ResourceType.SERVER, status=ResourceStatus.ACTIVE, environment=Environment.DEV, criticality=Criticality.LOW)
+    import uuid
+
+    uid = uuid.uuid4().hex[:6]
+    resource = Resource(
+        resource_code=f"TST01_{uid}",
+        resource_name=f"Test Resource {uid}",
+        resource_type=ResourceType.SERVER,
+        status=ResourceStatus.ACTIVE,
+        environment=Environment.DEV,
+        criticality=Criticality.LOW,
+    )
     db_session.add(resource)
     db_session.commit()
 
@@ -29,7 +40,7 @@ def test_repository_mapping_cycle(db_session, test_user):
         key_version="v1",
         algorithm="AES-256-GCM",
         nonce="nonce123",
-        encryption_context={"resource_id": str(resource.id)}
+        encryption_context={"resource_id": str(resource.id)},
     )
 
     version_id = uuid4()
@@ -40,7 +51,7 @@ def test_repository_mapping_cycle(db_session, test_user):
         encrypted_payload=b"payload_bytes",
         metadata=metadata,
         created_at=datetime.now(timezone.utc),
-        created_by=test_user.id
+        created_by=test_user.id,
     )
     secret.add_version(version)
 
@@ -49,7 +60,7 @@ def test_repository_mapping_cycle(db_session, test_user):
     db_session.commit()
 
     # 3. Load from DB
-    db_session.expunge_all() # Ensure we load fresh from DB
+    db_session.expunge_all()  # Ensure we load fresh from DB
     loaded = repo.find_by_id(secret.id)
 
     # 4. Verify Equivalent Domain Object
@@ -69,13 +80,22 @@ def test_repository_mapping_cycle(db_session, test_user):
 
     assert loaded_version.metadata.key_version == "v1"
     assert loaded_version.metadata.algorithm == "AES-256-GCM"
-    assert loaded_version.metadata.encryption_context == {"resource_id": str(resource.id)}
+    assert loaded_version.metadata.encryption_context == {
+        "resource_id": str(resource.id)
+    }
 
 
 def test_optimistic_locking_conflict(db_session, test_user):
     repo = SqlAlchemyVaultRepository(db_session)
 
-    resource = Resource(resource_code="TST02", resource_name="Test Resource 2", resource_type=ResourceType.SERVER, status=ResourceStatus.ACTIVE, environment=Environment.DEV, criticality=Criticality.LOW)
+    resource = Resource(
+        resource_code="TST02",
+        resource_name="Test Resource 2",
+        resource_type=ResourceType.SERVER,
+        status=ResourceStatus.ACTIVE,
+        environment=Environment.DEV,
+        criticality=Criticality.LOW,
+    )
     db_session.add(resource)
     db_session.commit()
 
@@ -97,5 +117,5 @@ def test_optimistic_locking_conflict(db_session, test_user):
 
     # Modify instance 2 and attempt to save -> should throw ValueError
     instance2.disable()
-    with pytest.raises(ValueError, match="row_version mismatch"):
+    with pytest.raises(ConcurrencyError, match="row_version mismatch"):
         repo2.save(instance2)

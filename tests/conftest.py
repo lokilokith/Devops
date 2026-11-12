@@ -1,3 +1,4 @@
+import base64
 import os
 
 import pytest
@@ -6,24 +7,20 @@ from app import create_app
 from app.auth.service import AuthService
 from app.identity.repository import IdentityRepository
 from app.shared.database import db as _db
-from tests.fixtures.factories import UserFactory, RoleFactory
+from tests.fixtures.factories import RoleFactory, UserFactory
 
 
 @pytest.fixture(scope="session")
 def app():
     os.environ["APP_ENV"] = "testing"
     os.environ["SECRET_KEY"] = "super-secret-key-for-testing-12345678"
-    app = create_app()
+    # Ensure master key is set for KMS provider initialization
+    os.environ["VAULT_MASTER_KEY"] = base64.b64encode(os.urandom(32)).decode()
+
+    app = create_app(testing_bootstrap=True)
     with app.app_context():
-
-        _db.create_all()
-        # Ensure RBAC is seeded
-        from app.security.bootstrap.rbac_seed_service import seed_rbac
-
-        seed_rbac()
         yield app
         _db.session.remove()
-        _db.drop_all()
         _db.engine.dispose()
 
 
@@ -37,9 +34,8 @@ def db_session(app):
     session = _db.session
     session.begin_nested()
     # Patch commit to flush to prevent test data from leaking
-    original_commit = session.commit
+    original_commit = session.commit  # noqa: F841 – saved for potential restore
     session.commit = session.flush
-
 
     from tests.fixtures import factories
 
@@ -50,6 +46,7 @@ def db_session(app):
         factories.WorkflowFactory,
         factories.NotificationFactory,
         factories.AccessRequestFactory,
+        factories.ResourceFactory,
     ]:
         f._meta.sqlalchemy_session = session
 
@@ -94,6 +91,7 @@ def normal_user(db_session):
 def normal_token(security_auth_service, normal_user):
     return security_auth_service.generate_access_token(normal_user.id)
 
+
 @pytest.fixture
 def user_token(security_auth_service, normal_user):
     return security_auth_service.generate_access_token(normal_user.id)
@@ -130,6 +128,8 @@ def sec_admin_user(db_session):
 @pytest.fixture
 def sec_admin_token(security_auth_service, sec_admin_user):
     return security_auth_service.generate_access_token(sec_admin_user.id)
+
+
 @pytest.fixture
 def test_role(db_session):
     role = RoleFactory()
@@ -137,9 +137,50 @@ def test_role(db_session):
     db_session.flush()
     return role
 
+
 @pytest.fixture
 def test_user(db_session):
     user = UserFactory()
     db_session.add(user)
     db_session.flush()
     return user
+
+
+def is_target_container_running() -> bool:
+    """Check if the disposable target container is running and listening."""
+    import subprocess
+
+    res = subprocess.run(
+        [
+            "docker",
+            "ps",
+            "--filter",
+            "name=opsforge-disposable-target",
+            "--format",
+            "{{.Status}}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    return "Up" in res.stdout
+
+
+@pytest.fixture(scope="session")
+def target_container():
+    """Ensure disposable target container is up for integration tests."""
+    import subprocess
+    import time
+
+    if not is_target_container_running():
+        compose_file = os.path.join(
+            os.path.dirname(__file__), "../docker-compose.target.yml"
+        )
+        subprocess.run(
+            ["docker", "compose", "-f", compose_file, "up", "-d"], capture_output=True
+        )
+        for _ in range(20):
+            if is_target_container_running():
+                time.sleep(1)
+                break
+            time.sleep(0.5)
+    return is_target_container_running()

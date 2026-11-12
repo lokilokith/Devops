@@ -1,0 +1,38 @@
+sources:
+  opsforge-postgres:
+    kind: postgres
+    host: 127.0.0.1
+    port: 5432
+    database: opsforge_db
+    user: opsforge
+    password: opsforge_pass
+
+tools:
+  list_opsforge_tables:
+    kind: postgres-sql
+    source: opsforge-postgres
+    description: List all tables in the OpsForge PostgreSQL database.
+    statement: |
+      SELECT table_schema, table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      ORDER BY table_name;
+
+  inspect_opsforge_schema:
+    kind: postgres-sql
+    source: opsforge-postgres
+    description: Inspect columns and data types for OpsForge tables.
+    statement: |
+      SELECT
+        table_name,
+        column_name,
+        data_type,
+        is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+      ORDER BY table_name, ordinal_position;
+
+toolsets:
+  opsforge-readonly:
+    - list_opsforge_tables
+    - inspect_opsforge_schema

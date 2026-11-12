@@ -120,8 +120,7 @@ class AccessRequestService:
                 db.session,
             )
             wf_service.create_initial_workflow(
-                access_request_id=created.id,
-                approver_id=admin.id
+                access_request_id=created.id, approver_id=admin.id
             )
 
         access_request_created.send(

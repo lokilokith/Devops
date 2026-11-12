@@ -3,9 +3,9 @@ from flask import Flask
 
 from app.access_requests.repository import AccessRequestRepository
 from app.access_requests.service import AccessRequestService
-from app.extensions import db
 from app.identity.models import User, UserStatus
 from app.identity.repository import IdentityRepository
+from app.platform.extensions import db
 from app.resources.models import Resource, ResourceStatus, ResourceType
 from app.resources.repository import ResourcesRepository
 from app.roles.models import Role, RoleStatus, RoleType
@@ -47,11 +47,14 @@ def ar_repo(db_session):
 @pytest.fixture
 def ar_service(db_session, ar_repo):
     from app.user_roles.repository import UserRolesRepository
+
     user_repo = IdentityRepository(db_session)
     role_repo = RolesRepository(db_session)
     resource_repo = ResourcesRepository(db_session)
     user_roles_repo = UserRolesRepository(db_session)
-    return AccessRequestService(ar_repo, user_repo, role_repo, resource_repo, user_roles_repo)
+    return AccessRequestService(
+        ar_repo, user_repo, role_repo, resource_repo, user_roles_repo
+    )
 
 
 @pytest.fixture

@@ -116,6 +116,7 @@ def test_update_role(service, mock_repo):
     uid = uuid4()
     role = Role(role_code="R", role_name="old_n", description="old_d")
     role.id = uid
+    role.role_type = RoleType.CUSTOM
     mock_repo.get_by_id.return_value = role
 
     mock_repo.exists_by_role_name.return_value = False
@@ -134,6 +135,7 @@ def test_update_role_duplicate_name(service, mock_repo):
     uid = uuid4()
     role = Role(role_name="old_n")
     role.id = uid
+    role.role_type = RoleType.CUSTOM
     mock_repo.get_by_id.return_value = role
     mock_repo.exists_by_role_name.return_value = True
 
@@ -145,6 +147,7 @@ def test_update_role_validation_repo_error(service, mock_repo):
     uid = uuid4()
     role = Role(role_name="old_n")
     role.id = uid
+    role.role_type = RoleType.CUSTOM
     mock_repo.get_by_id.return_value = role
     mock_repo.exists_by_role_name.side_effect = RolesRepositoryError("fail")
     with pytest.raises(RolesServiceError):
@@ -155,6 +158,7 @@ def test_update_role_repo_error(service, mock_repo):
     uid = uuid4()
     role = Role(role_name="old_n")
     role.id = uid
+    role.role_type = RoleType.CUSTOM
     mock_repo.get_by_id.return_value = role
     mock_repo.update.side_effect = RolesRepositoryError("fail")
     with pytest.raises(RolesServiceError):
@@ -165,6 +169,7 @@ def test_patch_role(service, mock_repo):
     uid = uuid4()
     role = Role()
     role.id = uid
+    role.role_type = RoleType.CUSTOM
     mock_repo.get_by_id.return_value = role
     mock_repo.update.return_value = role
     assert service.patch_role(uid, {}) == role
@@ -225,14 +230,18 @@ def test_count_roles_repo_error(service, mock_repo):
 
 def test_activate_role(service, mock_repo):
     uid = uuid4()
-    mock_repo.get_by_id.return_value = "r1"
+    mock_role = MagicMock()
+    mock_role.role_type = RoleType.CUSTOM
+    mock_repo.get_by_id.return_value = mock_role
     mock_repo.activate.return_value = "active_r1"
     assert service.activate_role(uid) == "active_r1"
 
 
 def test_activate_role_repo_error(service, mock_repo):
     uid = uuid4()
-    mock_repo.get_by_id.return_value = "r1"
+    mock_role = MagicMock()
+    mock_role.role_type = RoleType.CUSTOM
+    mock_repo.get_by_id.return_value = mock_role
     mock_repo.activate.side_effect = RolesRepositoryError("fail")
     with pytest.raises(RolesServiceError):
         service.activate_role(uid)
@@ -240,14 +249,18 @@ def test_activate_role_repo_error(service, mock_repo):
 
 def test_deactivate_role(service, mock_repo):
     uid = uuid4()
-    mock_repo.get_by_id.return_value = "r1"
+    mock_role = MagicMock()
+    mock_role.role_type = RoleType.CUSTOM
+    mock_repo.get_by_id.return_value = mock_role
     mock_repo.deactivate.return_value = "deactive_r1"
     assert service.deactivate_role(uid) == "deactive_r1"
 
 
 def test_deactivate_role_repo_error(service, mock_repo):
     uid = uuid4()
-    mock_repo.get_by_id.return_value = "r1"
+    mock_role = MagicMock()
+    mock_role.role_type = RoleType.CUSTOM
+    mock_repo.get_by_id.return_value = mock_role
     mock_repo.deactivate.side_effect = RolesRepositoryError("fail")
     with pytest.raises(RolesServiceError):
         service.deactivate_role(uid)

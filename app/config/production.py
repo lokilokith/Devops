@@ -13,13 +13,13 @@ class ProductionConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
 
     # Enforce secrets
-    SECRET_KEY = os.environ.get("SECRET_KEY")
+    SECRET_KEY: str = os.environ.get("SECRET_KEY", "")
     if os.environ.get("APP_ENV", "").lower() == "production" and (
         not SECRET_KEY or SECRET_KEY == "default-dev-key"
     ):  # nosec - Checking for insecure default key
         raise RuntimeError("SECRET_KEY must be set securely in production.")
 
-    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+    JWT_SECRET_KEY: str = os.environ.get("JWT_SECRET_KEY", "")
     if os.environ.get("APP_ENV", "").lower() == "production" and (
         not JWT_SECRET_KEY
         or JWT_SECRET_KEY

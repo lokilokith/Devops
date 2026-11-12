@@ -1,0 +1,16 @@
+services:
+  opsforge-target:
+    build:
+      context: .
+      dockerfile: docker/target/Dockerfile
+    container_name: opsforge-disposable-target
+    ports:
+      - "2222:22"
+    networks:
+      - opsforge_target_net
+    restart: unless-stopped
+
+networks:
+  opsforge_target_net:
+    name: opsforge_target_net
+    driver: bridge

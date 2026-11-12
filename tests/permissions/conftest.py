@@ -1,9 +1,9 @@
 import pytest
 from flask import Flask
 
-from app.extensions import db
 from app.permissions.models import Permission, PermissionAction, PermissionStatus
 from app.permissions.repository import PermissionsRepository
+from app.platform.extensions import db
 
 
 @pytest.fixture

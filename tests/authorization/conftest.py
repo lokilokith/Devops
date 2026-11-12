@@ -2,9 +2,9 @@ import pytest
 from flask import Flask
 
 from app.authorization.service import AuthorizationService
-from app.extensions import db
 from app.identity.models import User, UserStatus
 from app.permissions.models import Permission, PermissionAction, PermissionStatus
+from app.platform.extensions import db
 from app.resources.models import Resource, ResourceStatus, ResourceType
 from app.role_permissions.models import RolePermission
 from app.roles.models import Role, RoleStatus, RoleType, UserRole

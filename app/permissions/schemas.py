@@ -2,6 +2,7 @@
 
 from flask_restx import Namespace, fields
 
+
 class EnumField(fields.String):
     def format(self, value):
         if hasattr(value, "value"):
@@ -9,6 +10,7 @@ class EnumField(fields.String):
         if isinstance(value, str):
             return value.split(".")[-1].lower() if "." in value else value
         return str(value)
+
 
 permissions_ns = Namespace(
     "permissions", description="Permissions management operations"

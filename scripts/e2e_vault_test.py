@@ -1,7 +1,7 @@
-import requests
-import subprocess
 import json
-import time
+import subprocess
+
+import requests
 
 BASE_URL = "http://localhost:8080/api/v1"
 
@@ -112,13 +112,13 @@ def run_test():
     }
     resp = session.post(f"{BASE_URL}/users", json=user_payload)
     assert resp.status_code == 201, f"User creation failed: {resp.text}"
-    
+
     user_session = requests.Session()
     resp = user_session.post(f"{BASE_URL}/auth/login", json={"username": f"testuser_{rand_id}", "password": "user1234"})
     assert resp.status_code == 200, f"User login failed: {resp.text}"
     u_token = resp.json()["data"]["access_token"]
     user_session.headers.update({"Authorization": f"Bearer {u_token}"})
-    
+
     resp = user_session.post(f"{BASE_URL}/vault/secrets/{secret_id}/retrieve")
     assert resp.status_code == 403, f"Expected 403, got {resp.status_code}: {resp.text}"
     print(f"Unauthorized user blocked correctly. Response: {resp.text}")

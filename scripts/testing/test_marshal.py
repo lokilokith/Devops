@@ -1,11 +1,14 @@
 import sys
+
 sys.path.insert(0, ".")
+
+import uuid
 
 from flask import Flask
 from flask_restx import marshal
+
 from app.roles.models import Role
 from app.roles.schemas import role_model
-import uuid
 
 app = Flask(__name__)
 
@@ -14,7 +17,7 @@ with app.app_context():
     print(r)
     print(r.id)
     print(r.role_code)
-    
+
     result = marshal([r], role_model)
     print("Marshaled:")
     print(result)

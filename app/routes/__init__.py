@@ -29,6 +29,7 @@ from app.shared.exceptions import (
 )
 from app.user_roles.routes import user_roles_ns
 from app.vault.routes import vault_ns
+from app.vault_lifecycle.routes import vault_lifecycle_ns
 
 blueprint = Blueprint("api", __name__, url_prefix="")
 
@@ -111,10 +112,14 @@ class CustomApi(Api):
 
         if isinstance(e, HTTPException):
             description = e.description or "An unexpected server error occurred."
+
+            # Preserve meaningful validation messages for 422 Unprocessable Entity
+            message = description if e.code == 422 else getattr(e, "name", "HTTP Error")
+
             return self.make_response(
                 {
                     "success": False,
-                    "message": getattr(e, "name", "HTTP Error"),
+                    "message": message,
                     "errors": [description],
                 },
                 e.code,
@@ -161,8 +166,20 @@ api.add_namespace(access_requests_ns, path="/access-requests")
 api.add_namespace(approval_workflows_ns, path="/approval-workflows")
 
 api.add_namespace(vault_ns, path="/vault")
+api.add_namespace(vault_lifecycle_ns, path="/vault-lifecycle")
 
 api.add_namespace(notifications_ns, path="/notifications")
 
+from app.policy_engine.routes import policies_ns  # noqa: E402
+
+api.add_namespace(policies_ns, path="/policy-engine")
+
+from app.target_accounts.routes import target_accounts_ns  # noqa: E402
+
+api.add_namespace(target_accounts_ns, path="/target-accounts")
+
+from app.jit_access.routes import jit_ns  # noqa: E402
+
+api.add_namespace(jit_ns, path="/jit")
 
 api.add_namespace(version_ns, path="/version")

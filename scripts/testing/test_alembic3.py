@@ -1,8 +1,8 @@
+
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.dialects import postgresql
-import sys
 
 ctx = MigrationContext.configure(dialect=postgresql.dialect(), opts={"as_sql": True})
 op = Operations(ctx)

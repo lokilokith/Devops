@@ -9,7 +9,7 @@ def test_login_success(client, sample_user):
     # Actually, in most previous tests, password is set. Let's force it.
     from werkzeug.security import generate_password_hash
 
-    from app.extensions import db
+    from app.platform.extensions import db
 
     sample_user.password_hash = generate_password_hash("password")
     db.session.commit()
@@ -25,7 +25,7 @@ def test_login_success(client, sample_user):
 def test_login_wrong_password(client, sample_user):
     from werkzeug.security import generate_password_hash
 
-    from app.extensions import db
+    from app.platform.extensions import db
 
     sample_user.password_hash = generate_password_hash("password")
     db.session.commit()
@@ -46,8 +46,8 @@ def test_login_unknown_user(client):
 def test_login_inactive_user(client, sample_user):
     from werkzeug.security import generate_password_hash
 
-    from app.extensions import db
     from app.identity.models import UserStatus
+    from app.platform.extensions import db
 
     sample_user.password_hash = generate_password_hash("password")
     sample_user.status = UserStatus.DISABLED

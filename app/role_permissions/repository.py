@@ -11,7 +11,6 @@ from uuid import UUID
 
 from sqlalchemy import exists, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.permissions.models import Permission
 from app.role_permissions.exceptions import (
@@ -21,6 +20,7 @@ from app.role_permissions.exceptions import (
 )
 from app.role_permissions.models import RolePermission
 from app.roles.models import Role
+from app.shared.database import DbSession
 
 
 class RolePermissionsRepository:
@@ -29,7 +29,7 @@ class RolePermissionsRepository:
     operations for RolePermission association entities.
     """
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         """Initialize repository with a SQLAlchemy session.
 
         Args:

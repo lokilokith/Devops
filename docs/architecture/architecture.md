@@ -22,7 +22,8 @@ Reusable cross-cutting helpers, including database access, exceptions, validator
 Business concepts only. This package is reserved for constants, enums, events, interfaces, and policies with no Flask or SQLAlchemy dependency.
 
 ### Feature Packages
-`identity/`, `roles/`, `resources/`, `access/`, `approval/`, and `audit/` are symmetrical feature boundaries. Each feature is expected to expose the same internal structure:
+The active feature packages include `identity/`, `roles/`, `resources/`, `access_requests/`, `approval_workflow/`, `audit/`, `auth/`, `authorization/`, `notifications/`, `permissions/`, `policy_engine/`, `vault/`, `vault_lifecycle/`, `checkout/`, and `workers/`. 
+Each implemented feature is expected to expose a symmetrical internal structure:
 
 ```text
 feature/
@@ -35,6 +36,8 @@ feature/
     validators.py
     exceptions.py
 ```
+
+*Note: Any scaffolding for future Execution or Session Plane capabilities (e.g., `sessions/`, `jit_access/`) is not currently active and should not be considered functional until its respective future phase.*
 
 ## Dependency Rules
 

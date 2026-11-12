@@ -6,12 +6,21 @@ This module defines the Resource entity for the infrastructure/asset domain.
 from __future__ import annotations
 
 import enum
-
-from sqlalchemy import Boolean, CheckConstraint, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.types import Uuid
+from datetime import datetime
 from typing import List
 from uuid import UUID
+
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import Uuid
 
 from app.shared.database import BaseModel
 
@@ -109,7 +118,12 @@ class Resource(BaseModel):
     hostname_ip: Mapped[str | None] = mapped_column(String(255), nullable=True)
     protocol: Mapped[str | None] = mapped_column(String(50), nullable=True)
     port: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    
+    pinned_host_key: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    host_key_fingerprint: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    host_key_trusted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     environment: Mapped[Environment] = mapped_column(
         Enum(
             Environment,
@@ -122,7 +136,7 @@ class Resource(BaseModel):
         nullable=False,
         default=Environment.PROD,
     )
-    
+
     criticality: Mapped[Criticality] = mapped_column(
         Enum(
             Criticality,
@@ -135,7 +149,7 @@ class Resource(BaseModel):
         nullable=False,
         default=Criticality.MEDIUM,
     )
-    
+
     connection_method: Mapped[ConnectionMethod | None] = mapped_column(
         Enum(
             ConnectionMethod,
@@ -147,14 +161,16 @@ class Resource(BaseModel):
         ),
         nullable=True,
     )
-    
+
+    auth_mechanism: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     owner_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_by: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
-    
+
     privileged_accounts: Mapped[List["PrivilegedAccount"]] = relationship(
         "PrivilegedAccount", back_populates="resource", cascade="all, delete-orphan"
     )
@@ -172,11 +188,14 @@ class PrivilegedAccount(BaseModel):
     __tablename__ = "privileged_accounts"
 
     resource_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("resources.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("resources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     account_name: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
-    
+
     resource: Mapped["Resource"] = relationship(
         "Resource", back_populates="privileged_accounts"
     )
@@ -188,25 +207,35 @@ class ResourceAccessPolicy(BaseModel):
     __tablename__ = "resource_access_policies"
 
     resource_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("resources.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("resources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     role_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(as_uuid=True),
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
-    
+
     allowed_protocol: Mapped[str | None] = mapped_column(String(50), nullable=True)
     allowed_time: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    approval_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    max_session_duration: Mapped[int | None] = mapped_column(Integer, nullable=True) # in minutes
+    approval_required: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )
+    max_session_duration: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )  # in minutes
 
 
 __all__ = [
-    "Resource", 
-    "ResourceStatus", 
+    "Resource",
+    "ResourceStatus",
     "ResourceType",
     "ConnectionMethod",
     "Environment",
     "Criticality",
     "PrivilegedAccount",
-    "ResourceAccessPolicy"
+    "ResourceAccessPolicy",
 ]

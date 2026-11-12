@@ -83,6 +83,7 @@ class UserRoleService:
             result = self._repository.remove_role_from_user(user_id, role_id)
             if result:
                 from app.notifications.events import permission_revoked
+
                 permission_revoked.send(
                     self,
                     payload={

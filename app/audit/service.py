@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Sequence
 from uuid import UUID
 
 from app.audit.models import AuditLog, AuditSeverity, AuditStatus
@@ -72,17 +73,20 @@ class AuditService:
         )
         if status == AuditStatus.FAILED:
             from app.notifications.events import audit_alert
+
             audit_alert.send(
                 self,
                 payload={
                     "event": "audit_alert",
                     "actor_id": str(actor_user_id),
-                    "recipient_id": str(actor_user_id),  # Usually admin, but we just use actor_id or system admin later
+                    "recipient_id": str(
+                        actor_user_id
+                    ),  # Usually admin, but we just use actor_id or system admin later
                     "title": "Failed Login Attempt",
                     "message": f"Failed login attempt from IP {ip_address}",
                     "type": "system",
                     "priority": "high",
-                }
+                },
             )
 
     def log_role_assignment(
@@ -158,6 +162,7 @@ class AuditService:
             details={"permission_action": permission_action},
         )
         from app.notifications.events import audit_alert
+
         audit_alert.send(
             self,
             payload={
@@ -168,10 +173,12 @@ class AuditService:
                 "message": f"Authorization denied for action {permission_action} on resource {resource_id}",
                 "type": "system",
                 "priority": "high",
-            }
+            },
         )
 
-    def search_logs(self, page: int = 1, page_size: int = 20, **filters) -> list[AuditLog]:
+    def search_logs(
+        self, page: int = 1, page_size: int = 20, **filters
+    ) -> Sequence[AuditLog]:
         return self._repo.search(page=page, page_size=page_size, **filters)
 
     def count_logs(self, **filters) -> int:

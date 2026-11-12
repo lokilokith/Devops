@@ -11,14 +11,18 @@ from uuid import UUID, uuid4
 
 class SecretStatus(str, enum.Enum):
     ACTIVE = "active"
+    CHECKED_OUT = "checked_out"
     ROTATING = "rotating"
     DISABLED = "disabled"
     TOMBSTONED = "tombstoned"
+    DESYNCED = "desynced"
+    JIT_EPHEMERAL = "jit_ephemeral"
 
 
 @dataclass
 class SecretMetadata:
     """Value Object for cryptographic metadata."""
+
     key_version: str
     algorithm: str
     nonce: str
@@ -28,6 +32,7 @@ class SecretMetadata:
 @dataclass
 class SecretVersion:
     """Entity representing a specific iteration of a secret's payload."""
+
     id: UUID
     secret_id: UUID
     encrypted_dek: bytes
@@ -40,6 +45,7 @@ class SecretVersion:
 @dataclass
 class Secret:
     """Aggregate Root for a Privileged Secret."""
+
     id: UUID
     resource_id: UUID
     status: SecretStatus
@@ -55,23 +61,72 @@ class Secret:
             raise ValueError("Version belongs to a different secret.")
         self.versions.append(version)
         self.current_version_id = version.id
+        # We don't automatically set ACTIVE here if it's called from complete_rotation or initialization,
+        # but for backward compatibility with Phase 1, we preserve it.
+        # However, for Phase 2, rotation lifecycle manages status.
+        if self.status not in (
+            SecretStatus.ROTATING,
+            SecretStatus.ACTIVE,
+            SecretStatus.JIT_EPHEMERAL,
+            SecretStatus.CHECKED_OUT,
+        ):
+            self.status = SecretStatus.ACTIVE
+        self.updated_at = datetime.now(timezone.utc)
+
+    def checkout(self) -> None:
+        if self.status != SecretStatus.ACTIVE:
+            raise ValueError(f"Cannot checkout from {self.status.value} state.")
+        self.status = SecretStatus.CHECKED_OUT
+        self.updated_at = datetime.now(timezone.utc)
+
+    def check_in_to_rotate(self) -> None:
+        if self.status != SecretStatus.CHECKED_OUT:
+            raise ValueError(f"Cannot check-in from {self.status.value} state.")
+        self.status = SecretStatus.ROTATING
+        self.updated_at = datetime.now(timezone.utc)
+
+    def begin_rotation(self) -> None:
+        if self.status == SecretStatus.CHECKED_OUT:
+            from app.vault.exceptions import SecretCheckedOutError
+
+            raise SecretCheckedOutError("Cannot begin rotation from checked_out state.")
+        if self.status not in (SecretStatus.ACTIVE, SecretStatus.ROTATING):
+            raise ValueError(f"Cannot begin rotation from {self.status.value} state.")
+        self.status = SecretStatus.ROTATING
+        self.updated_at = datetime.now(timezone.utc)
+
+    def complete_rotation(self, version: SecretVersion) -> None:
+        if self.status != SecretStatus.ROTATING:
+            raise ValueError(
+                f"Cannot complete rotation from {self.status.value} state."
+            )
+        self.add_version(version)
         self.status = SecretStatus.ACTIVE
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
+
+    def fail_rotation(self) -> None:
+        if self.status != SecretStatus.ROTATING:
+            raise ValueError(f"Cannot fail rotation from {self.status.value} state.")
+        self.status = SecretStatus.DESYNCED
+        self.updated_at = datetime.now(timezone.utc)
+
+    def restore_from_desynced(self) -> None:
+        if self.status != SecretStatus.DESYNCED:
+            raise ValueError(f"Cannot restore from {self.status.value} state.")
+        self.status = SecretStatus.ACTIVE
+        self.updated_at = datetime.now(timezone.utc)
 
     def disable(self) -> None:
         if self.status == SecretStatus.TOMBSTONED:
             raise ValueError("Cannot disable a tombstoned secret.")
         self.status = SecretStatus.DISABLED
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
 
     def tombstone(self) -> None:
         if self.status == SecretStatus.TOMBSTONED:
             raise ValueError("Secret is already tombstoned.")
         self.status = SecretStatus.TOMBSTONED
         self.updated_at = datetime.now(timezone.utc)
-        self.row_version += 1
 
     def get_current_version(self) -> Optional[SecretVersion]:
         if not self.current_version_id:
@@ -80,6 +135,11 @@ class Secret:
             if v.id == self.current_version_id:
                 return v
         return None
+
+    @property
+    def current_version(self) -> Optional[SecretVersion]:
+        """Convenience property for accessing the active SecretVersion."""
+        return self.get_current_version()
 
 
 class SecretFactory:
@@ -96,7 +156,7 @@ class SecretFactory:
             row_version=1,
             created_at=now,
             updated_at=now,
-            versions=[]
+            versions=[],
         )
 
 

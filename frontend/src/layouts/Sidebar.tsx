@@ -10,6 +10,7 @@ import {
   Bell,
   ScrollText,
   Lock,
+  Activity,
 } from "lucide-react"
 import { useAuth } from "@/features/authentication/AuthContext"
 import { PERMISSIONS } from "@/features/authentication/authorization"
@@ -27,6 +28,7 @@ export function Sidebar() {
     ...(hasPermission(VAULT_PERMISSIONS.VAULT_READ) ? [{ name: "Credential Vault", to: "/vault", icon: Lock }] : []),
     ...(hasPermission(VAULT_PERMISSIONS.VAULT_READ) ? [{ name: "Vault Audit", to: "/vault/audit", icon: ScrollText }] : []),
     { name: "Access Requests", to: "/access-requests", icon: ClipboardList },
+    { name: "Active Sessions", to: "/sessions", icon: Activity },
     { name: "Approvals", to: "/approvals", icon: CheckSquare },
     { name: "Notifications", to: "/notifications", icon: Bell },
     ...(hasPermission(PERMISSIONS.AUDIT_READ) ? [{ name: "Audit Logs", to: "/audit", icon: ScrollText }] : []),

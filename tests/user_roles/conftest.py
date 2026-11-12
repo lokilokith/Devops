@@ -1,8 +1,8 @@
 import pytest
 from flask import Flask
 
-from app.extensions import db
 from app.identity.models import User, UserStatus
+from app.platform.extensions import db
 from app.roles.models import Role, RoleStatus, RoleType
 from app.user_roles.repository import UserRolesRepository
 

@@ -9,8 +9,8 @@ from app.access_requests.models import (
 from app.access_requests.repository import AccessRequestRepository
 from app.approval_workflow.repository import ApprovalWorkflowRepository
 from app.approval_workflow.service import ApprovalWorkflowService
-from app.extensions import db
 from app.identity.models import User, UserStatus
+from app.platform.extensions import db
 from app.roles.models import Role, RoleStatus, RoleType
 from app.user_roles.repository import UserRolesRepository
 

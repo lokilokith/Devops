@@ -272,9 +272,10 @@ def _validate_bootstrap() -> None:
     )
 
     # Check if the role has at least the default permissions we specified
-    if actual_perm_count < expected_perm_count:
+    count_val = actual_perm_count or 0
+    if count_val < expected_perm_count:
         raise RBACSeedError(
-            f"Validation failed: Administrator role only has {actual_perm_count} permissions, "
+            f"Validation failed: Administrator role only has {count_val} permissions, "
             f"expected at least {expected_perm_count}."
         )
     logger.info("OK - Permissions Assigned")

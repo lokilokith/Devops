@@ -36,10 +36,24 @@ class RoleFactory(BaseFactory):
 
     id = factory.LazyFunction(uuid.uuid4)
     role_code = factory.Sequence(lambda n: f"RC{n:03d}")
-    role_name = factory.Faker("word")
+    role_name = factory.Sequence(lambda n: f"Role {n}")
     # role_type defaults to CUSTOM, status defaults to ACTIVE
     description = factory.Faker("sentence")
     # status defaults handled by model default
+
+
+from app.resources.models import Resource, ResourceType  # noqa: E402
+
+
+class ResourceFactory(BaseFactory):
+    class Meta:
+        model = Resource
+
+    id = factory.LazyFunction(uuid.uuid4)
+    resource_code = factory.Sequence(lambda n: f"RES{n:03d}")
+    resource_name = factory.Sequence(lambda n: f"Resource {n}")
+    resource_type = ResourceType.SERVER
+    # status defaults to active
 
 
 class PermissionFactory(BaseFactory):
@@ -52,16 +66,14 @@ class PermissionFactory(BaseFactory):
     description = "Test Permission"
 
 
-
-
 class NotificationFactory(BaseFactory):
     class Meta:
         model = Notification
-        exclude = ('recipient',)
+        exclude = ("recipient",)
 
     id = factory.LazyFunction(uuid.uuid4)
     recipient = factory.SubFactory(UserFactory)
-    recipient_user_id = factory.SelfAttribute('recipient.id')
+    recipient_user_id = factory.SelfAttribute("recipient.id")
     title = "Test Notification"
     message = "Message"
     type = NotificationType.SYSTEM
@@ -71,26 +83,27 @@ class NotificationFactory(BaseFactory):
 class AccessRequestFactory(BaseFactory):
     class Meta:
         model = AccessRequest
-        exclude = ('requester', 'requested_role')
+        exclude = ("requester", "requested_role")
 
     id = factory.LazyFunction(uuid.uuid4)
     requester = factory.SubFactory(UserFactory)
-    requester_id = factory.SelfAttribute('requester.id')
+    requester_id = factory.SelfAttribute("requester.id")
     status = AccessRequestStatus.PENDING
     request_number = factory.Sequence(lambda n: f"REQ-{n}")
     requested_role = factory.SubFactory(RoleFactory)
-    requested_role_id = factory.SelfAttribute('requested_role.id')
+    requested_role_id = factory.SelfAttribute("requested_role.id")
     business_justification = "Testing"
+
 
 class WorkflowFactory(BaseFactory):
     class Meta:
         model = ApprovalWorkflow
-        exclude = ('access_request', 'approver')
+        exclude = ("access_request", "approver")
 
     id = factory.LazyFunction(uuid.uuid4)
     access_request = factory.SubFactory(AccessRequestFactory)
-    access_request_id = factory.SelfAttribute('access_request.id')
+    access_request_id = factory.SelfAttribute("access_request.id")
     approver = factory.SubFactory(UserFactory)
-    approver_id = factory.SelfAttribute('approver.id')
+    approver_id = factory.SelfAttribute("approver.id")
     approval_level = ApprovalLevel.MANAGER
     status = ApprovalStatus.PENDING

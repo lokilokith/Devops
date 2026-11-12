@@ -39,4 +39,3 @@ audit_log_paginated_wrapper = audit_ns.model(
         "data": fields.Nested(audit_log_paginated_response_dto),
     },
 )
-

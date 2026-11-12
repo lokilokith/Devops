@@ -7,7 +7,7 @@ from werkzeug.exceptions import Conflict
 from app.api.decorators import login_required, requires_permission
 from app.api.pagination import DEFAULT_PAGE_SIZE, validate_pagination
 from app.api.responses import success_response
-from app.extensions import db
+from app.platform.extensions import db
 from app.resources.exceptions import DuplicateResourceError
 from app.resources.repository import ResourcesRepository
 from app.resources.schemas import (

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from werkzeug.exceptions import BadRequest
@@ -10,8 +11,8 @@ from app.notifications.models import (
 )
 
 
-def validate_filter_params(args: dict) -> dict:
-    parsed = {}
+def validate_filter_params(args: dict) -> dict[str, Any]:
+    parsed: dict[str, Any] = {}
 
     if args.get("status"):
         try:

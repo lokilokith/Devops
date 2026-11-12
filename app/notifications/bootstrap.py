@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 
 from flask import Flask
 
@@ -7,11 +7,11 @@ from app.notifications.events import (
     access_request_created,
     approval_required,
     audit_alert,
+    permission_revoked,
     request_approved,
     request_cancelled,
     request_rejected,
     role_provisioned,
-    permission_revoked,
     workflow_failed,
 )
 from app.notifications.models import NotificationPriority, NotificationType
@@ -36,6 +36,7 @@ def register_notification_handlers(app: Flask) -> None:
             return
 
         import uuid
+
         try:
             recipient_id = uuid.UUID(recipient_id_str)
         except ValueError:

@@ -11,11 +11,10 @@ from uuid import UUID
 
 from sqlalchemy import Select, exists, func, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.resources.exceptions import ResourceNotFoundError, ResourcesRepositoryError
 from app.resources.models import Resource, ResourceStatus, ResourceType
-from app.shared.database import BaseModel
+from app.shared.database import BaseModel, DbSession
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -26,7 +25,7 @@ class ResourcesRepository:
     operations for Resource entities.
     """
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         """Initialize repository with a SQLAlchemy session.
 
         Args:

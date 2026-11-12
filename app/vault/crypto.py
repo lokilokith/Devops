@@ -12,23 +12,41 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from app.vault.domain import SecretMetadata
 
 
-class MasterKeyProvider(Protocol):
+class KMSProviderError(Exception):
+    """Base exception for KMS provider errors."""
+
+    pass
+
+
+class UnsupportedKMSProviderError(KMSProviderError):
+    """Raised when an unsupported KMS provider is requested."""
+
+    pass
+
+
+class KMSConfigurationError(KMSProviderError):
+    """Raised when the KMS configuration is invalid or missing."""
+
+    pass
+
+
+class KMSProvider(Protocol):
     """Abstract interface for Master Key operations."""
 
-    def encrypt_dek(self, plaintext_dek: bytes, key_version: str, aad: bytes) -> bytes:
-        ...
+    def encrypt_dek(
+        self, plaintext_dek: bytes, key_version: str, aad: bytes
+    ) -> bytes: ...
 
-    def decrypt_dek(self, encrypted_dek: bytes, key_version: str, aad: bytes) -> bytes:
-        ...
+    def decrypt_dek(
+        self, encrypted_dek: bytes, key_version: str, aad: bytes
+    ) -> bytes: ...
 
-    def get_active_key_version(self) -> str:
-        ...
+    def get_active_key_version(self) -> str: ...
 
-    def supports_key_version(self, key_version: str) -> bool:
-        ...
+    def supports_key_version(self, key_version: str) -> bool: ...
 
 
-class LocalEnvironmentKeyProvider:
+class LocalKMSProvider:
     """Master Key Provider that loads AES-256 key from VAULT_MASTER_KEY env var."""
 
     def __init__(self) -> None:
@@ -42,7 +60,9 @@ class LocalEnvironmentKeyProvider:
             raise ValueError(f"VAULT_MASTER_KEY is not a valid base64 string: {e}")
 
         if len(self._key) != 32:
-            raise ValueError(f"VAULT_MASTER_KEY must be exactly 32 bytes for AES-256 (got {len(self._key)})")
+            raise ValueError(
+                f"VAULT_MASTER_KEY must be exactly 32 bytes for AES-256 (got {len(self._key)})"
+            )
 
         self._active_version = "v1"
 
@@ -61,7 +81,7 @@ class LocalEnvironmentKeyProvider:
         if not self.supports_key_version(key_version):
             raise ValueError(f"Unsupported master key version: {key_version}")
 
-        if len(encrypted_dek) < 28: # 12 (nonce) + 16 (tag)
+        if len(encrypted_dek) < 28:  # 12 (nonce) + 16 (tag)
             raise ValueError("Encrypted DEK is too short")
 
         aesgcm = AESGCM(self._key)
@@ -78,10 +98,21 @@ class LocalEnvironmentKeyProvider:
         return key_version == self._active_version
 
 
+class LocalEnvironmentKeyProvider(LocalKMSProvider):
+    """Alias for LocalKMSProvider for backward compatibility.
+
+    The original tests expect a class named `LocalEnvironmentKeyProvider` that
+    loads the master key from the `VAULT_MASTER_KEY` environment variable and
+    provides the same encrypt/decrypt semantics as `LocalKMSProvider`.
+    """
+
+    pass
+
+
 class EncryptionService:
     """Domain service for handling envelope encryption lifecycles."""
 
-    def __init__(self, key_provider: MasterKeyProvider):
+    def __init__(self, key_provider: KMSProvider):
         self._provider = key_provider
 
     def _generate_aad(self, resource_id: UUID, secret_id: UUID) -> bytes:
@@ -118,7 +149,7 @@ class EncryptionService:
             encryption_context={
                 "resource_id": str(resource_id),
                 "secret_id": str(secret_id),
-            }
+            },
         )
 
         return encrypted_dek, encrypted_payload, metadata
@@ -129,7 +160,7 @@ class EncryptionService:
         secret_id: UUID,
         encrypted_dek: bytes,
         encrypted_payload: bytes,
-        metadata: SecretMetadata
+        metadata: SecretMetadata,
     ) -> bytes:
         """
         Decrypts a payload using envelope encryption.

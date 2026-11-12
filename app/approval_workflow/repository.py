@@ -8,10 +8,10 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.approval_workflow.exceptions import ApprovalWorkflowRepositoryError
 from app.approval_workflow.models import ApprovalStatus, ApprovalWorkflow
+from app.shared.database import DbSession
 
 
 def _normalize_pagination(page: int | None, page_size: int | None) -> tuple[int, int]:
@@ -22,7 +22,7 @@ def _normalize_pagination(page: int | None, page_size: int | None) -> tuple[int,
 
 
 class ApprovalWorkflowRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         self._session = session
 
     def create_workflow(self, workflow: ApprovalWorkflow) -> ApprovalWorkflow:
@@ -41,6 +41,7 @@ class ApprovalWorkflowRepository:
             stmt = select(ApprovalWorkflow).where(ApprovalWorkflow.id == workflow_id)
             if for_update:
                 from sqlalchemy.orm import selectinload
+
                 stmt = stmt.options(
                     selectinload(ApprovalWorkflow.access_request)
                 ).with_for_update()

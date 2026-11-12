@@ -6,7 +6,7 @@ from flask import Flask
 from flask_restx import Api
 
 from app.api.errors import errors_bp
-from app.extensions import db
+from app.platform.extensions import db
 from app.role_permissions.routes import role_permissions_ns
 
 

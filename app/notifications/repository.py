@@ -4,7 +4,6 @@ from uuid import UUID
 
 from sqlalchemy import desc
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from app.notifications.models import (
     Notification,
@@ -12,6 +11,7 @@ from app.notifications.models import (
     NotificationStatus,
     NotificationType,
 )
+from app.shared.database import DbSession
 
 
 class NotificationRepositoryError(Exception):
@@ -23,7 +23,7 @@ class NotificationNotFoundError(Exception):
 
 
 class NotificationRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: DbSession) -> None:
         self._session = session
 
     def create_notification(self, notification: Notification) -> Notification:

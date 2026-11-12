@@ -1,5 +1,3 @@
-import uuid
-
 from sqlalchemy.orm import Session
 
 from app.notifications.models import (
@@ -16,6 +14,7 @@ from app.notifications.repository import (
 def test_create_notification(app, db_session: Session):
     repo = NotificationRepository(db_session)
     from tests.fixtures.factories import UserFactory
+
     test_user = UserFactory()
     db_session.add(test_user)
     db_session.flush()
@@ -40,6 +39,7 @@ def test_create_notification(app, db_session: Session):
 def test_get_by_id(app, db_session: Session):
     repo = NotificationRepository(db_session)
     from tests.fixtures.factories import UserFactory
+
     test_user = UserFactory()
     db_session.add(test_user)
     db_session.flush()
@@ -62,6 +62,7 @@ def test_get_by_id(app, db_session: Session):
 def test_count_unread_and_mark_read(app, db_session: Session):
     repo = NotificationRepository(db_session)
     from tests.fixtures.factories import UserFactory
+
     test_user = UserFactory()
     db_session.add(test_user)
     db_session.flush()

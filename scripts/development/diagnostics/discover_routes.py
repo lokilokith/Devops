@@ -1,24 +1,25 @@
 import ast
-import os
 import glob
+import os
+
 
 def find_routes():
     app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
     route_files = glob.glob(os.path.join(app_dir, '**', 'routes.py'), recursive=True)
-    
+
     endpoints = []
-    
+
     for rf in route_files:
         with open(rf, 'r', encoding='utf-8') as f:
             tree = ast.parse(f.read())
-            
+
         module_name = os.path.relpath(rf, app_dir).replace(os.sep, '.')[:-3]
-        
+
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
                 perms = []
                 is_login_required = False
-                
+
                 for dec in node.decorator_list:
                     if isinstance(dec, ast.Name) and dec.id == 'login_required':
                         is_login_required = True
@@ -37,7 +38,7 @@ def find_routes():
                         "permissions": perms,
                         "login_required": is_login_required
                     })
-    
+
     for ep in endpoints:
         print(ep)
 

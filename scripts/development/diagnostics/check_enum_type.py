@@ -1,10 +1,13 @@
 import os
+
 os.environ["APP_ENV"] = "testing"
+import uuid
+
+from werkzeug.security import generate_password_hash
+
 from app import create_app
 from app.extensions import db
 from app.identity.models import User, UserStatus
-import uuid
-from werkzeug.security import generate_password_hash
 
 app = create_app()
 app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://opsforge_test:opsforge_test@localhost:5440/opsforge_test"
@@ -22,7 +25,7 @@ with app.app_context():
     )
     db.session.add(user)
     db.session.commit()
-    
+
     # Reload user
     u = db.session.query(User).filter_by(username="test_enum1").first()
     print(f"Type of user.status from PostgreSQL: {type(u.status)}")
